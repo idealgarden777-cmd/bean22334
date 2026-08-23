@@ -2,14 +2,12 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
 
     "module": "ESNext",
     "moduleResolution": "Bundler",
+
+    "types": ["vite/client"],
 
     "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
@@ -25,7 +23,6 @@
     "exactOptionalPropertyTypes": true,
 
     "skipLibCheck": true,
-
     "noEmit": true,
     "forceConsistentCasingInFileNames": true
   },

@@ -17,22 +17,27 @@ import {
    BEAN — SIGNATURESI
    Identity Module
 
+   Canonical public identity:
+   bean@username
+
+   Permanent internal identity:
+   UUID
+
    Responsibilities:
-   - Bridge Signaturesi account UUID to Bean identity
-   - Read/create the current Bean profile
-   - Claim the user's initial Bean ID
-   - Resolve an exact Bean ID to a user
-   - Normalize Bean ID input consistently
+   - Bridge Signaturesi UUID to Bean public identity
+   - Read/create Bean profile
+   - Read/claim canonical Bean ID
+   - Normalize legacy identity formats
+   - Resolve exact Bean IDs
    - Update safe profile fields
 
    Must NOT own:
-   - Authentication/session management
+   - Authentication/session lifecycle
    - Passwords
    - Bean ID rename workflow
    - Messaging
-   - Business discovery ranking
+   - Discovery ranking
    - Profile UI
-   - Payments
    ============================================================ */
 
 
@@ -40,15 +45,19 @@ import {
    CONSTANTS
    ============================================================ */
 
-const HANDLE_MIN_LENGTH = 3;
-const HANDLE_MAX_LENGTH = 20;
+const USERNAME_MIN_LENGTH = 3;
+const USERNAME_MAX_LENGTH = 20;
 
-
-const HANDLE_PATTERN =
+const USERNAME_PATTERN =
   /^[a-z0-9_]+$/;
 
+const CANONICAL_PREFIX =
+  "bean@";
 
-const RESERVED_HANDLES =
+const LEGACY_SUFFIX =
+  "@bean";
+
+const RESERVED_USERNAMES =
   new Set<string>([
     "admin",
     "administrator",
@@ -100,7 +109,9 @@ export interface BeanProfile {
 export interface BeanHandle {
   userId: string;
 
-  handle: string;
+  username: string;
+
+  beanId: string;
 
   createdAt: string;
 }
@@ -109,7 +120,7 @@ export interface BeanHandle {
 export interface BeanIdentity {
   id: string;
 
-  handle: string | null;
+  username: string | null;
 
   beanId: string | null;
 
@@ -138,10 +149,12 @@ export interface UpdateProfileInput {
 
 /* ============================================================
    DATABASE ROW TYPES
-   Temporary hand-written types.
 
-   Later, after the final Supabase schema is locked,
-   generated database types can replace these.
+   Database stores only normalized username:
+   samuel
+
+   Public UI derives:
+   bean@samuel
    ============================================================ */
 
 interface ProfileRow {
@@ -179,108 +192,127 @@ interface HandleRow {
 
 
 /* ============================================================
-   NORMALIZATION
+   IDENTITY NORMALIZATION
+
+   Accepted migration/input forms:
+
+   samuel
+   @samuel
+   samuel@bean
+   bean@samuel
+
+   Canonical username:
+   samuel
+
+   Canonical public Bean ID:
+   bean@samuel
    ============================================================ */
 
-/**
- * Accepts common Signaturesi / legacy forms:
- *
- *   samuel
- *   @samuel
- *   samuel@bean
- *
- * and normalizes all of them to:
- *
- *   samuel
- */
-export function normalizeHandle(
+export function normalizeUsername(
   value: string
 ): string {
-  let handle =
+  let result =
     value
       .trim()
       .toLowerCase();
 
 
   if (
-    handle.startsWith("@")
+    result.startsWith(
+      CANONICAL_PREFIX
+    )
   ) {
-    handle =
-      handle.slice(1);
-  }
-
-
-  if (
-    handle.endsWith("@bean")
-  ) {
-    handle =
-      handle.slice(
-        0,
-        -5
+    result =
+      result.slice(
+        CANONICAL_PREFIX.length
       );
   }
 
 
-  return handle.trim();
+  if (
+    result.startsWith("@")
+  ) {
+    result =
+      result.slice(1);
+  }
+
+
+  if (
+    result.endsWith(
+      LEGACY_SUFFIX
+    )
+  ) {
+    result =
+      result.slice(
+        0,
+        -LEGACY_SUFFIX.length
+      );
+  }
+
+
+  return result.trim();
 }
 
 
 /**
- * Public display format.
+ * Canonical Signaturesi ecosystem identity.
+ *
+ * Example:
+ *   samuel -> bean@samuel
  */
 export function formatBeanId(
-  handle: string
+  username: string
 ): string {
-  return `@${handle}`;
+  return `${CANONICAL_PREFIX}${username}`;
 }
 
 
 /**
- * Legacy-compatible representation.
+ * Legacy migration representation only.
  *
- * This exists only for migration/interoperability.
- * New Bean internals must not depend on it.
+ * New Bean features must never use this as
+ * canonical identity.
  */
 export function formatLegacyBeanId(
-  handle: string
+  username: string
 ): string {
-  return `${handle}@bean`;
+  return `${username}${LEGACY_SUFFIX}`;
 }
 
 
 /* ============================================================
-   HANDLE VALIDATION
+   VALIDATION
    ============================================================ */
 
-export function validateHandle(
-  rawHandle: string
+export function validateUsername(
+  rawValue: string
 ): string {
-  const handle =
-    normalizeHandle(
-      rawHandle
+  const username =
+    normalizeUsername(
+      rawValue
     );
 
 
   if (
-    handle.length <
-      HANDLE_MIN_LENGTH ||
-    handle.length >
-      HANDLE_MAX_LENGTH
+    username.length <
+      USERNAME_MIN_LENGTH ||
+    username.length >
+      USERNAME_MAX_LENGTH
   ) {
     throw createError(
       "HANDLE_INVALID",
       "identity",
       {
         message:
-          `Bean ID must contain ${HANDLE_MIN_LENGTH}-${HANDLE_MAX_LENGTH} characters.`
+          `Bean username must contain ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} characters.`
       }
     );
   }
 
 
   if (
-    !HANDLE_PATTERN.test(
-      handle
+    !USERNAME_PATTERN.test(
+      username
     )
   ) {
     throw createError(
@@ -288,15 +320,15 @@ export function validateHandle(
       "identity",
       {
         message:
-          "Bean ID may contain lowercase letters, numbers and underscores only."
+          "Bean username may contain lowercase letters, numbers and underscores only."
       }
     );
   }
 
 
   if (
-    RESERVED_HANDLES.has(
-      handle
+    RESERVED_USERNAMES.has(
+      username
     )
   ) {
     throw createError(
@@ -306,13 +338,25 @@ export function validateHandle(
   }
 
 
-  return handle;
+  return username;
+}
+
+
+/**
+ * Alias retained for feature modules that think
+ * in terms of handles rather than usernames.
+ */
+export function validateHandle(
+  rawValue: string
+): string {
+  return validateUsername(
+    rawValue
+  );
 }
 
 
 /* ============================================================
    ROW MAPPERS
-   Database naming never leaks into feature/UI modules.
    ============================================================ */
 
 function mapProfile(
@@ -362,8 +406,13 @@ function mapHandle(
     userId:
       row.user_id,
 
-    handle:
+    username:
       row.handle,
+
+    beanId:
+      formatBeanId(
+        row.handle
+      ),
 
     createdAt:
       row.created_at
@@ -384,7 +433,9 @@ export async function getProfileById(
       error
     } =
       await supabase
-        .from("bean_user_profiles")
+        .from(
+          "bean_user_profiles"
+        )
         .select(
           `
             id,
@@ -438,7 +489,7 @@ export async function getProfileById(
 
 
 /* ============================================================
-   HANDLE READ
+   HANDLE READ BY UUID
    ============================================================ */
 
 export async function getHandleByUserId(
@@ -450,7 +501,9 @@ export async function getHandleByUserId(
       error
     } =
       await supabase
-        .from("bean_user_handles")
+        .from(
+          "bean_user_handles"
+        )
         .select(
           `
             user_id,
@@ -496,18 +549,23 @@ export async function getHandleByUserId(
 
 
 /* ============================================================
-   EXACT HANDLE LOOKUP
-   Used by New Message / exact Bean ID navigation.
+   EXACT BEAN ID RESOLUTION
 
-   Discovery/search ranking belongs to discovery.ts later.
+   Accepted:
+   bean@samuel
+   samuel
+   legacy samuel@bean
+
+   Returned identity always uses:
+   bean@samuel
    ============================================================ */
 
-export async function resolveHandle(
-  rawHandle: string
+export async function resolveBeanId(
+  rawBeanId: string
 ): Promise<BeanIdentity | null> {
-  const handle =
-    validateHandle(
-      rawHandle
+  const username =
+    validateUsername(
+      rawBeanId
     );
 
 
@@ -517,7 +575,9 @@ export async function resolveHandle(
       error: handleError
     } =
       await supabase
-        .from("bean_user_handles")
+        .from(
+          "bean_user_handles"
+        )
         .select(
           `
             user_id,
@@ -527,7 +587,7 @@ export async function resolveHandle(
         )
         .eq(
           "handle",
-          handle
+          username
         )
         .maybeSingle<HandleRow>();
 
@@ -557,7 +617,7 @@ export async function resolveHandle(
       id:
         profile.id,
 
-      handle:
+      username:
         handleRow.handle,
 
       beanId:
@@ -579,9 +639,9 @@ export async function resolveHandle(
 
         context: {
           operation:
-            "resolveHandle",
+            "resolveBeanId",
 
-          handle
+          username
         }
       }
     );
@@ -589,16 +649,28 @@ export async function resolveHandle(
 }
 
 
+/**
+ * Compatibility alias.
+ */
+export async function resolveHandle(
+  value: string
+): Promise<BeanIdentity | null> {
+  return resolveBeanId(
+    value
+  );
+}
+
+
 /* ============================================================
-   HANDLE AVAILABILITY
+   AVAILABILITY
    ============================================================ */
 
-export async function isHandleAvailable(
-  rawHandle: string
+export async function isBeanIdAvailable(
+  rawBeanId: string
 ): Promise<boolean> {
-  const handle =
-    validateHandle(
-      rawHandle
+  const username =
+    validateUsername(
+      rawBeanId
     );
 
 
@@ -608,13 +680,15 @@ export async function isHandleAvailable(
       error
     } =
       await supabase
-        .from("bean_user_handles")
+        .from(
+          "bean_user_handles"
+        )
         .select(
           "user_id"
         )
         .eq(
           "handle",
-          handle
+          username
         )
         .limit(1);
 
@@ -637,13 +711,22 @@ export async function isHandleAvailable(
 
         context: {
           operation:
-            "isHandleAvailable",
+            "isBeanIdAvailable",
 
-          handle
+          username
         }
       }
     );
   }
+}
+
+
+export async function isHandleAvailable(
+  rawValue: string
+): Promise<boolean> {
+  return isBeanIdAvailable(
+    rawValue
+  );
 }
 
 
@@ -669,7 +752,9 @@ async function createOwnProfile():
       error
     } =
       await supabase
-        .from("bean_user_profiles")
+        .from(
+          "bean_user_profiles"
+        )
         .insert({
           id:
             account.id,
@@ -717,10 +802,8 @@ async function createOwnProfile():
     );
   } catch (error) {
     /*
-     * Another tab/device may have created the row
-     * between our initial read and insert.
-     *
-     * Re-read before treating it as a fatal failure.
+     * Another tab/device may have created the
+     * profile between our read and insert.
      */
     const existing =
       await getProfileById(
@@ -753,24 +836,23 @@ async function createOwnProfile():
 
 
 /* ============================================================
-   HANDLE CLAIM
-   Initial claim only.
+   INITIAL BEAN ID CLAIM
 
-   Rename is intentionally NOT implemented here.
-   Handle changes later require a trusted server workflow,
-   cooldown, aliases/history and abuse protection.
+   Only initial claim is allowed from the browser.
+
+   Rename remains a trusted server operation later.
    ============================================================ */
 
-export async function claimInitialHandle(
-  rawHandle: string
+export async function claimInitialBeanId(
+  rawBeanId: string
 ): Promise<BeanHandle> {
   const account =
     requireAuthenticatedUser();
 
 
-  const handle =
-    validateHandle(
-      rawHandle
+  const username =
+    validateUsername(
+      rawBeanId
     );
 
 
@@ -791,12 +873,15 @@ export async function claimInitialHandle(
       error
     } =
       await supabase
-        .from("bean_user_handles")
+        .from(
+          "bean_user_handles"
+        )
         .insert({
           user_id:
             account.id,
 
-          handle
+          handle:
+            username
         })
         .select(
           `
@@ -809,9 +894,6 @@ export async function claimInitialHandle(
 
 
     if (error) {
-      /*
-       * Unique handle violation.
-       */
       if (
         error.code ===
           "23505"
@@ -824,7 +906,10 @@ export async function claimInitialHandle(
               error,
 
             context: {
-              handle
+              beanId:
+                formatBeanId(
+                  username
+                )
             }
           }
         );
@@ -850,9 +935,9 @@ export async function claimInitialHandle(
 
         context: {
           operation:
-            "claimInitialHandle",
+            "claimInitialBeanId",
 
-          handle
+          username
         }
       }
     );
@@ -860,18 +945,29 @@ export async function claimInitialHandle(
 }
 
 
+/**
+ * Compatibility alias.
+ */
+export async function claimInitialHandle(
+  rawValue: string
+): Promise<BeanHandle> {
+  return claimInitialBeanId(
+    rawValue
+  );
+}
+
+
 /* ============================================================
-   CENTRAL SIGNATURESI BEAN ID CANDIDATE
+   CENTRAL SIGNATURESI ID CANDIDATE
 
-   Signaturesi Accounts is the source of account identity.
+   Neyo / Accounts may already supply:
+   bean@samuel
 
-   If it already supplies a Bean ID, we use that as the
-   initial claim candidate.
-
-   This does NOT silently override an existing Bean handle.
+   If not, username can be used to derive:
+   bean@samuel
    ============================================================ */
 
-function getCentralHandleCandidate():
+function getCentralUsernameCandidate():
   string | null {
   const account =
     getCurrentUser();
@@ -897,13 +993,11 @@ function getCentralHandleCandidate():
 
 
     try {
-      return validateHandle(
+      return validateUsername(
         candidate
       );
     } catch {
-      /*
-       * Try the next candidate.
-       */
+      // Try next candidate.
     }
   }
 
@@ -915,14 +1009,17 @@ function getCentralHandleCandidate():
 /* ============================================================
    ENSURE CURRENT IDENTITY
 
-   Called after auth restoration.
+   Safe order:
 
-   Safe sequence:
-   1. Verify authenticated UUID
-   2. Ensure Bean profile exists
-   3. Read existing Bean handle
-   4. If missing, try central Signaturesi Bean ID
-   5. Return stable identity
+   Signaturesi Auth UUID
+           ↓
+   Bean profile
+           ↓
+   existing Bean ID
+           ↓
+   central Neyo/Accounts Bean ID
+           ↓
+   bean@username
    ============================================================ */
 
 export async function ensureCurrentIdentity():
@@ -951,23 +1048,16 @@ export async function ensureCurrentIdentity():
 
   if (!handle) {
     const candidate =
-      getCentralHandleCandidate();
+      getCentralUsernameCandidate();
 
 
     if (candidate) {
       try {
         handle =
-          await claimInitialHandle(
+          await claimInitialBeanId(
             candidate
           );
       } catch (error) {
-        /*
-         * A central/legacy Bean ID may already exist in the
-         * migration dataset.
-
-         * We do NOT automatically invent another identity.
-         * Account-claim migration will resolve ownership.
-         */
         const normalized =
           normalizeError(
             error,
@@ -978,6 +1068,12 @@ export async function ensureCurrentIdentity():
           );
 
 
+        /*
+         * Existing legacy/Neyo ownership may need
+         * account-claim migration.
+         *
+         * Never invent a replacement Bean ID.
+         */
         if (
           normalized.code !==
             "HANDLE_TAKEN"
@@ -993,16 +1089,13 @@ export async function ensureCurrentIdentity():
     id:
       account.id,
 
-    handle:
-      handle?.handle ??
+    username:
+      handle?.username ??
       null,
 
     beanId:
-      handle
-        ? formatBeanId(
-            handle.handle
-          )
-        : null,
+      handle?.beanId ??
+      null,
 
     profile
   };
@@ -1011,7 +1104,7 @@ export async function ensureCurrentIdentity():
 
 /* ============================================================
    CURRENT IDENTITY
-   Read-only; does not create anything.
+   Read-only. Creates nothing.
    ============================================================ */
 
 export async function getCurrentIdentity():
@@ -1049,16 +1142,13 @@ export async function getCurrentIdentity():
     id:
       account.id,
 
-    handle:
-      handle?.handle ??
+    username:
+      handle?.username ??
       null,
 
     beanId:
-      handle
-        ? formatBeanId(
-            handle.handle
-          )
-        : null,
+      handle?.beanId ??
+      null,
 
     profile
   };
@@ -1067,7 +1157,6 @@ export async function getCurrentIdentity():
 
 /* ============================================================
    PROFILE UPDATE
-   Only safe self-owned profile fields.
    ============================================================ */
 
 export async function updateOwnProfile(
@@ -1112,7 +1201,8 @@ export async function updateOwnProfile(
 
 
   if (
-    input.bio !== undefined
+    input.bio !==
+      undefined
   ) {
     payload.bio =
       input.bio
@@ -1208,9 +1298,6 @@ export async function updateOwnProfile(
   }
 
 
-  /*
-   * Nothing to update.
-   */
   if (
     Object.keys(
       payload
@@ -1240,7 +1327,9 @@ export async function updateOwnProfile(
       error
     } =
       await supabase
-        .from("bean_user_profiles")
+        .from(
+          "bean_user_profiles"
+        )
         .update(
           payload
         )

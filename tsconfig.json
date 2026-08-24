@@ -2,12 +2,19 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
 
     "module": "ESNext",
     "moduleResolution": "Bundler",
 
-    "types": ["vite/client"],
+    "types": [
+      "vite/client"
+    ],
 
     "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
@@ -20,6 +27,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
+
     "exactOptionalPropertyTypes": true,
 
     "skipLibCheck": true,

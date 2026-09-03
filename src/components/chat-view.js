@@ -7,17 +7,19 @@ BEAN — CHAT VIEW
 
 Owns:
 - Selected conversation layout
-- Composer behavior
-- Header action coordination
+- Coordination between chat components
 - Local prototype message sending
+- Header action coordination
 
 Uses:
 - chat-header.js
 - message-list.js
+- composer.js
 
 Does not own:
-- Message data
+- Header UI
 - Message rendering
+- Composer UI
 - Backend
 - Realtime
 - Persistence
@@ -35,6 +37,12 @@ import {
   scrollToLatestMessage,
 } from "./message-list.js";
 
+import {
+  createComposer,
+  initComposer,
+  focusComposer,
+} from "./composer.js";
+
 /*
 =========================================================
 TIME
@@ -50,124 +58,16 @@ function getCurrentTime() {
 
 /*
 =========================================================
-COMPOSER
+VALIDATION
 =========================================================
 */
 
-function createComposer() {
-  return `
-    <div class="bean-composer-area">
-
-      <form
-        class="bean-composer"
-        id="messageComposer"
-      >
-
-        <textarea
-          class="bean-composer__input"
-          id="messageInput"
-          rows="1"
-          maxlength="5000"
-          placeholder="Message"
-          aria-label="Message"
-          autocomplete="off"
-        ></textarea>
-
-        <button
-          class="bean-composer__send"
-          type="submit"
-          aria-label="Send message"
-          title="Send"
-        >
-          <span aria-hidden="true">↑</span>
-        </button>
-
-      </form>
-
-    </div>
-  `;
-}
-
-/*
-=========================================================
-COMPOSER RESIZE
-=========================================================
-*/
-
-function resizeComposer(input) {
-  input.style.height = "auto";
-
-  const height = Math.min(
-    input.scrollHeight,
-    140
+function isValidConversation(conversation) {
+  return Boolean(
+    conversation &&
+      typeof conversation.id === "string" &&
+      conversation.id.trim()
   );
-
-  input.style.height = `${height}px`;
-}
-
-/*
-=========================================================
-COMPOSER EVENTS
-=========================================================
-*/
-
-function initComposer(conversation) {
-  const form =
-    document.getElementById("messageComposer");
-
-  const input =
-    document.getElementById("messageInput");
-
-  if (!form || !input) {
-    return;
-  }
-
-  input.addEventListener("input", () => {
-    resizeComposer(input);
-  });
-
-  input.addEventListener("keydown", (event) => {
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey &&
-      !event.isComposing
-    ) {
-      event.preventDefault();
-      form.requestSubmit();
-    }
-  });
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const text = input.value.trim();
-
-    if (!text) {
-      return;
-    }
-
-    const added = addMessage(
-      conversation.id,
-      {
-        direction: "outgoing",
-        text,
-        time: getCurrentTime(),
-      }
-    );
-
-    if (!added) {
-      return;
-    }
-
-    renderChatView(conversation);
-
-    const newInput =
-      document.getElementById("messageInput");
-
-    if (newInput) {
-      newInput.focus();
-    }
-  });
 }
 
 /*
@@ -215,16 +115,32 @@ function handleHeaderAction(
 
 /*
 =========================================================
-VALIDATION
+SEND MESSAGE
 =========================================================
 */
 
-function isValidConversation(conversation) {
-  return Boolean(
-    conversation &&
-    typeof conversation.id === "string" &&
-    conversation.id.trim()
+function handleSendMessage(
+  text,
+  conversation
+) {
+  const added = addMessage(
+    conversation.id,
+    {
+      direction: "outgoing",
+      text,
+      time: getCurrentTime(),
+    }
   );
+
+  if (!added) {
+    return false;
+  }
+
+  renderChatView(conversation);
+
+  focusComposer();
+
+  return true;
 }
 
 /*
@@ -257,6 +173,12 @@ export function renderChatView(conversation) {
     ${createComposer()}
   `;
 
+  /*
+  =======================================================
+  HEADER
+  =======================================================
+  */
+
   initChatHeader((action) => {
     handleHeaderAction(
       action,
@@ -264,7 +186,24 @@ export function renderChatView(conversation) {
     );
   });
 
-  initComposer(conversation);
+  /*
+  =======================================================
+  COMPOSER
+  =======================================================
+  */
+
+  initComposer((text) => {
+    return handleSendMessage(
+      text,
+      conversation
+    );
+  });
+
+  /*
+  =======================================================
+  FINAL UI STATE
+  =======================================================
+  */
 
   scrollToLatestMessage();
 }

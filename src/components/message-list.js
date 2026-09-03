@@ -6,96 +6,28 @@ BEAN — MESSAGE LIST
 =========================================================
 
 Owns:
-- Prototype message data
-- Message rendering
-- Message creation
-- Message list scrolling
+- Message list UI
+- Message item rendering
+- Empty message state
+- Scroll to latest message
+
+Uses:
+- Frontend store
 
 Does not own:
-- Chat header
-- Composer UI
+- Message state
+- Message sending
+- Composer
 - Backend
 - Realtime
-- Persistence
 =========================================================
 */
 
-/*
-=========================================================
-PROTOTYPE MESSAGE DATA
-=========================================================
-*/
+import {
+  getMessages,
+  addMessage as addStoreMessage,
+} from "../core/store.js";
 
-const messagesByConversation = {
-  alex: [
-    {
-      id: "alex-1",
-      direction: "incoming",
-      text: "Hey! How is the Bean prototype going?",
-      time: "9:38 AM",
-    },
-    {
-      id: "alex-2",
-      direction: "outgoing",
-      text: "Going well. I am working on the chat interface now.",
-      time: "9:40 AM",
-    },
-    {
-      id: "alex-3",
-      direction: "incoming",
-      text: "Sounds good. See you tomorrow.",
-      time: "9:42 AM",
-    },
-  ],
-
-  sarah: [
-    {
-      id: "sarah-1",
-      direction: "incoming",
-      text: "I sent you the latest files.",
-      time: "8:18 AM",
-    },
-  ],
-
-  daniel: [
-    {
-      id: "daniel-1",
-      direction: "outgoing",
-      text: "Can you review the latest version?",
-      time: "Yesterday",
-    },
-    {
-      id: "daniel-2",
-      direction: "incoming",
-      text: "Let me check and get back to you.",
-      time: "Yesterday",
-    },
-  ],
-
-  emma: [
-    {
-      id: "emma-1",
-      direction: "outgoing",
-      text: "Everything has been updated.",
-      time: "Yesterday",
-    },
-    {
-      id: "emma-2",
-      direction: "incoming",
-      text: "Perfect, thank you!",
-      time: "Yesterday",
-    },
-  ],
-
-  "bean-team": [
-    {
-      id: "bean-team-1",
-      direction: "incoming",
-      text: "The new prototype is ready.",
-      time: "Mon",
-    },
-  ],
-};
 
 /*
 =========================================================
@@ -112,13 +44,6 @@ function escapeHTML(value) {
     .replaceAll("'", "&#039;");
 }
 
-function getConversationMessages(conversationId) {
-  if (!messagesByConversation[conversationId]) {
-    messagesByConversation[conversationId] = [];
-  }
-
-  return messagesByConversation[conversationId];
-}
 
 /*
 =========================================================
@@ -128,9 +53,9 @@ MESSAGE ITEM
 
 function createMessageItem(message) {
   const direction =
-    message.direction === "outgoing"
-      ? "outgoing"
-      : "incoming";
+    message.direction === "incoming"
+      ? "incoming"
+      : "outgoing";
 
   return `
     <div
@@ -152,13 +77,14 @@ function createMessageItem(message) {
   `;
 }
 
+
 /*
 =========================================================
 EMPTY STATE
 =========================================================
 */
 
-function createEmptyMessages(conversation) {
+function createEmptyState(conversation) {
   return `
     <div class="bean-empty">
 
@@ -179,6 +105,7 @@ function createEmptyMessages(conversation) {
   `;
 }
 
+
 /*
 =========================================================
 CREATE MESSAGE LIST
@@ -188,17 +115,21 @@ CREATE MESSAGE LIST
 export function createMessageList(conversation) {
   if (
     !conversation ||
-    typeof conversation.id !== "string"
+    typeof conversation.id !== "string" ||
+    !conversation.id.trim()
   ) {
     return "";
   }
 
   const messages =
-    getConversationMessages(conversation.id);
+    getMessages(conversation.id);
 
-  const content = messages.length
-    ? messages.map(createMessageItem).join("")
-    : createEmptyMessages(conversation);
+  const content =
+    messages.length > 0
+      ? messages
+          .map(createMessageItem)
+          .join("")
+      : createEmptyState(conversation);
 
   return `
     <section
@@ -213,6 +144,7 @@ export function createMessageList(conversation) {
   `;
 }
 
+
 /*
 =========================================================
 ADD MESSAGE
@@ -221,66 +153,14 @@ ADD MESSAGE
 
 export function addMessage(
   conversationId,
-  {
-    id,
-    direction = "outgoing",
-    text,
-    time,
-  }
+  message
 ) {
-  if (
-    typeof conversationId !== "string" ||
-    !conversationId
-  ) {
-    return false;
-  }
-
-  const cleanText =
-    typeof text === "string"
-      ? text.trim()
-      : "";
-
-  if (!cleanText) {
-    return false;
-  }
-
-  const messages =
-    getConversationMessages(conversationId);
-
-  messages.push({
-    id:
-      id ??
-      `${conversationId}-${Date.now()}`,
-
-    direction:
-      direction === "incoming"
-        ? "incoming"
-        : "outgoing",
-
-    text: cleanText,
-
-    time:
-      typeof time === "string"
-        ? time
-        : "",
-  });
-
-  return true;
+  return addStoreMessage(
+    conversationId,
+    message
+  );
 }
 
-/*
-=========================================================
-GET MESSAGES
-=========================================================
-*/
-
-export function getMessages(conversationId) {
-  return getConversationMessages(
-    conversationId
-  ).map((message) => ({
-    ...message,
-  }));
-}
 
 /*
 =========================================================
@@ -290,7 +170,9 @@ SCROLL TO LATEST
 
 export function scrollToLatestMessage() {
   const messageList =
-    document.getElementById("messageList");
+    document.getElementById(
+      "messageList"
+    );
 
   if (!messageList) {
     return;

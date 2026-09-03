@@ -2,7 +2,7 @@
 
 /* =========================================================
    BEAN — CHAT LIST
-   Conversation list rendering + selection + search
+   Conversations + search + active selection
    ========================================================= */
 
 import {
@@ -60,15 +60,15 @@ function createChatItem(
   const active =
     conversation.id === activeChatId;
 
+  const online =
+    conversation.status === "online";
+
   const initials =
     conversation.initials ||
     getInitials(conversation.name);
 
   const unread =
-    Number(conversation.unread ?? 0);
-
-  const online =
-    conversation.online === true;
+    Number(conversation.unread || 0);
 
   return `
     <button
@@ -80,6 +80,7 @@ function createChatItem(
     >
 
       <div class="bean-chat-item__avatar">
+
         ${
           conversation.avatar
             ? `
@@ -92,23 +93,32 @@ function createChatItem(
             : escapeHTML(initials)
         }
 
-        <span
-          class="bean-presence${online ? " is-online" : ""}"
-          aria-hidden="true"
-        ></span>
+        ${
+          online
+            ? `
+              <span
+                class="bean-presence is-online"
+                aria-hidden="true"
+              ></span>
+            `
+            : ""
+        }
+
       </div>
 
 
       <div class="bean-chat-item__body">
 
         <div class="bean-chat-item__top">
+
           <strong>
             ${escapeHTML(conversation.name)}
           </strong>
 
           <small>
-            ${escapeHTML(conversation.time ?? "")}
+            ${escapeHTML(conversation.time || "")}
           </small>
+
         </div>
 
 
@@ -144,21 +154,6 @@ function createChatItem(
 
 
 /* =========================================================
-   EMPTY STATE
-   ========================================================= */
-
-function createEmptyState(
-  message = "No conversations yet."
-) {
-  return `
-    <div class="bean-list-empty">
-      ${escapeHTML(message)}
-    </div>
-  `;
-}
-
-
-/* =========================================================
    FILTER
    ========================================================= */
 
@@ -166,12 +161,11 @@ function filterConversations(
   conversations,
   query
 ) {
-  const normalized =
-    String(query ?? "")
-      .trim()
-      .toLowerCase();
+  const value = String(query ?? "")
+    .trim()
+    .toLowerCase();
 
-  if (!normalized) {
+  if (!value) {
     return conversations;
   }
 
@@ -182,20 +176,20 @@ function filterConversations(
           conversation.name ?? ""
         ).toLowerCase();
 
-      const preview =
-        String(
-          conversation.preview ?? ""
-        ).toLowerCase();
-
       const beanId =
         String(
           conversation.beanId ?? ""
         ).toLowerCase();
 
+      const preview =
+        String(
+          conversation.preview ?? ""
+        ).toLowerCase();
+
       return (
-        name.includes(normalized) ||
-        preview.includes(normalized) ||
-        beanId.includes(normalized)
+        name.includes(value) ||
+        beanId.includes(value) ||
+        preview.includes(value)
       );
     }
   );
@@ -231,12 +225,15 @@ export function renderChatList(
     );
 
   if (filtered.length === 0) {
-    container.innerHTML =
-      createEmptyState(
-        query
-          ? "No chats found."
-          : "No conversations yet."
-      );
+    container.innerHTML = `
+      <div class="bean-list-empty">
+        ${
+          query
+            ? "No chats found."
+            : "No conversations yet."
+        }
+      </div>
+    `;
 
     return;
   }
@@ -254,7 +251,7 @@ export function renderChatList(
 
 
 /* =========================================================
-   ACTIVE CHAT VISUAL STATE
+   ACTIVE UI
    ========================================================= */
 
 function updateActiveChatUI(
@@ -294,11 +291,7 @@ function openMobileWorkspace() {
       ".bean-workspace"
     );
 
-  if (!workspace) {
-    return;
-  }
-
-  workspace.classList.add(
+  workspace?.classList.add(
     "is-open"
   );
 }
@@ -321,6 +314,11 @@ export function initChatList(
       "[data-chat-search]"
     );
 
+
+  /* ---------------------------------------------------------
+     SELECT CONVERSATION
+     --------------------------------------------------------- */
+
   if (list) {
     list.addEventListener(
       "click",
@@ -334,28 +332,25 @@ export function initChatList(
           return;
         }
 
-        const chatButton =
+        const button =
           target.closest(
             "[data-chat-id]"
           );
 
-        if (!chatButton) {
+        if (!button) {
           return;
         }
 
         const chatId =
-          chatButton.dataset.chatId;
+          button.dataset.chatId;
 
         if (!chatId) {
           return;
         }
 
-        const selected =
-          setActiveConversation(
-            chatId
-          );
-
-        if (!selected) {
+        if (
+          !setActiveConversation(chatId)
+        ) {
           return;
         }
 
@@ -376,9 +371,9 @@ export function initChatList(
   }
 
 
-  /* =======================================================
+  /* ---------------------------------------------------------
      SEARCH
-     ======================================================= */
+     --------------------------------------------------------- */
 
   if (search) {
     search.addEventListener(

@@ -11,12 +11,20 @@ import "./styles/reset.css";
 import "./styles/app.css";
 
 import { createAppShell } from "./components/app-shell.js";
+
+import {
+  initSidebar,
+  setActiveSidebarView,
+} from "./components/sidebar.js";
+
 import {
   renderChatList,
   initChatList,
 } from "./components/chat-list.js";
 
-import { renderChatView } from "./components/chat-view.js";
+import {
+  renderChatView,
+} from "./components/chat-view.js";
 
 /*
 =========================================================
@@ -32,18 +40,38 @@ if (!app) {
 
 /*
 =========================================================
+NAVIGATION
+=========================================================
+*/
+
+function handleNavigation(view) {
+  setActiveSidebarView(view);
+
+  /*
+   * Actual Contacts, Search, Settings and Profile
+   * views will be connected as we build them.
+   */
+
+  console.log(`Bean navigation: ${view}`);
+}
+
+/*
+=========================================================
 APP INITIALIZATION
 =========================================================
 */
 
 function initApp() {
-  // Render main Bean structure.
+  // Build application shell.
   app.innerHTML = createAppShell();
 
-  // Render mock conversations.
+  // Render prototype conversations.
   renderChatList();
 
-  // Connect conversation selection to chat view.
+  // Connect sidebar navigation.
+  initSidebar(handleNavigation);
+
+  // Connect conversation selection.
   initChatList((conversation) => {
     renderChatView(conversation);
   });
@@ -51,7 +79,7 @@ function initApp() {
 
 /*
 =========================================================
-START
+START BEAN
 =========================================================
 */
 

@@ -1,10 +1,6 @@
 "use strict";
 
-import {
-  getConversations,
-  getActiveConversation,
-  setActiveConversation,
-} from "../core/store.js";
+import { getMessages } from "../core/store.js";
 
 function escapeHTML(value) {
   return String(value ?? "")
@@ -15,172 +11,247 @@ function escapeHTML(value) {
     .replaceAll("'", "&#039;");
 }
 
-function getInitials(conversation) {
-  if (conversation.initials) {
-    return conversation.initials;
+function createFileAttachment(file) {
+  if (!file) {
+    return "";
   }
 
-  return String(conversation.name ?? "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .toUpperCase() || "?";
-}
-
-function createChatItem(conversation, activeId) {
-  const active = conversation.id === activeId;
-  const online = conversation.status === "online";
-
   return `
-    <button
-      class="bean-chat-item${active ? " is-active" : ""}"
-      type="button"
-      data-conversation-id="${escapeHTML(conversation.id)}"
-      aria-pressed="${active ? "true" : "false"}"
-    >
-      <div class="bean-chat-item__avatar">
-        <span class="bean-avatar">
-          ${escapeHTML(getInitials(conversation))}
+    <div class="bean-message-file">
+      <div class="bean-message-file__icon" aria-hidden="true">
+        📄
+      </div>
+
+      <div class="bean-message-file__info">
+        <span class="bean-message-file__name">
+          ${escapeHTML(file.name)}
         </span>
 
+        <span class="bean-message-file__meta">
+          ${escapeHTML(file.size)}
+          ${file.type ? ` · ${escapeHTML(file.type)}` : ""}
+        </span>
+      </div>
+
+      <button
+        class="bean-message-file__action"
+        type="button"
+        aria-label="Download ${escapeHTML(file.name)}"
+        title="Download"
+      >
+        ↓
+      </button>
+    </div>
+  `;
+}
+
+function createMessage(message) {
+  const outgoing = message.direction === "outgoing";
+
+  const classes = [
+    "bean-message",
+    outgoing
+      ? "bean-message--outgoing"
+      : "bean-message--incoming",
+  ].join(" ");
+
+  return `
+    <article class="${classes}">
+      ${
+        !outgoing
+          ? `
+            <div
+              class="bean-message__avatar"
+              aria-hidden="true"
+            >
+              ${escapeHTML(message.initials ?? "B")}
+            </div>
+          `
+          : ""
+      }
+
+      <div class="bean-message__body">
         ${
-          online
+          message.text
             ? `
-              <span
-                class="bean-chat-item__status is-online"
-                aria-hidden="true"
-              ></span>
+              <div class="bean-message__bubble">
+                <p class="bean-message__text">
+                  ${escapeHTML(message.text)}
+                </p>
+
+                ${createFileAttachment(message.file)}
+
+                <div class="bean-message__meta">
+                  <span class="bean-message__time">
+                    ${escapeHTML(message.time)}
+                  </span>
+
+                  ${
+                    outgoing
+                      ? `
+                        <span
+                          class="bean-message__seen"
+                          aria-label="${
+                            message.seen
+                              ? "Seen"
+                              : "Sent"
+                          }"
+                        >
+                          ${
+                            message.seen
+                              ? "✓✓"
+                              : "✓"
+                          }
+                        </span>
+                      `
+                      : ""
+                  }
+                </div>
+              </div>
+            `
+            : createFileAttachment(message.file)
+        }
+
+        ${
+          message.reaction
+            ? `
+              <div class="bean-message__reaction">
+                ${escapeHTML(message.reaction)}
+              </div>
             `
             : ""
         }
       </div>
-
-      <div class="bean-chat-item__content">
-        <div class="bean-chat-item__top">
-          <span class="bean-chat-item__name">
-            ${escapeHTML(conversation.name)}
-          </span>
-
-          <span class="bean-chat-item__time">
-            ${escapeHTML(conversation.time)}
-          </span>
-        </div>
-
-        <div class="bean-chat-item__preview">
-          ${escapeHTML(conversation.preview)}
-        </div>
-      </div>
-    </button>
+    </article>
   `;
 }
 
-export function renderChatList(searchQuery = "") {
-  const list = document.getElementById("conversationList");
+function createDateSeparator(label) {
+  return `
+    <div
+      class="bean-message-date"
+      role="separator"
+      aria-label="${escapeHTML(label)}"
+    >
+      <span>${escapeHTML(label)}</span>
+    </div>
+  `;
+}
 
-  if (!list) {
+export function createMessageList(conversationId) {
+  if (!conversationId) {
+    return `
+      <div class="bean-messages">
+        <div class="bean-messages__empty">
+          No conversation selected.
+        </div>
+      </div>
+    `;
+  }
+
+  const messages = getMessages(conversationId);
+
+  if (messages.length === 0) {
+    return `
+      <div
+        class="bean-messages"
+        id="messageList"
+        data-conversation-id="${escapeHTML(conversationId)}"
+      >
+        <div class="bean-messages__empty">
+          No messages yet.
+        </div>
+      </div>
+    `;
+  }
+
+  let lastDate = null;
+
+  const content = messages
+    .map((message) => {
+      const date = message.date ?? null;
+
+      let separator = "";
+
+      if (date && date !== lastDate) {
+        separator = createDateSeparator(date);
+        lastDate = date;
+      }
+
+      return `
+        ${separator}
+        ${createMessage(message)}
+      `;
+    })
+    .join("");
+
+  return `
+    <div
+      class="bean-messages"
+      id="messageList"
+      data-conversation-id="${escapeHTML(conversationId)}"
+    >
+      <div class="bean-messages__content">
+        ${content}
+      </div>
+    </div>
+  `;
+}
+
+export function renderMessageList(conversationId) {
+  const container = document.getElementById("messageList");
+
+  if (!container) {
     return;
   }
 
-  const query = String(searchQuery)
-    .trim()
-    .toLowerCase();
+  const messages = getMessages(conversationId);
 
-  const activeId =
-    getActiveConversation()?.id ?? null;
-
-  const conversations = getConversations().filter(
-    (conversation) => {
-      if (!query) {
-        return true;
-      }
-
-      const searchable = [
-        conversation.name,
-        conversation.beanId,
-        conversation.preview,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return searchable.includes(query);
-    }
-  );
-
-  if (conversations.length === 0) {
-    list.innerHTML = `
-      <div class="bean-chat-list__empty">
-        No conversations found.
+  if (messages.length === 0) {
+    container.innerHTML = `
+      <div class="bean-messages__empty">
+        No messages yet.
       </div>
     `;
 
     return;
   }
 
-  list.innerHTML = conversations
-    .map((conversation) =>
-      createChatItem(conversation, activeId)
-    )
-    .join("");
+  let lastDate = null;
+
+  container.innerHTML = `
+    <div class="bean-messages__content">
+      ${messages
+        .map((message) => {
+          const date = message.date ?? null;
+
+          let separator = "";
+
+          if (date && date !== lastDate) {
+            separator = createDateSeparator(date);
+            lastDate = date;
+          }
+
+          return `
+            ${separator}
+            ${createMessage(message)}
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+
+  scrollMessagesToBottom();
 }
 
-export function initChatList(onConversationSelect) {
-  const list = document.getElementById("conversationList");
-  const searchInput = document.querySelector(
-    "[data-chat-search]"
-  );
+export function scrollMessagesToBottom() {
+  const container = document.getElementById("messageList");
 
-  if (!list) {
+  if (!container) {
     return;
   }
 
-  list.addEventListener("click", (event) => {
-    const target = event.target;
-
-    if (!(target instanceof Element)) {
-      return;
-    }
-
-    const button = target.closest(
-      "[data-conversation-id]"
-    );
-
-    if (!button) {
-      return;
-    }
-
-    const conversationId =
-      button.dataset.conversationId;
-
-    if (!conversationId) {
-      return;
-    }
-
-    const selected =
-      setActiveConversation(conversationId);
-
-    if (!selected) {
-      return;
-    }
-
-    renderChatList(searchInput?.value ?? "");
-
-    const conversation =
-      getActiveConversation();
-
-    if (
-      conversation &&
-      typeof onConversationSelect === "function"
-    ) {
-      onConversationSelect(conversation);
-    }
+  requestAnimationFrame(() => {
+    container.scrollTop = container.scrollHeight;
   });
-
-  if (searchInput) {
-    searchInput.addEventListener("input", () => {
-      renderChatList(searchInput.value);
-    });
-  }
 }

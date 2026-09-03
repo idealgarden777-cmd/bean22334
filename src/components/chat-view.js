@@ -1,60 +1,243 @@
 "use strict";
 
-import { addMessage, closeContactPanel, getActiveConversation, isContactPanelOpen, openContactPanel } from "../core/store.js";
-import { renderChatList } from "./chat-list.js";
-import { createChatHeader, initChatHeader } from "./chat-header.js";
-import { createMessageList, scrollToLatestMessage } from "./message-list.js";
-import { createComposer, focusComposer, initComposer } from "./composer.js";
-import { createContactPanel, initContactPanel } from "./contact-panel.js";
+/* =========================================================
+   BEAN — CHAT VIEW
+   Main conversation coordinator
+   ========================================================= */
+
+import {
+  addMessage,
+  getActiveConversation,
+  isContactPanelOpen,
+  openContactPanel,
+  closeContactPanel,
+} from "../core/store.js";
+
+import {
+  renderChatList,
+} from "./chat-list.js";
+
+import {
+  createChatHeader,
+  initChatHeader,
+} from "./chat-header.js";
+
+import {
+  createMessageList,
+  scrollToLatestMessage,
+} from "./message-list.js";
+
+import {
+  createComposer,
+  initComposer,
+  focusComposer,
+} from "./composer.js";
+
+import {
+  createContactPanel,
+  initContactPanel,
+} from "./contact-panel.js";
+
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
 
 function currentTime() {
-  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date());
+  return new Intl.DateTimeFormat(
+    undefined,
+    {
+      hour: "numeric",
+      minute: "2-digit",
+    }
+  ).format(new Date());
 }
 
-function placeholderAction(action, conversation) {
-  console.log(`Bean: ${action} -> ${conversation.name}`);
+
+function currentDateLabel() {
+  return "Today";
 }
 
-export function renderChatView(options = {}) {
-  const root = document.getElementById("chatView");
-  const conversation = getActiveConversation();
-  if (!root || !conversation) return;
+
+function runPlaceholderAction(
+  action,
+  conversation
+) {
+  console.log(
+    `Bean action: ${action} -> ${conversation.name}`
+  );
+}
+
+
+/* =========================================================
+   MOBILE BACK
+   ========================================================= */
+
+function closeMobileWorkspace() {
+  const workspace =
+    document.querySelector(
+      ".bean-workspace"
+    );
+
+  if (!workspace) {
+    return;
+  }
+
+  workspace.classList.remove(
+    "is-open"
+  );
+}
+
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+
+export function renderChatView(
+  options = {}
+) {
+  const root =
+    document.getElementById(
+      "chatView"
+    );
+
+  const conversation =
+    getActiveConversation();
+
+  if (
+    !root ||
+    !conversation
+  ) {
+    return;
+  }
+
 
   root.innerHTML = `
     <div class="bean-chat__conversation">
-      ${createChatHeader(conversation)}
-      ${createMessageList(conversation)}
-      ${createComposer()}
+
+      ${createChatHeader(
+        conversation
+      )}
+
+      ${createMessageList(
+        conversation
+      )}
+
+      <div class="bean-composer-area">
+        ${createComposer()}
+      </div>
+
     </div>
-    ${isContactPanelOpen() ? createContactPanel(conversation) : ""}
+
+    ${
+      isContactPanelOpen()
+        ? createContactPanel(
+            conversation
+          )
+        : ""
+    }
   `;
 
+
+  /* =======================================================
+     HEADER ACTIONS
+     ======================================================= */
+
   initChatHeader((action) => {
+    if (action === "back") {
+      closeContactPanel();
+      closeMobileWorkspace();
+      return;
+    }
+
     if (action === "info") {
-      openContactPanel();
+      if (!isContactPanelOpen()) {
+        openContactPanel();
+      }
+
       renderChatView();
       return;
     }
-    placeholderAction(action, conversation);
+
+    runPlaceholderAction(
+      action,
+      conversation
+    );
   });
 
-  initComposer((text) => {
-    if (!addMessage(conversation.id, text, currentTime())) return;
-    renderChatList();
-    renderChatView({ focus: true });
-  });
 
-  if (isContactPanelOpen()) {
-    initContactPanel((action) => {
-      if (action === "close") {
-        closeContactPanel();
-        renderChatView();
+  /* =======================================================
+     COMPOSER
+     ======================================================= */
+
+  initComposer({
+    onSend(text) {
+      const message =
+        addMessage(
+          conversation.id,
+          {
+            text,
+            direction: "outgoing",
+            time: currentTime(),
+            date: currentDateLabel(),
+            seen: true,
+          }
+        );
+
+      if (!message) {
         return;
       }
-      placeholderAction(action, conversation);
-    });
+
+      renderChatList();
+      renderChatView({
+        focus: true,
+      });
+    },
+
+    onAction(action) {
+      runPlaceholderAction(
+        action,
+        conversation
+      );
+    },
+  });
+
+
+  /* =======================================================
+     CONTACT PANEL
+     ======================================================= */
+
+  const contactPanel =
+    document.getElementById(
+      "contactPanel"
+    );
+
+  if (contactPanel) {
+    initContactPanel(
+      contactPanel,
+      (action) => {
+        if (action === "close") {
+          closeContactPanel();
+          renderChatView();
+          return;
+        }
+
+        runPlaceholderAction(
+          action,
+          conversation
+        );
+      }
+    );
   }
 
+
+  /* =======================================================
+     FINALIZE
+     ======================================================= */
+
   scrollToLatestMessage();
-  if (options.focus) focusComposer();
+
+  if (options.focus) {
+    focusComposer();
+  }
 }

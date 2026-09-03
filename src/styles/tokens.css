@@ -1,10 +1,17 @@
 :root {
-  /* ======================================================
+  /* =========================================================
+     BEAN — DESIGN TOKENS
+     Light / Warm / Minimal / Professional
+     ========================================================= */
+
+
+  /* =========================================================
      TYPOGRAPHY
-     ====================================================== */
+     ========================================================= */
 
   --font-family:
     Inter,
+    ui-sans-serif,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
@@ -19,6 +26,7 @@
   --font-size-lg: 16px;
   --font-size-xl: 20px;
   --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
@@ -27,59 +35,100 @@
 
   --line-height-tight: 1.2;
   --line-height-normal: 1.5;
+  --line-height-relaxed: 1.65;
 
 
-  /* ======================================================
-     COLORS
-     ====================================================== */
+  /* =========================================================
+     BASE COLORS
+     ========================================================= */
 
-  --color-bg: #0b0d10;
-  --color-bg-soft: #111419;
+  --color-white: #ffffff;
 
-  --color-surface: rgba(255, 255, 255, 0.045);
-  --color-surface-hover: rgba(255, 255, 255, 0.07);
-  --color-surface-active: rgba(255, 255, 255, 0.1);
+  --color-bg: #fffdf7;
+  --color-bg-soft: #fffaf0;
 
-  --color-panel: rgba(17, 20, 25, 0.9);
-  --color-panel-strong: #15181d;
+  --color-surface: #ffffff;
+  --color-surface-soft: #fffaf2;
+  --color-surface-hover: #fff6df;
+  --color-surface-active: #ffefbf;
 
-  --color-text: #f5f7fa;
-  --color-text-secondary: #a9b0ba;
-  --color-text-muted: #727a86;
+  --color-panel: #ffffff;
+  --color-panel-soft: #fffaf3;
 
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-strong: rgba(255, 255, 255, 0.14);
+  --color-text: #1d1d1f;
+  --color-text-secondary: #5f6168;
+  --color-text-muted: #8b8d93;
+  --color-text-soft: #a5a7ad;
 
-  --color-accent: #6c7cff;
-  --color-accent-hover: #7b89ff;
-  --color-accent-soft: rgba(108, 124, 255, 0.14);
-
-  --color-success: #38c98b;
-  --color-warning: #f6b84a;
-  --color-danger: #ef5f67;
-
-  --color-message-incoming: rgba(255, 255, 255, 0.07);
-  --color-message-outgoing: #6c7cff;
-
-  --color-overlay: rgba(0, 0, 0, 0.55);
+  --color-border: #ece9df;
+  --color-border-soft: #f3f0e8;
+  --color-border-strong: #ddd8cb;
 
 
-  /* ======================================================
-     GLASS
-     ====================================================== */
+  /* =========================================================
+     BRAND COLORS
+     ========================================================= */
 
-  --glass-bg: rgba(18, 21, 27, 0.72);
-  --glass-bg-strong: rgba(18, 21, 27, 0.9);
+  --color-brand: #f5c842;
+  --color-brand-hover: #e9bb31;
+  --color-brand-active: #dcae24;
 
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --color-brand-soft: #fff7d8;
+  --color-brand-softer: #fffbea;
+  --color-brand-strong: #b88700;
 
-  --glass-blur: 18px;
-  --glass-blur-strong: 28px;
+  --color-brand-text: #4d3900;
 
 
-  /* ======================================================
+  /* =========================================================
+     STATUS COLORS
+     ========================================================= */
+
+  --color-success: #25a86b;
+  --color-success-soft: #e9f8f1;
+
+  --color-warning: #d99b15;
+  --color-warning-soft: #fff4d5;
+
+  --color-danger: #d94a4a;
+  --color-danger-soft: #fff0f0;
+
+  --color-info: #4b7bec;
+  --color-info-soft: #eef3ff;
+
+
+  /* =========================================================
+     MESSAGE COLORS
+     ========================================================= */
+
+  --color-message-incoming: #f5f5f3;
+  --color-message-incoming-hover: #eeeeeb;
+
+  --color-message-outgoing: #fff0b8;
+  --color-message-outgoing-hover: #ffe99a;
+
+  --color-message-outgoing-text: #29220f;
+
+
+  /* =========================================================
+     INTERACTIVE STATES
+     ========================================================= */
+
+  --color-hover: #f7f5ef;
+  --color-pressed: #efede7;
+
+  --color-focus: rgba(245, 200, 66, 0.38);
+  --color-selection: rgba(245, 200, 66, 0.22);
+
+  --color-overlay: rgba(20, 20, 18, 0.38);
+
+
+  /* =========================================================
      SPACING
-     ====================================================== */
+     4px based system
+     ========================================================= */
+
+  --space-0: 0;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -89,100 +138,199 @@
   --space-6: 24px;
   --space-7: 28px;
   --space-8: 32px;
+  --space-9: 36px;
   --space-10: 40px;
   --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
 
 
-  /* ======================================================
+  /* =========================================================
      RADIUS
-     ====================================================== */
+     Rounded + pill focused
+     ========================================================= */
 
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 24px;
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 28px;
+  --radius-3xl: 32px;
+
+  --radius-pill: 9999px;
   --radius-full: 9999px;
 
 
-  /* ======================================================
+  /* =========================================================
      SHADOWS
-     ====================================================== */
+     Keep subtle
+     ========================================================= */
+
+  --shadow-xs:
+    0 1px 2px rgba(24, 24, 20, 0.04);
 
   --shadow-sm:
-    0 2px 8px rgba(0, 0, 0, 0.18);
+    0 2px 8px rgba(24, 24, 20, 0.05);
 
   --shadow-md:
-    0 8px 24px rgba(0, 0, 0, 0.22);
+    0 8px 24px rgba(24, 24, 20, 0.07);
 
   --shadow-lg:
-    0 18px 50px rgba(0, 0, 0, 0.3);
+    0 18px 48px rgba(24, 24, 20, 0.1);
 
-  --shadow-glow:
-    0 0 0 1px rgba(108, 124, 255, 0.12),
-    0 8px 30px rgba(108, 124, 255, 0.12);
+  --shadow-focus:
+    0 0 0 4px var(--color-focus);
 
 
-  /* ======================================================
+  /* =========================================================
+     BORDERS
+     ========================================================= */
+
+  --border-width: 1px;
+
+  --border-default:
+    var(--border-width) solid var(--color-border);
+
+  --border-soft:
+    var(--border-width) solid var(--color-border-soft);
+
+  --border-strong:
+    var(--border-width) solid var(--color-border-strong);
+
+
+  /* =========================================================
      LAYOUT
-     ====================================================== */
+     ========================================================= */
 
   --sidebar-width: 72px;
-  --chat-list-width: 340px;
+  --chat-list-width: 320px;
   --contact-panel-width: 320px;
 
   --chat-header-height: 68px;
+  --composer-min-height: 52px;
 
   --content-max-width: 860px;
 
+  --page-padding: 20px;
+  --mobile-padding: 16px;
 
-  /* ======================================================
+
+  /* =========================================================
      AVATARS
-     ====================================================== */
+     ========================================================= */
 
+  --avatar-xs: 28px;
   --avatar-sm: 32px;
   --avatar-md: 42px;
-  --avatar-lg: 56px;
-  --avatar-xl: 76px;
+  --avatar-lg: 52px;
+  --avatar-xl: 72px;
 
 
-  /* ======================================================
+  /* =========================================================
      CONTROLS
-     ====================================================== */
+     ========================================================= */
 
+  --control-height-xs: 32px;
   --control-height-sm: 36px;
   --control-height-md: 42px;
   --control-height-lg: 48px;
+  --control-height-xl: 52px;
+
+  --control-radius: var(--radius-pill);
 
 
-  /* ======================================================
+  /* =========================================================
+     ICONS
+     ========================================================= */
+
+  --icon-xs: 14px;
+  --icon-sm: 16px;
+  --icon-md: 18px;
+  --icon-lg: 20px;
+  --icon-xl: 24px;
+
+
+  /* =========================================================
      MOTION
-     ====================================================== */
+     ========================================================= */
 
-  --transition-fast: 140ms ease;
-  --transition-normal: 220ms ease;
-  --transition-slow: 320ms ease;
+  --transition-fast: 120ms ease;
+  --transition-normal: 180ms ease;
+  --transition-slow: 260ms ease;
+
+  --transition-ui:
+    background-color var(--transition-normal),
+    border-color var(--transition-normal),
+    color var(--transition-normal),
+    opacity var(--transition-normal),
+    transform var(--transition-normal),
+    box-shadow var(--transition-normal);
 
 
-  /* ======================================================
+  /* =========================================================
      Z-INDEX
-     ====================================================== */
+     ========================================================= */
 
   --z-base: 1;
   --z-sidebar: 20;
   --z-header: 30;
+  --z-dropdown: 60;
   --z-overlay: 100;
   --z-panel: 120;
   --z-modal: 200;
   --z-toast: 300;
 
 
-  /* ======================================================
+  /* =========================================================
      BREAKPOINT REFERENCES
-     ====================================================== */
+     CSS custom properties cannot be used directly
+     inside @media rules, but these remain as documentation.
+     ========================================================= */
 
   --breakpoint-mobile: 720px;
   --breakpoint-tablet: 960px;
   --breakpoint-desktop: 1200px;
+
+
+  /* =========================================================
+     COMPATIBILITY ALIASES
+     Temporary aliases for existing Bean CSS.
+     Remove later after app.css is rewritten.
+     ========================================================= */
+
+  --font: var(--font-family);
+
+  --bg: var(--color-bg);
+  --surface: var(--color-surface);
+
+  --text: var(--color-text);
+  --muted: var(--color-text-muted);
+
+  --border: var(--color-border);
+
+  --soft: var(--color-surface-soft);
+
+  --accent: var(--color-brand);
+  --accent-hover: var(--color-brand-hover);
+
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --danger: var(--color-danger);
+
+  --sidebar: var(--sidebar-width);
+  --list: var(--chat-list-width);
+  --details: var(--contact-panel-width);
+
+  --radius: var(--radius-md);
+}
+
+
+/* =========================================================
+   TEXT SELECTION
+   ========================================================= */
+
+::selection {
+  background: var(--color-selection);
+  color: var(--color-text);
 }

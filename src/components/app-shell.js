@@ -2,16 +2,51 @@
 
 import { createSidebar } from "./sidebar.js";
 
+/* =========================================================
+   BEAN — APP SHELL
+   Master application layout
+   ========================================================= */
+
+
+/* =========================================================
+   CHAT LIST PANEL
+   ========================================================= */
+
 function createChatListPanel() {
   return `
-    <section class="bean-chat-list" aria-label="Conversations">
+    <aside
+      class="bean-chat-list"
+      aria-label="Conversations"
+    >
       <header class="bean-chat-list__header">
-        <div class="bean-chat-list__heading">
-          <h1 class="bean-chat-list__title">Chats</h1>
+        <div class="bean-chat-list__title-row">
+          <div>
+            <span class="bean-chat-list__eyebrow">
+              Messages
+            </span>
+
+            <h1 class="bean-chat-list__title">
+              Chats
+            </h1>
+          </div>
+
+          <button
+            class="bean-icon-button bean-chat-list__new"
+            type="button"
+            aria-label="Start a new chat"
+            data-new-chat
+          >
+            <span aria-hidden="true">＋</span>
+          </button>
         </div>
 
         <label class="bean-search">
-          <span class="bean-search__icon" aria-hidden="true">⌕</span>
+          <span
+            class="bean-search__icon"
+            aria-hidden="true"
+          >
+            ⌕
+          </span>
 
           <input
             class="bean-search__input"
@@ -29,9 +64,14 @@ function createChatListPanel() {
         id="conversationList"
         aria-label="Chat list"
       ></div>
-    </section>
+    </aside>
   `;
 }
+
+
+/* =========================================================
+   EMPTY CHAT STATE
+   ========================================================= */
 
 function createEmptyChatView() {
   return `
@@ -40,9 +80,12 @@ function createEmptyChatView() {
       id="chatView"
       aria-label="Current conversation"
     >
-      <div class="bean-empty">
+      <section class="bean-empty">
         <div class="bean-empty__content">
-          <div class="bean-empty__mark" aria-hidden="true">
+          <div
+            class="bean-empty__mark"
+            aria-hidden="true"
+          >
             B
           </div>
 
@@ -53,19 +96,56 @@ function createEmptyChatView() {
           <p class="bean-empty__text">
             Select a conversation to start messaging.
           </p>
+
+          <button
+            class="bean-button bean-button--brand bean-empty__action"
+            type="button"
+            data-new-chat
+          >
+            <span aria-hidden="true">＋</span>
+            <span>New chat</span>
+          </button>
         </div>
-      </div>
+      </section>
     </main>
   `;
 }
+
+
+/* =========================================================
+   DETAILS PANEL SLOT
+   ========================================================= */
+
+function createDetailsSlot() {
+  return `
+    <aside
+      class="bean-details-slot"
+      id="contactPanelSlot"
+      aria-label="Conversation details"
+      hidden
+    ></aside>
+  `;
+}
+
+
+/* =========================================================
+   APP SHELL
+   ========================================================= */
 
 export function createAppShell() {
   return `
     <div class="bean-app">
       <div class="bean-shell">
+
         ${createSidebar("chats")}
+
         ${createChatListPanel()}
-        ${createEmptyChatView()}
+
+        <section class="bean-workspace">
+          ${createEmptyChatView()}
+          ${createDetailsSlot()}
+        </section>
+
       </div>
     </div>
   `;

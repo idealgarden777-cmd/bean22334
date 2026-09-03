@@ -6,22 +6,21 @@ BEAN — CHAT VIEW
 =========================================================
 
 Owns:
-- Selected conversation view
+- Selected conversation UI
 - Chat header
-- Mock messages
-- Message composer
-- Local prototype message sending
+- Prototype messages
+- Composer
+- Local message sending
 
 Does not own:
 - Backend
 - Realtime
+- Authentication
 - Persistence
-- Attachments
-- Calls
 =========================================================
 */
 
-const mockMessages = {
+const messagesByConversation = {
   alex: [
     {
       id: "alex-1",
@@ -82,9 +81,9 @@ const mockMessages = {
     },
   ],
 
-  team: [
+  "bean-team": [
     {
-      id: "team-1",
+      id: "bean-team-1",
       direction: "incoming",
       text: "The new prototype is ready.",
       time: "Mon",
@@ -107,48 +106,19 @@ function escapeHTML(value) {
     .replaceAll("'", "&#039;");
 }
 
+function getMessages(conversationId) {
+  if (!messagesByConversation[conversationId]) {
+    messagesByConversation[conversationId] = [];
+  }
+
+  return messagesByConversation[conversationId];
+}
+
 function getCurrentTime() {
-  return new Intl.DateTimeFormat([], {
+  return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date());
-}
-
-function getMessages(conversationId) {
-  if (!mockMessages[conversationId]) {
-    mockMessages[conversationId] = [];
-  }
-
-  return mockMessages[conversationId];
-}
-
-/*
-=========================================================
-MESSAGE
-=========================================================
-*/
-
-function createMessage(message) {
-  const direction =
-    message.direction === "outgoing"
-      ? "outgoing"
-      : "incoming";
-
-  return `
-    <div class="bean-message bean-message--${direction}">
-      <div class="bean-message__bubble">
-
-        <div class="bean-message__text">
-          ${escapeHTML(message.text)}
-        </div>
-
-        <div class="bean-message__time">
-          ${escapeHTML(message.time)}
-        </div>
-
-      </div>
-    </div>
-  `;
 }
 
 /*
@@ -189,7 +159,7 @@ function createChatHeader(conversation) {
         <button
           class="bean-nav-button"
           type="button"
-          aria-label="Start voice call"
+          aria-label="Voice call"
           title="Voice call"
           data-chat-action="voice"
         >
@@ -214,6 +184,38 @@ function createChatHeader(conversation) {
 
 /*
 =========================================================
+MESSAGE
+=========================================================
+*/
+
+function createMessage(message) {
+  const direction =
+    message.direction === "outgoing"
+      ? "outgoing"
+      : "incoming";
+
+  return `
+    <div
+      class="bean-message bean-message--${direction}"
+      data-message-id="${escapeHTML(message.id)}"
+    >
+      <div class="bean-message__bubble">
+
+        <div class="bean-message__text">
+          ${escapeHTML(message.text)}
+        </div>
+
+        <div class="bean-message__time">
+          ${escapeHTML(message.time)}
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+/*
+=========================================================
 MESSAGES
 =========================================================
 */
@@ -221,10 +223,16 @@ MESSAGES
 function createMessages(conversation) {
   const messages = getMessages(conversation.id);
 
-  const content = messages.length
-    ? messages.map(createMessage).join("")
-    : `
+  let content;
+
+  if (messages.length > 0) {
+    content = messages
+      .map(createMessage)
+      .join("");
+  } else {
+    content = `
       <div class="bean-empty">
+
         <div class="bean-empty__content">
 
           <h2 class="bean-empty__title">
@@ -237,8 +245,10 @@ function createMessages(conversation) {
           </p>
 
         </div>
+
       </div>
     `;
+  }
 
   return `
     <section
@@ -275,6 +285,7 @@ function createComposer() {
           maxlength="5000"
           placeholder="Message"
           aria-label="Message"
+          autocomplete="off"
         ></textarea>
 
         <button
@@ -312,20 +323,24 @@ function scrollToLatestMessage() {
 
 /*
 =========================================================
-TEXTAREA
+COMPOSER RESIZE
 =========================================================
 */
 
-function resizeComposer(textarea) {
-  textarea.style.height = "auto";
+function resizeComposer(input) {
+  input.style.height = "auto";
 
-  textarea.style.height =
-    `${Math.min(textarea.scrollHeight, 140)}px`;
+  const height = Math.min(
+    input.scrollHeight,
+    140
+  );
+
+  input.style.height = `${height}px`;
 }
 
 /*
 =========================================================
-SEND MESSAGE
+COMPOSER EVENTS
 =========================================================
 */
 
@@ -347,10 +362,10 @@ function initComposer(conversation) {
   input.addEventListener("keydown", (event) => {
     if (
       event.key === "Enter" &&
-      !event.shiftKey
+      !event.shiftKey &&
+      !event.isComposing
     ) {
       event.preventDefault();
-
       form.requestSubmit();
     }
   });
@@ -375,12 +390,19 @@ function initComposer(conversation) {
     });
 
     renderChatView(conversation);
+
+    const newInput =
+      document.getElementById("messageInput");
+
+    if (newInput) {
+      newInput.focus();
+    }
   });
 }
 
 /*
 =========================================================
-RENDER
+RENDER CHAT VIEW
 =========================================================
 */
 
@@ -390,13 +412,18 @@ export function renderChatView(conversation) {
 
   if (!chatView) {
     console.warn(
-      "Bean: chat view container not found."
+      "Bean: #chatView element not found."
     );
-
     return;
   }
 
-  if (!conversation?.id) {
+  if (
+    !conversation ||
+    typeof conversation.id !== "string"
+  ) {
+    console.warn(
+      "Bean: invalid conversation."
+    );
     return;
   }
 

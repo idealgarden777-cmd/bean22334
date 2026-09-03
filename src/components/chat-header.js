@@ -1,31 +1,5 @@
 "use strict";
 
-/*
-=========================================================
-BEAN — CHAT HEADER
-=========================================================
-
-Owns:
-- Conversation identity
-- Online status
-- Header action buttons
-- Header action events
-
-Does not own:
-- Messages
-- Composer
-- Calling logic
-- Search logic
-- Backend
-=========================================================
-*/
-
-/*
-=========================================================
-HELPERS
-=========================================================
-*/
-
 function escapeHTML(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -35,245 +9,188 @@ function escapeHTML(value) {
     .replaceAll("'", "&#039;");
 }
 
-/*
-=========================================================
-ICONS
-=========================================================
-*/
+function getInitials(conversation) {
+  if (conversation?.initials) {
+    return conversation.initials;
+  }
+
+  return String(conversation?.name ?? "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .toUpperCase() || "?";
+}
 
 const icons = {
   phone: `
-    <svg
-      viewBox="0 0 24 24"
-      width="19"
-      height="19"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <path
-        d="M22 16.92v3a2 2 0 0 1-2.18 2
-        19.79 19.79 0 0 1-8.63-3.07
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2
+        19.8 19.8 0 0 1-8.6-3.1
         19.5 19.5 0 0 1-6-6
-        19.79 19.79 0 0 1-3.07-8.67
-        A2 2 0 0 1 4.11 2h3
-        a2 2 0 0 1 2 1.72
-        12.84 12.84 0 0 0 .7 2.81
-        2 2 0 0 1-.45 2.11L8.09 9.91
-        a16 16 0 0 0 6 6l1.27-1.27
-        a2 2 0 0 1 2.11-.45
-        12.84 12.84 0 0 0 2.81.7
-        A2 2 0 0 1 22 16.92z"
-      />
+        19.8 19.8 0 0 1-3.1-8.6
+        A2 2 0 0 1 4.1 2h3
+        a2 2 0 0 1 2 1.7
+        12.8 12.8 0 0 0 .7 2.8
+        2 2 0 0 1-.5 2.1L8 9.9
+        a16 16 0 0 0 6 6l1.3-1.3
+        a2 2 0 0 1 2.1-.5
+        12.8 12.8 0 0 0 2.8.7
+        2 2 0 0 1 1.8 2.1z"/>
     </svg>
   `,
 
   video: `
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <rect
-        x="3"
-        y="5"
-        width="13"
-        height="14"
-        rx="2"
-      />
-      <path d="m16 10 5-3v10l-5-3z" />
-    </svg>
-  `,
-
-  search: `
-    <svg
-      viewBox="0 0 24 24"
-      width="19"
-      height="19"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-4-4" />
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <rect x="3" y="5" width="14" height="14" rx="3"/>
+      <path d="m17 10 4-2v8l-4-2z"/>
     </svg>
   `,
 
   info: `
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 11v5" />
-      <path d="M12 8h.01" />
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 11v5"/>
+      <path d="M12 8h.01"/>
+    </svg>
+  `,
+
+  back: `
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <path d="m15 18-6-6 6-6"/>
     </svg>
   `,
 };
-
-/*
-=========================================================
-ACTION BUTTON
-=========================================================
-*/
-
-function createActionButton({
-  action,
-  label,
-  icon,
-}) {
-  return `
-    <button
-      class="bean-chat-header__action"
-      type="button"
-      data-chat-header-action="${action}"
-      aria-label="${label}"
-      title="${label}"
-    >
-      ${icon}
-    </button>
-  `;
-}
-
-/*
-=========================================================
-CREATE HEADER
-=========================================================
-*/
 
 export function createChatHeader(conversation) {
   if (!conversation) {
     return "";
   }
 
-  const name = escapeHTML(conversation.name);
-  const initials = escapeHTML(conversation.initials);
+  const online = conversation.status === "online";
 
   return `
     <header class="bean-chat-header">
-
-      <div class="bean-chat-header__person">
+      <div class="bean-chat-header__identity">
+        <button
+          class="bean-chat-header__back"
+          type="button"
+          data-chat-action="back"
+          aria-label="Back to conversations"
+        >
+          ${icons.back}
+        </button>
 
         <button
           class="bean-chat-header__profile"
           type="button"
-          data-chat-header-action="profile"
-          aria-label="Open ${name} profile"
+          data-chat-action="profile"
+          aria-label="Open contact details"
         >
+          <span class="bean-chat-header__avatar">
+            <span class="bean-avatar">
+              ${escapeHTML(getInitials(conversation))}
+            </span>
 
-          <span
-            class="bean-avatar bean-chat-header__avatar"
-            aria-hidden="true"
-          >
-            ${initials}
+            ${
+              online
+                ? `
+                  <span
+                    class="bean-chat-header__status-dot"
+                    aria-hidden="true"
+                  ></span>
+                `
+                : ""
+            }
           </span>
 
-          <span class="bean-chat-header__info">
-
+          <span class="bean-chat-header__details">
             <span class="bean-chat-header__name">
-              ${name}
+              ${escapeHTML(conversation.name)}
             </span>
 
             <span class="bean-chat-header__status">
-              <span
-                class="bean-chat-header__status-dot"
-                aria-hidden="true"
-              ></span>
-
-              Online
+              ${
+                online
+                  ? "Online"
+                  : escapeHTML(
+                      conversation.statusText ??
+                      conversation.status ??
+                      ""
+                    )
+              }
             </span>
-
           </span>
+        </button>
+      </div>
 
+      <div class="bean-chat-header__actions">
+        <button
+          class="bean-icon-button"
+          type="button"
+          data-chat-action="call"
+          aria-label="Start voice call"
+          title="Voice call"
+        >
+          ${icons.phone}
         </button>
 
+        <button
+          class="bean-icon-button"
+          type="button"
+          data-chat-action="video"
+          aria-label="Start video call"
+          title="Video call"
+        >
+          ${icons.video}
+        </button>
+
+        <button
+          class="bean-icon-button"
+          type="button"
+          data-chat-action="details"
+          aria-label="Conversation details"
+          title="Details"
+        >
+          ${icons.info}
+        </button>
       </div>
-
-      <div
-        class="bean-chat-header__actions"
-        aria-label="Conversation actions"
-      >
-
-        ${createActionButton({
-          action: "voice",
-          label: "Voice call",
-          icon: icons.phone,
-        })}
-
-        ${createActionButton({
-          action: "video",
-          label: "Video call",
-          icon: icons.video,
-        })}
-
-        ${createActionButton({
-          action: "search",
-          label: "Search conversation",
-          icon: icons.search,
-        })}
-
-        ${createActionButton({
-          action: "info",
-          label: "Conversation details",
-          icon: icons.info,
-        })}
-
-      </div>
-
     </header>
   `;
 }
 
-/*
-=========================================================
-HEADER EVENTS
-=========================================================
-*/
-
-export function initChatHeader(onAction) {
-  const header =
-    document.querySelector(".bean-chat-header");
-
-  if (!header) {
+export function initChatHeader(container, onAction) {
+  if (!(container instanceof Element)) {
     return;
   }
 
-  header.addEventListener("click", (event) => {
+  container.addEventListener("click", (event) => {
     const target = event.target;
 
     if (!(target instanceof Element)) {
       return;
     }
 
-    const button = target.closest(
-      "[data-chat-header-action]"
-    );
+    const button = target.closest("[data-chat-action]");
 
     if (!button) {
       return;
     }
 
-    const action =
-      button.dataset.chatHeaderAction;
+    const action = button.dataset.chatAction;
 
     if (!action) {
       return;

@@ -1,4 +1,3 @@
-```javascript
 /*
 =========================================================
 BEAN — MAIN ENTRY
@@ -34,4 +33,4 @@ function startApp() {
 }
 
 startApp();
-```
+

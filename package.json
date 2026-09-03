@@ -1,27 +1,17 @@
+```json
 {
   "name": "@signaturesi/bean",
   "version": "0.1.0",
   "private": true,
-  "description": "Bean — communication, identity and work platform by Signaturesi.",
+  "description": "Bean — communication by Signaturesi.",
   "type": "module",
-
-  "engines": {
-    "node": ">=20.19.0"
-  },
-
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "vite build",
+    "preview": "vite preview"
   },
-
-  "dependencies": {
-    "@supabase/supabase-js": "2.112.3"
-  },
-
   "devDependencies": {
-    "typescript": "7.0.2",
-    "vite": "8.2.2"
+    "vite": "^8.2.2"
   }
 }
+```

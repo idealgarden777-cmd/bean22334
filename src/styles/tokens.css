@@ -1,17 +1,188 @@
 :root {
-  --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --soft: #f6f6f7;
-  --text: #111111;
-  --muted: #737373;
-  --border: #e7e7e7;
-  --accent: #111111;
-  --success: #16a34a;
-  --danger: #d92d20;
-  --sidebar: 72px;
-  --list: 320px;
-  --details: 300px;
-  --radius: 12px;
-  --pill: 999px;
+  /* ======================================================
+     TYPOGRAPHY
+     ====================================================== */
+
+  --font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+
+
+  /* ======================================================
+     COLORS
+     ====================================================== */
+
+  --color-bg: #0b0d10;
+  --color-bg-soft: #111419;
+
+  --color-surface: rgba(255, 255, 255, 0.045);
+  --color-surface-hover: rgba(255, 255, 255, 0.07);
+  --color-surface-active: rgba(255, 255, 255, 0.1);
+
+  --color-panel: rgba(17, 20, 25, 0.9);
+  --color-panel-strong: #15181d;
+
+  --color-text: #f5f7fa;
+  --color-text-secondary: #a9b0ba;
+  --color-text-muted: #727a86;
+
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+
+  --color-accent: #6c7cff;
+  --color-accent-hover: #7b89ff;
+  --color-accent-soft: rgba(108, 124, 255, 0.14);
+
+  --color-success: #38c98b;
+  --color-warning: #f6b84a;
+  --color-danger: #ef5f67;
+
+  --color-message-incoming: rgba(255, 255, 255, 0.07);
+  --color-message-outgoing: #6c7cff;
+
+  --color-overlay: rgba(0, 0, 0, 0.55);
+
+
+  /* ======================================================
+     GLASS
+     ====================================================== */
+
+  --glass-bg: rgba(18, 21, 27, 0.72);
+  --glass-bg-strong: rgba(18, 21, 27, 0.9);
+
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --glass-blur: 18px;
+  --glass-blur-strong: 28px;
+
+
+  /* ======================================================
+     SPACING
+     ====================================================== */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+
+  /* ======================================================
+     RADIUS
+     ====================================================== */
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+
+  /* ======================================================
+     SHADOWS
+     ====================================================== */
+
+  --shadow-sm:
+    0 2px 8px rgba(0, 0, 0, 0.18);
+
+  --shadow-md:
+    0 8px 24px rgba(0, 0, 0, 0.22);
+
+  --shadow-lg:
+    0 18px 50px rgba(0, 0, 0, 0.3);
+
+  --shadow-glow:
+    0 0 0 1px rgba(108, 124, 255, 0.12),
+    0 8px 30px rgba(108, 124, 255, 0.12);
+
+
+  /* ======================================================
+     LAYOUT
+     ====================================================== */
+
+  --sidebar-width: 72px;
+  --chat-list-width: 340px;
+  --contact-panel-width: 320px;
+
+  --chat-header-height: 68px;
+
+  --content-max-width: 860px;
+
+
+  /* ======================================================
+     AVATARS
+     ====================================================== */
+
+  --avatar-sm: 32px;
+  --avatar-md: 42px;
+  --avatar-lg: 56px;
+  --avatar-xl: 76px;
+
+
+  /* ======================================================
+     CONTROLS
+     ====================================================== */
+
+  --control-height-sm: 36px;
+  --control-height-md: 42px;
+  --control-height-lg: 48px;
+
+
+  /* ======================================================
+     MOTION
+     ====================================================== */
+
+  --transition-fast: 140ms ease;
+  --transition-normal: 220ms ease;
+  --transition-slow: 320ms ease;
+
+
+  /* ======================================================
+     Z-INDEX
+     ====================================================== */
+
+  --z-base: 1;
+  --z-sidebar: 20;
+  --z-header: 30;
+  --z-overlay: 100;
+  --z-panel: 120;
+  --z-modal: 200;
+  --z-toast: 300;
+
+
+  /* ======================================================
+     BREAKPOINT REFERENCES
+     ====================================================== */
+
+  --breakpoint-mobile: 720px;
+  --breakpoint-tablet: 960px;
+  --breakpoint-desktop: 1200px;
 }

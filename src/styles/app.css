@@ -1,6 +1,6 @@
 /* =========================================================
    BEAN — APP
-   Light / Warm Yellow / Rounded / Minimal
+   Final light / warm / minimal chat UI
    ========================================================= */
 
 
@@ -28,13 +28,14 @@ textarea {
 
 
 /* =========================================================
-   APPLICATION
+   APP ROOT
    ========================================================= */
 
 .bean-app {
   width: 100%;
   height: 100vh;
   height: 100dvh;
+
   padding: var(--space-3);
 
   background:
@@ -44,6 +45,11 @@ textarea {
       #fffaf0 100%
     );
 }
+
+
+/* =========================================================
+   SHELL
+   ========================================================= */
 
 .bean-shell {
   display: grid;
@@ -58,7 +64,7 @@ textarea {
 
   overflow: hidden;
 
-  background: var(--color-surface);
+  background: var(--color-white);
 
   border: var(--border-soft);
   border-radius: var(--radius-2xl);
@@ -72,9 +78,6 @@ textarea {
    ========================================================= */
 
 .bean-sidebar {
-  position: relative;
-  z-index: var(--z-sidebar);
-
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -85,27 +88,44 @@ textarea {
     var(--space-4)
     var(--space-2);
 
-  background: var(--color-surface);
+  background: var(--color-white);
 
   border-right: var(--border-soft);
 }
 
-
-/* ---------------------------------------------------------
-   SIDEBAR TOP
-   --------------------------------------------------------- */
+.bean-sidebar__top,
+.bean-sidebar__bottom {
+  width: 100%;
+}
 
 .bean-sidebar__top {
   display: flex;
   justify-content: center;
+}
 
-  width: 100%;
+.bean-sidebar__nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+
+  gap: var(--space-2);
+
+  margin-top: var(--space-8);
+}
+
+.bean-sidebar__bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  gap: var(--space-3);
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
    LOGO
-   --------------------------------------------------------- */
+   ========================================================= */
 
 .bean-sidebar__logo {
   display: grid;
@@ -130,30 +150,10 @@ textarea {
   transform: translateY(-1px);
 }
 
-.bean-sidebar__logo:active {
-  transform: translateY(0);
-}
 
-
-/* ---------------------------------------------------------
-   NAVIGATION
-   --------------------------------------------------------- */
-
-.bean-sidebar__nav {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-
-  gap: var(--space-2);
-
-  margin-top: var(--space-8);
-}
-
-
-/* ---------------------------------------------------------
-   NAV BUTTON
-   --------------------------------------------------------- */
+/* =========================================================
+   NAV BUTTONS
+   ========================================================= */
 
 .bean-nav-button {
   position: relative;
@@ -172,8 +172,6 @@ textarea {
 .bean-nav-button:hover {
   background: var(--color-hover);
   color: var(--color-text);
-
-  transform: translateY(-1px);
 }
 
 .bean-nav-button.is-active {
@@ -196,24 +194,9 @@ textarea {
 }
 
 
-/* ---------------------------------------------------------
-   SIDEBAR BOTTOM
-   --------------------------------------------------------- */
-
-.bean-sidebar__bottom {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-
-  gap: var(--space-3);
-
-  width: 100%;
-}
-
-
-/* ---------------------------------------------------------
+/* =========================================================
    PROFILE
-   --------------------------------------------------------- */
+   ========================================================= */
 
 .bean-sidebar__profile {
   position: relative;
@@ -231,11 +214,6 @@ textarea {
   background: var(--color-hover);
 }
 
-
-/* =========================================================
-   AVATARS
-   ========================================================= */
-
 .bean-avatar {
   display: grid;
   place-items: center;
@@ -244,8 +222,6 @@ textarea {
 
   width: var(--avatar-md);
   height: var(--avatar-md);
-
-  overflow: hidden;
 
   border-radius: var(--radius-pill);
 
@@ -265,11 +241,6 @@ textarea {
   border: var(--border-default);
 }
 
-
-/* =========================================================
-   STATUS
-   ========================================================= */
-
 .bean-status-dot,
 .bean-presence {
   width: 10px;
@@ -285,12 +256,6 @@ textarea {
   position: absolute;
   right: 3px;
   bottom: 3px;
-}
-
-.bean-presence {
-  position: absolute;
-  right: 0;
-  bottom: 0;
 }
 
 .bean-status-dot.is-online,
@@ -312,15 +277,10 @@ textarea {
 
   overflow: hidden;
 
-  background: var(--color-surface);
+  background: var(--color-white);
 
   border-right: var(--border-soft);
 }
-
-
-/* ---------------------------------------------------------
-   CHAT LIST HEADER
-   --------------------------------------------------------- */
 
 .bean-chat-list__header {
   flex: 0 0 auto;
@@ -347,7 +307,6 @@ textarea {
   color: var(--color-text-muted);
 
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
 }
 
 .bean-chat-list__title {
@@ -368,27 +327,20 @@ textarea {
   display: grid;
   place-items: center;
 
-  flex: 0 0 auto;
-
   width: 40px;
   height: 40px;
 
+  flex: 0 0 auto;
+
   border-radius: var(--radius-pill);
 
-  color: var(--color-text-secondary);
-
   background: var(--color-surface-soft);
+  color: var(--color-text-secondary);
 }
 
 .bean-icon-button:hover {
   background: var(--color-brand-soft);
   color: var(--color-brand-text);
-
-  transform: translateY(-1px);
-}
-
-.bean-icon-button:active {
-  transform: translateY(0);
 }
 
 .bean-chat-list__new {
@@ -432,14 +384,8 @@ textarea {
 
   border-color: var(--color-brand);
 
-  box-shadow: var(--shadow-focus);
-}
-
-.bean-search__icon {
-  flex: 0 0 auto;
-
-  font-size: 18px;
-  line-height: 1;
+  box-shadow:
+    0 0 0 3px var(--color-focus);
 }
 
 .bean-search__input {
@@ -467,15 +413,10 @@ textarea {
   overflow-y: auto;
 
   padding:
-    var(--space-1)
+    0
     var(--space-2)
     var(--space-4);
 }
-
-
-/* ---------------------------------------------------------
-   CHAT ITEM
-   --------------------------------------------------------- */
 
 .bean-chat-item {
   position: relative;
@@ -487,9 +428,7 @@ textarea {
 
   width: 100%;
 
-  padding:
-    var(--space-3)
-    var(--space-3);
+  padding: var(--space-3);
 
   border-radius: var(--radius-xl);
 
@@ -518,11 +457,6 @@ textarea {
   background: var(--color-brand);
 }
 
-
-/* ---------------------------------------------------------
-   CHAT AVATAR
-   --------------------------------------------------------- */
-
 .bean-chat-item__avatar {
   position: relative;
 
@@ -546,10 +480,18 @@ textarea {
   font-weight: var(--font-weight-semibold);
 }
 
+.bean-chat-item__avatar img {
+  width: 100%;
+  height: 100%;
 
-/* ---------------------------------------------------------
-   CHAT ITEM BODY
-   --------------------------------------------------------- */
+  object-fit: cover;
+}
+
+.bean-chat-item__avatar .bean-presence {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
 
 .bean-chat-item__body {
   flex: 1;
@@ -557,7 +499,8 @@ textarea {
   min-width: 0;
 }
 
-.bean-chat-item__top {
+.bean-chat-item__top,
+.bean-chat-item__bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -566,8 +509,6 @@ textarea {
 }
 
 .bean-chat-item__top strong {
-  min-width: 0;
-
   overflow: hidden;
 
   color: var(--color-text);
@@ -587,10 +528,14 @@ textarea {
   font-size: 11px;
 }
 
-.bean-chat-item__preview {
-  display: block;
-
+.bean-chat-item__bottom {
   margin-top: 3px;
+}
+
+.bean-chat-item__preview {
+  flex: 1;
+
+  min-width: 0;
 
   overflow: hidden;
 
@@ -602,8 +547,26 @@ textarea {
   white-space: nowrap;
 }
 
+.bean-chat-item__badge {
+  display: grid;
+  place-items: center;
+
+  min-width: 20px;
+  height: 20px;
+
+  padding: 0 6px;
+
+  border-radius: var(--radius-pill);
+
+  background: var(--color-brand);
+  color: var(--color-brand-text);
+
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+}
+
 .bean-list-empty {
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-8);
 
   color: var(--color-text-muted);
 
@@ -625,12 +588,12 @@ textarea {
 
   overflow: hidden;
 
-  background: var(--color-surface);
+  background: var(--color-white);
 }
 
 
 /* =========================================================
-   CHAT AREA
+   CHAT
    ========================================================= */
 
 .bean-chat {
@@ -644,7 +607,12 @@ textarea {
 
   overflow: hidden;
 
-  background: var(--color-surface);
+  background:
+    linear-gradient(
+      180deg,
+      #fffefb 0%,
+      #fffdf8 100%
+    );
 }
 
 .bean-chat__conversation {
@@ -654,8 +622,6 @@ textarea {
 
   min-width: 0;
   min-height: 0;
-
-  background: var(--color-surface);
 }
 
 
@@ -673,8 +639,6 @@ textarea {
 
   flex: 0 0 auto;
 
-  gap: var(--space-4);
-
   min-height: var(--chat-header-height);
 
   padding:
@@ -686,7 +650,33 @@ textarea {
   border-bottom: var(--border-soft);
 
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+}
+
+.bean-chat-header__left {
+  display: flex;
+  align-items: center;
+
+  gap: var(--space-2);
+
+  min-width: 0;
+}
+
+.bean-chat-header__back {
+  display: none;
+  place-items: center;
+
+  width: 40px;
+  height: 40px;
+
+  flex: 0 0 auto;
+
+  border-radius: var(--radius-pill);
+
+  color: var(--color-text-secondary);
+}
+
+.bean-chat-header__back:hover {
+  background: var(--color-hover);
 }
 
 .bean-chat-header__person {
@@ -700,13 +690,48 @@ textarea {
   text-align: left;
 }
 
-.bean-chat-header__person > span:last-child {
+.bean-chat-header__avatar {
+  position: relative;
+
+  display: grid;
+  place-items: center;
+
+  width: 42px;
+  height: 42px;
+
+  flex: 0 0 auto;
+
+  overflow: hidden;
+
+  border-radius: var(--radius-pill);
+
+  background: var(--color-brand-soft);
+  color: var(--color-brand-text);
+
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.bean-chat-header__avatar img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+.bean-chat-header__avatar .bean-presence {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+
+.bean-chat-header__identity {
   display: grid;
 
   min-width: 0;
 }
 
-.bean-chat-header__person strong {
+.bean-chat-header__identity strong {
   overflow: hidden;
 
   color: var(--color-text);
@@ -718,8 +743,8 @@ textarea {
   white-space: nowrap;
 }
 
-.bean-chat-header__person small {
-  margin-top: 2px;
+.bean-chat-header__identity small {
+  margin-top: 1px;
 
   color: var(--color-text-muted);
 
@@ -733,7 +758,7 @@ textarea {
   gap: var(--space-1);
 }
 
-.bean-chat-header__actions button {
+.bean-chat-header__action {
   display: grid;
   place-items: center;
 
@@ -745,7 +770,7 @@ textarea {
   color: var(--color-text-secondary);
 }
 
-.bean-chat-header__actions button:hover {
+.bean-chat-header__action:hover {
   background: var(--color-brand-soft);
   color: var(--color-brand-text);
 }
@@ -766,14 +791,17 @@ textarea {
   scroll-behavior: smooth;
 }
 
-.bean-messages__content,
-.bean-messages__inner {
+.bean-messages__content {
   display: flex;
   flex-direction: column;
 
   gap: var(--space-3);
 
-  width: min(100%, var(--content-max-width));
+  width: min(
+    100%,
+    var(--content-max-width)
+  );
+
   min-height: 100%;
 
   margin: 0 auto;
@@ -790,32 +818,25 @@ textarea {
 
   min-height: 100%;
 
-  padding: var(--space-8);
-
   color: var(--color-text-muted);
-
-  text-align: center;
 }
 
 
 /* =========================================================
-   DATE SEPARATOR
+   DATE
    ========================================================= */
 
 .bean-message-date {
   display: flex;
-  align-items: center;
   justify-content: center;
 
-  padding:
-    var(--space-3)
-    0;
+  padding: var(--space-2) 0;
 }
 
 .bean-message-date span {
   padding:
-    6px
-    12px;
+    5px
+    11px;
 
   border-radius: var(--radius-pill);
 
@@ -824,12 +845,11 @@ textarea {
   color: var(--color-text-muted);
 
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
 }
 
 
 /* =========================================================
-   MESSAGE
+   MESSAGE ROW
    ========================================================= */
 
 .bean-message {
@@ -849,34 +869,24 @@ textarea {
   justify-content: flex-end;
 }
 
-
-/* ---------------------------------------------------------
-   MESSAGE AVATAR
-   --------------------------------------------------------- */
-
 .bean-message__avatar {
   display: grid;
   place-items: center;
 
-  flex: 0 0 auto;
-
   width: 30px;
   height: 30px;
 
+  flex: 0 0 auto;
+
   border-radius: var(--radius-pill);
 
-  background: var(--color-surface-soft);
+  background: #f2f2ef;
 
   color: var(--color-text-secondary);
 
   font-size: 10px;
   font-weight: var(--font-weight-semibold);
 }
-
-
-/* ---------------------------------------------------------
-   MESSAGE BODY
-   --------------------------------------------------------- */
 
 .bean-message__body {
   display: flex;
@@ -890,9 +900,9 @@ textarea {
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
    MESSAGE BUBBLE
-   --------------------------------------------------------- */
+   ========================================================= */
 
 .bean-message__bubble {
   padding:
@@ -901,26 +911,24 @@ textarea {
     8px;
 
   border-radius:
-    20px
-    20px
-    20px
-    7px;
+    22px
+    22px
+    22px
+    8px;
 
-  background: var(--color-message-incoming);
+  background: #f7f0ee;
 
   color: var(--color-text);
 
-  line-height: var(--line-height-normal);
-
-  overflow-wrap: anywhere;
+  box-shadow: var(--shadow-xs);
 }
 
 .bean-message--outgoing .bean-message__bubble {
   border-radius:
-    20px
-    20px
-    7px
-    20px;
+    22px
+    22px
+    8px
+    22px;
 
   background: var(--color-message-outgoing);
 
@@ -931,38 +939,29 @@ textarea {
   white-space: pre-wrap;
 
   font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
 }
-
-
-/* ---------------------------------------------------------
-   MESSAGE META
-   --------------------------------------------------------- */
 
 .bean-message__meta {
   display: flex;
   align-items: center;
   justify-content: flex-end;
 
-  gap: var(--space-1);
+  gap: 4px;
 
   margin-top: 5px;
 
-  opacity: 0.68;
+  opacity: 0.6;
 }
 
-.bean-message__time {
+.bean-message__time,
+.bean-message__seen {
   font-size: 10px;
 }
 
 .bean-message__seen {
-  font-size: 10px;
   letter-spacing: -2px;
 }
-
-
-/* ---------------------------------------------------------
-   REACTIONS
-   --------------------------------------------------------- */
 
 .bean-message__reaction {
   width: max-content;
@@ -984,7 +983,7 @@ textarea {
 
 
 /* =========================================================
-   FILE ATTACHMENT
+   MESSAGE FILE
    ========================================================= */
 
 .bean-message-file {
@@ -993,16 +992,14 @@ textarea {
 
   gap: var(--space-3);
 
-  min-width: 240px;
+  min-width: 220px;
 
   margin-top: var(--space-3);
-  padding:
-    var(--space-3)
-    var(--space-3);
+  padding: var(--space-3);
 
   border-radius: var(--radius-lg);
 
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.65);
 
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
@@ -1011,16 +1008,14 @@ textarea {
   display: grid;
   place-items: center;
 
-  flex: 0 0 auto;
-
   width: 36px;
   height: 36px;
+
+  flex: 0 0 auto;
 
   border-radius: var(--radius-md);
 
   background: var(--color-white);
-
-  font-size: 17px;
 }
 
 .bean-message-file__info {
@@ -1042,8 +1037,6 @@ textarea {
 }
 
 .bean-message-file__meta {
-  margin-top: 2px;
-
   color: var(--color-text-muted);
 
   font-size: 11px;
@@ -1052,8 +1045,6 @@ textarea {
 .bean-message-file__action {
   display: grid;
   place-items: center;
-
-  flex: 0 0 auto;
 
   width: 34px;
   height: 34px;
@@ -1065,7 +1056,6 @@ textarea {
 
 .bean-message-file__action:hover {
   background: var(--color-brand-soft);
-  color: var(--color-brand-text);
 }
 
 
@@ -1085,7 +1075,8 @@ textarea {
     linear-gradient(
       180deg,
       rgba(255, 255, 255, 0) 0%,
-      var(--color-surface) 22%
+      rgba(255, 255, 255, 0.92) 22%,
+      var(--color-white) 100%
     );
 }
 
@@ -1100,19 +1091,22 @@ textarea {
 
   gap: var(--space-2);
 
-  width: min(100%, var(--content-max-width));
-  min-height: var(--composer-min-height);
+  width: min(
+    100%,
+    var(--content-max-width)
+  );
+
+  min-height: 54px;
 
   margin: 0 auto;
-
   padding:
-    7px
-    7px
-    7px
-    var(--space-4);
+    6px
+    6px
+    6px
+    7px;
 
   border: var(--border-default);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-pill);
 
   background: var(--color-white);
 
@@ -1127,60 +1121,72 @@ textarea {
     0 0 0 3px var(--color-focus);
 }
 
-.bean-composer textarea {
-  flex: 1;
-
-  min-width: 0;
-  min-height: 38px;
-  max-height: 140px;
-
-  padding:
-    9px
-    0;
-
-  overflow-y: auto;
-
-  color: var(--color-text);
-
-  line-height: var(--line-height-normal);
-}
-
-.bean-composer button {
+.bean-composer__add,
+.bean-composer__send {
   display: grid;
   place-items: center;
 
+  width: 42px;
+  height: 42px;
+
   flex: 0 0 auto;
 
-  width: 40px;
-  height: 40px;
-
   border-radius: var(--radius-pill);
+}
 
-  background: var(--color-brand);
+.bean-composer__add {
+  background: var(--color-surface-soft);
+
+  color: var(--color-text-secondary);
+}
+
+.bean-composer__add:hover {
+  background: var(--color-brand-soft);
   color: var(--color-brand-text);
 }
 
-.bean-composer button:hover:not(:disabled) {
+.bean-composer__input {
+  flex: 1;
+
+  min-width: 0;
+  min-height: 42px;
+  max-height: 140px;
+
+  padding:
+    10px
+    var(--space-2);
+
+  overflow-y: hidden;
+
+  color: var(--color-text);
+
+  line-height: 1.4;
+}
+
+.bean-composer__send {
+  background: var(--color-brand);
+
+  color: var(--color-brand-text);
+}
+
+.bean-composer__send:hover:not(:disabled) {
   background: var(--color-brand-hover);
 
   transform: translateY(-1px);
 }
 
-.bean-composer button:active:not(:disabled) {
-  transform: translateY(0);
-}
+.bean-composer__send:disabled {
+  opacity: 0.35;
 
-.bean-composer button:disabled {
-  opacity: 0.38;
+  cursor: default;
 }
 
 
 /* =========================================================
-   CONTACT / DETAILS PANEL
+   CONTACT PANEL
    ========================================================= */
 
-.bean-contact-panel,
-.bean-details-slot:not([hidden]) {
+.bean-contact-panel {
   flex: 0 0 var(--contact-panel-width);
 
   width: var(--contact-panel-width);
@@ -1189,12 +1195,12 @@ textarea {
   overflow-x: hidden;
   overflow-y: auto;
 
-  background: var(--color-surface);
+  background: var(--color-white);
 
   border-left: var(--border-soft);
 }
 
-.bean-contact-panel > header {
+.bean-contact-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1208,159 +1214,304 @@ textarea {
   border-bottom: var(--border-soft);
 }
 
-.bean-contact-panel > header h2 {
+.bean-contact-panel__header h2 {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
 }
 
-.bean-contact-panel > header button {
+.bean-contact-panel__content {
+  padding-bottom: var(--space-6);
+}
+
+
+/* =========================================================
+   CONTACT PROFILE
+   ========================================================= */
+
+.bean-contact-profile {
+  padding:
+    var(--space-8)
+    var(--space-5)
+    var(--space-6);
+
+  text-align: center;
+}
+
+.bean-contact-profile__avatar-wrap {
+  position: relative;
+
+  width: max-content;
+
+  margin:
+    0
+    auto
+    var(--space-3);
+}
+
+.bean-contact-profile__avatar {
+  display: grid;
+  place-items: center;
+
+  width: 76px;
+  height: 76px;
+
+  border-radius: var(--radius-pill);
+
+  background: var(--color-brand-soft);
+  color: var(--color-brand-text);
+
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.bean-contact-profile__status {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+
+  width: 13px;
+  height: 13px;
+
+  border: 3px solid var(--color-white);
+  border-radius: var(--radius-pill);
+
+  background: var(--color-success);
+}
+
+.bean-contact-profile__name {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.bean-contact-profile__presence {
+  margin-top: 3px;
+
+  color: var(--color-text-muted);
+
+  font-size: var(--font-size-sm);
+}
+
+
+/* =========================================================
+   CONTACT CARDS
+   ========================================================= */
+
+.bean-contact-card,
+.bean-contact-section {
+  margin:
+    0
+    var(--space-4)
+    var(--space-3);
+
+  padding: var(--space-4);
+
+  border-radius: var(--radius-xl);
+
+  background: var(--color-surface-soft);
+}
+
+.bean-contact-card__label,
+.bean-contact-section__title {
+  display: block;
+
+  margin-bottom: var(--space-2);
+
+  color: var(--color-text-muted);
+
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.bean-contact-id {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: var(--space-2);
+
+  font-size: var(--font-size-sm);
+}
+
+.bean-contact-id__copy {
+  display: grid;
+  place-items: center;
+
+  width: 34px;
+  height: 34px;
+
+  flex: 0 0 auto;
+
+  border-radius: var(--radius-pill);
+
+  color: var(--color-text-secondary);
+}
+
+.bean-contact-id__copy:hover {
+  background: var(--color-brand-soft);
+}
+
+.bean-contact-about {
+  color: var(--color-text-secondary);
+
+  font-size: var(--font-size-sm);
+}
+
+
+/* =========================================================
+   CONTACT ACTIONS
+   ========================================================= */
+
+.bean-contact-actions {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: var(--space-2);
+}
+
+.bean-contact-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  gap: var(--space-2);
+
+  min-width: 0;
+
+  padding:
+    var(--space-3)
+    var(--space-2);
+
+  border-radius: var(--radius-lg);
+
+  color: var(--color-text-secondary);
+
+  font-size: 11px;
+}
+
+.bean-contact-action:hover {
+  background: var(--color-brand-soft);
+  color: var(--color-brand-text);
+}
+
+.bean-contact-action__icon {
+  display: grid;
+  place-items: center;
+
+  width: 36px;
+  height: 36px;
+
+  border-radius: var(--radius-pill);
+
+  background: var(--color-white);
+}
+
+
+/* =========================================================
+   CONTACT SECTION
+   ========================================================= */
+
+.bean-contact-section__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: var(--space-3);
+
+  margin-bottom: var(--space-2);
+}
+
+.bean-contact-section__heading
+.bean-contact-section__title {
+  margin-bottom: 0;
+}
+
+.bean-contact-section__link {
+  color: var(--color-brand-strong);
+
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.bean-contact-empty {
+  color: var(--color-text-muted);
+
+  font-size: var(--font-size-sm);
+}
+
+
+/* =========================================================
+   SHARED FILES
+   ========================================================= */
+
+.bean-shared-files {
+  display: grid;
+
+  gap: var(--space-2);
+}
+
+.bean-shared-file {
+  display: flex;
+  align-items: center;
+
+  gap: var(--space-3);
+
+  min-width: 0;
+
+  padding: var(--space-2);
+
+  border-radius: var(--radius-lg);
+
+  background: var(--color-white);
+}
+
+.bean-shared-file__icon {
   display: grid;
   place-items: center;
 
   width: 38px;
   height: 38px;
 
-  border-radius: var(--radius-pill);
+  flex: 0 0 auto;
 
-  color: var(--color-text-secondary);
-}
-
-.bean-contact-panel > header button:hover {
-  background: var(--color-hover);
-}
-
-
-/* ---------------------------------------------------------
-   CONTACT PROFILE
-   --------------------------------------------------------- */
-
-.bean-contact-panel__profile {
-  padding:
-    var(--space-8)
-    var(--space-5);
-
-  text-align: center;
-}
-
-.bean-contact-panel__avatar {
-  display: grid;
-  place-items: center;
-
-  width: var(--avatar-xl);
-  height: var(--avatar-xl);
-
-  margin:
-    0
-    auto
-    var(--space-3);
-
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
 
   background: var(--color-brand-soft);
+
   color: var(--color-brand-text);
 
-  font-size: var(--font-size-lg);
+  font-size: 9px;
   font-weight: var(--font-weight-bold);
 }
 
-.bean-contact-panel__profile h3 {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-}
-
-.bean-contact-panel__profile p,
-.bean-contact-panel__profile small {
-  color: var(--color-text-muted);
-}
-
-
-/* ---------------------------------------------------------
-   CONTACT ACTIONS
-   --------------------------------------------------------- */
-
-.bean-contact-panel__actions {
-  display: grid;
-
-  grid-template-columns:
-    repeat(2, minmax(0, 1fr));
-
-  gap: var(--space-2);
-
-  padding:
-    0
-    var(--space-4)
-    var(--space-5);
-}
-
-.bean-contact-panel__actions button {
-  min-height: 42px;
-
-  padding:
-    var(--space-2)
-    var(--space-3);
-
-  border-radius: var(--radius-pill);
-
-  background: var(--color-surface-soft);
-
-  color: var(--color-text-secondary);
-
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-}
-
-.bean-contact-panel__actions button:hover {
-  background: var(--color-brand-soft);
-  color: var(--color-brand-text);
-}
-
-
-/* ---------------------------------------------------------
-   CONTACT SECTIONS
-   --------------------------------------------------------- */
-
-.bean-contact-panel__section {
-  padding:
-    var(--space-2)
-    var(--space-4)
-    var(--space-5);
-}
-
-.bean-contact-panel__section button {
+.bean-shared-file__info {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex: 1;
+  flex-direction: column;
 
-  width: 100%;
-  min-height: 44px;
-
-  padding:
-    var(--space-3)
-    var(--space-4);
-
-  border-radius: var(--radius-lg);
-
-  color: var(--color-text-secondary);
-
-  text-align: left;
+  min-width: 0;
 }
 
-.bean-contact-panel__section button:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
+.bean-shared-file__name {
+  overflow: hidden;
+
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.bean-contact-panel__section .is-danger {
-  color: var(--color-danger);
-}
+.bean-shared-file__meta {
+  color: var(--color-text-muted);
 
-.bean-contact-panel__section .is-danger:hover {
-  background: var(--color-danger-soft);
+  font-size: 11px;
 }
 
 
 /* =========================================================
-   EMPTY STATE
+   EMPTY CHAT
    ========================================================= */
 
 .bean-empty {
@@ -1368,16 +1519,13 @@ textarea {
   flex: 1;
   place-items: center;
 
-  min-width: 0;
-  min-height: 0;
-
   padding: var(--space-8);
 
   text-align: center;
 }
 
 .bean-empty__content {
-  width: min(100%, 390px);
+  width: min(100%, 360px);
 }
 
 .bean-empty__mark {
@@ -1395,18 +1543,13 @@ textarea {
   border-radius: var(--radius-2xl);
 
   background: var(--color-brand);
-
   color: var(--color-brand-text);
 
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-
-  box-shadow: var(--shadow-sm);
 }
 
 .bean-empty__title {
-  color: var(--color-text);
-
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
 }
@@ -1415,8 +1558,6 @@ textarea {
   margin-top: var(--space-2);
 
   color: var(--color-text-muted);
-
-  font-size: var(--font-size-md);
 }
 
 .bean-empty__action {
@@ -1425,7 +1566,7 @@ textarea {
 
 
 /* =========================================================
-   BUTTONS
+   BUTTON
    ========================================================= */
 
 .bean-button {
@@ -1454,16 +1595,6 @@ textarea {
 
 .bean-button--brand:hover {
   background: var(--color-brand-hover);
-
-  transform: translateY(-1px);
-
-  box-shadow: var(--shadow-sm);
-}
-
-.bean-button--brand:active {
-  background: var(--color-brand-active);
-
-  transform: translateY(0);
 }
 
 
@@ -1484,12 +1615,6 @@ textarea {
 .bean-messages::-webkit-scrollbar,
 .bean-contact-panel::-webkit-scrollbar {
   width: 6px;
-}
-
-.bean-chat-list__items::-webkit-scrollbar-track,
-.bean-messages::-webkit-scrollbar-track,
-.bean-contact-panel::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .bean-chat-list__items::-webkit-scrollbar-thumb,
@@ -1523,63 +1648,10 @@ textarea {
 
     width: min(
       var(--contact-panel-width),
-      calc(100vw - 120px)
+      88%
     );
 
     box-shadow: var(--shadow-lg);
-  }
-}
-
-
-/* =========================================================
-   SMALL TABLET
-   ========================================================= */
-
-@media (max-width: 900px) {
-  .bean-app {
-    padding: 0;
-  }
-
-  .bean-shell {
-    grid-template-columns:
-      64px
-      280px
-      minmax(0, 1fr);
-
-    border: 0;
-    border-radius: 0;
-  }
-
-  .bean-sidebar {
-    padding:
-      var(--space-3)
-      var(--space-2);
-  }
-
-  .bean-sidebar__logo,
-  .bean-nav-button {
-    width: 42px;
-    height: 42px;
-  }
-
-  .bean-chat-header {
-    padding:
-      var(--space-2)
-      var(--space-4);
-  }
-
-  .bean-messages__content,
-  .bean-messages__inner {
-    padding:
-      var(--space-6)
-      var(--space-4);
-  }
-
-  .bean-composer-area {
-    padding:
-      var(--space-2)
-      var(--space-4)
-      var(--space-4);
   }
 }
 
@@ -1589,19 +1661,12 @@ textarea {
    ========================================================= */
 
 @media (max-width: 720px) {
-  body {
-    overflow: hidden;
-  }
-
   .bean-app {
     padding: 0;
   }
 
   .bean-shell {
     display: block;
-
-    width: 100%;
-    height: 100%;
 
     border: 0;
     border-radius: 0;
@@ -1625,13 +1690,6 @@ textarea {
       var(--space-3);
   }
 
-  .bean-chat-list__items {
-    padding:
-      0
-      var(--space-2)
-      var(--space-4);
-  }
-
   .bean-workspace {
     position: fixed;
     inset: 0;
@@ -1640,7 +1698,7 @@ textarea {
 
     display: none;
 
-    background: var(--color-surface);
+    background: var(--color-white);
   }
 
   .bean-workspace.is-open {
@@ -1649,41 +1707,63 @@ textarea {
 
   .bean-chat {
     width: 100%;
+    height: 100%;
   }
 
   .bean-chat-header {
-    min-height: 62px;
+    min-height: 64px;
 
     padding:
       var(--space-2)
       var(--mobile-padding);
   }
 
+  .bean-chat-header__back {
+    display: grid;
+  }
+
+  .bean-chat-header__avatar {
+    width: 40px;
+    height: 40px;
+  }
+
   .bean-chat-header__actions {
     gap: 0;
   }
 
-  .bean-chat-header__actions button {
+  .bean-chat-header__action {
     width: 38px;
     height: 38px;
   }
 
-  .bean-messages__content,
-  .bean-messages__inner {
+  .bean-messages__content {
     width: 100%;
 
     padding:
       var(--space-5)
-      var(--mobile-padding);
+      var(--mobile-padding)
+      var(--space-4);
   }
 
   .bean-message__body {
     max-width: 84%;
   }
 
-  .bean-message-file {
-    min-width: 0;
-    width: 100%;
+  .bean-message__bubble {
+    border-radius:
+      22px
+      22px
+      22px
+      9px;
+  }
+
+  .bean-message--outgoing
+  .bean-message__bubble {
+    border-radius:
+      22px
+      22px
+      9px
+      22px;
   }
 
   .bean-composer-area {
@@ -1697,7 +1777,9 @@ textarea {
   }
 
   .bean-composer {
-    border-radius: var(--radius-2xl);
+    min-height: 56px;
+
+    border-radius: var(--radius-pill);
   }
 
   .bean-contact-panel {
@@ -1705,9 +1787,6 @@ textarea {
     inset: 0 0 0 auto;
 
     width: min(92%, 360px);
-    height: 100%;
-
-    border-left: var(--border-soft);
 
     box-shadow: var(--shadow-lg);
   }
@@ -1719,18 +1798,27 @@ textarea {
 
 
 /* =========================================================
-   VERY SMALL MOBILE
+   SMALL MOBILE
    ========================================================= */
 
 @media (max-width: 420px) {
-  .bean-chat-list__title {
-    font-size: var(--font-size-xl);
+  .bean-chat-header {
+    padding:
+      var(--space-2)
+      var(--space-3);
   }
 
-  .bean-chat-item {
-    padding:
-      10px
-      var(--space-2);
+  .bean-chat-header__person {
+    gap: var(--space-2);
+  }
+
+  .bean-chat-header__identity small {
+    display: none;
+  }
+
+  .bean-chat-header__action {
+    width: 36px;
+    height: 36px;
   }
 
   .bean-message__body {
@@ -1742,16 +1830,15 @@ textarea {
     height: 28px;
   }
 
-  .bean-message__bubble {
-    padding:
-      10px
-      13px
-      8px;
+  .bean-composer-area {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
   }
 
-  .bean-chat-header__actions button {
-    width: 36px;
-    height: 36px;
+  .bean-composer__add,
+  .bean-composer__send {
+    width: 40px;
+    height: 40px;
   }
 }
 

@@ -6,26 +6,16 @@ BEAN — CHAT VIEW
 =========================================================
 
 Owns:
-- Selected conversation layout
-- Coordination between chat components
-- Contact panel open / close state
-- Local prototype message sending
-- Header action coordination
+- Active conversation
+- Chat component coordination
+- Contact panel state
+- Prototype message sending
 
 Uses:
 - chat-header.js
 - message-list.js
 - composer.js
 - contact-panel.js
-
-Does not own:
-- Header UI
-- Message rendering
-- Composer UI
-- Contact panel UI
-- Backend
-- Realtime
-- Persistence
 =========================================================
 */
 
@@ -51,6 +41,7 @@ import {
   initContactPanel,
 } from "./contact-panel.js";
 
+
 /*
 =========================================================
 STATE
@@ -60,11 +51,21 @@ STATE
 let activeConversation = null;
 let isContactPanelOpen = false;
 
+
 /*
 =========================================================
-TIME
+HELPERS
 =========================================================
 */
+
+function isValidConversation(conversation) {
+  return Boolean(
+    conversation &&
+    typeof conversation.id === "string" &&
+    conversation.id.trim().length > 0
+  );
+}
+
 
 function getCurrentTime() {
   return new Intl.DateTimeFormat(undefined, {
@@ -73,19 +74,6 @@ function getCurrentTime() {
   }).format(new Date());
 }
 
-/*
-=========================================================
-VALIDATION
-=========================================================
-*/
-
-function isValidConversation(conversation) {
-  return Boolean(
-    conversation &&
-      typeof conversation.id === "string" &&
-      conversation.id.trim()
-  );
-}
 
 /*
 =========================================================
@@ -100,13 +88,9 @@ function openContactPanel() {
 
   isContactPanelOpen = true;
 
-  renderChatView(
-    activeConversation,
-    {
-      focusComposerAfterRender: false,
-    }
-  );
+  renderChatView(activeConversation);
 }
+
 
 function closeContactPanel() {
   if (!activeConversation) {
@@ -115,13 +99,48 @@ function closeContactPanel() {
 
   isContactPanelOpen = false;
 
-  renderChatView(
-    activeConversation,
-    {
-      focusComposerAfterRender: false,
-    }
-  );
+  renderChatView(activeConversation);
 }
+
+
+/*
+=========================================================
+HEADER ACTIONS
+=========================================================
+*/
+
+function handleHeaderAction(action, conversation) {
+  switch (action) {
+    case "profile":
+    case "info":
+      openContactPanel();
+      break;
+
+    case "voice":
+      console.log(
+        `Bean: voice call with ${conversation.name}`
+      );
+      break;
+
+    case "video":
+      console.log(
+        `Bean: video call with ${conversation.name}`
+      );
+      break;
+
+    case "search":
+      console.log(
+        `Bean: search conversation with ${conversation.name}`
+      );
+      break;
+
+    default:
+      console.warn(
+        `Bean: unknown header action "${action}".`
+      );
+  }
+}
+
 
 /*
 =========================================================
@@ -140,13 +159,13 @@ function handleContactPanelAction(
 
     case "voice":
       console.log(
-        `Bean: start voice call with ${conversation.name}`
+        `Bean: voice call with ${conversation.name}`
       );
       break;
 
     case "video":
       console.log(
-        `Bean: start video call with ${conversation.name}`
+        `Bean: video call with ${conversation.name}`
       );
       break;
 
@@ -164,25 +183,25 @@ function handleContactPanelAction(
 
     case "media":
       console.log(
-        `Bean: open shared media with ${conversation.name}`
+        `Bean: open media for ${conversation.name}`
       );
       break;
 
     case "files":
       console.log(
-        `Bean: open shared files with ${conversation.name}`
+        `Bean: open files for ${conversation.name}`
       );
       break;
 
     case "links":
       console.log(
-        `Bean: open shared links with ${conversation.name}`
+        `Bean: open links for ${conversation.name}`
       );
       break;
 
     case "block":
       console.log(
-        `Bean: block action for ${conversation.name}`
+        `Bean: block ${conversation.name}`
       );
       break;
 
@@ -193,46 +212,6 @@ function handleContactPanelAction(
   }
 }
 
-/*
-=========================================================
-HEADER ACTIONS
-=========================================================
-*/
-
-function handleHeaderAction(
-  action,
-  conversation
-) {
-  switch (action) {
-    case "profile":
-    case "info":
-      openContactPanel();
-      break;
-
-    case "voice":
-      console.log(
-        `Bean: start voice call with ${conversation.name}`
-      );
-      break;
-
-    case "video":
-      console.log(
-        `Bean: start video call with ${conversation.name}`
-      );
-      break;
-
-    case "search":
-      console.log(
-        `Bean: search conversation with ${conversation.name}`
-      );
-      break;
-
-    default:
-      console.warn(
-        `Bean: unknown header action "${action}".`
-      );
-  }
-}
 
 /*
 =========================================================
@@ -240,10 +219,7 @@ SEND MESSAGE
 =========================================================
 */
 
-function handleSendMessage(
-  text,
-  conversation
-) {
+function handleSendMessage(text, conversation) {
   const added = addMessage(
     conversation.id,
     {
@@ -257,15 +233,13 @@ function handleSendMessage(
     return false;
   }
 
-  renderChatView(
-    conversation,
-    {
-      focusComposerAfterRender: true,
-    }
-  );
+  renderChatView(conversation, {
+    focusComposer: true,
+  });
 
   return true;
 }
+
 
 /*
 =========================================================
@@ -274,6 +248,10 @@ CREATE CHAT CONTENT
 */
 
 function createChatContent(conversation) {
+  const contactPanel = isContactPanelOpen
+    ? createContactPanel(conversation)
+    : "";
+
   return `
     <div class="bean-chat__conversation">
 
@@ -285,13 +263,10 @@ function createChatContent(conversation) {
 
     </div>
 
-    ${
-      isContactPanelOpen
-        ? createContactPanel(conversation)
-        : ""
-    }
+    ${contactPanel}
   `;
 }
+
 
 /*
 =========================================================
@@ -299,7 +274,7 @@ INITIALIZE COMPONENTS
 =========================================================
 */
 
-function initChatComponents(conversation) {
+function initComponents(conversation) {
   initChatHeader((action) => {
     handleHeaderAction(
       action,
@@ -307,12 +282,14 @@ function initChatComponents(conversation) {
     );
   });
 
+
   initComposer((text) => {
     return handleSendMessage(
       text,
       conversation
     );
   });
+
 
   if (isContactPanelOpen) {
     initContactPanel((action) => {
@@ -324,6 +301,7 @@ function initChatComponents(conversation) {
   }
 }
 
+
 /*
 =========================================================
 RENDER CHAT VIEW
@@ -334,10 +312,6 @@ export function renderChatView(
   conversation,
   options = {}
 ) {
-  const {
-    focusComposerAfterRender = false,
-  } = options;
-
   const chatView =
     document.getElementById("chatView");
 
@@ -345,37 +319,46 @@ export function renderChatView(
     console.warn(
       "Bean: #chatView element not found."
     );
+
     return;
   }
+
 
   if (!isValidConversation(conversation)) {
     console.warn(
       "Bean: invalid conversation."
     );
+
     return;
   }
 
-  /*
-   * If user selects another conversation,
-   * close the previous details panel.
-   */
-  if (
+
+  const changedConversation =
     activeConversation &&
-    activeConversation.id !== conversation.id
-  ) {
+    activeConversation.id !== conversation.id;
+
+
+  if (changedConversation) {
     isContactPanelOpen = false;
   }
 
-  activeConversation = conversation;
+
+  activeConversation = {
+    ...conversation,
+  };
+
 
   chatView.innerHTML =
-    createChatContent(conversation);
+    createChatContent(activeConversation);
 
-  initChatComponents(conversation);
+
+  initComponents(activeConversation);
+
 
   scrollToLatestMessage();
 
-  if (focusComposerAfterRender) {
+
+  if (options.focusComposer === true) {
     focusComposer();
   }
 }

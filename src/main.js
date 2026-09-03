@@ -1,16 +1,27 @@
 "use strict";
 
-/*
-=========================================================
-BEAN — MAIN ENTRY
-=========================================================
-*/
+/* =========================================================
+   BEAN — MAIN
+   Application entry point
+   ========================================================= */
+
+
+/* =========================================================
+   STYLES
+   ========================================================= */
 
 import "./styles/tokens.css";
 import "./styles/reset.css";
 import "./styles/app.css";
 
-import { createAppShell } from "./components/app-shell.js";
+
+/* =========================================================
+   COMPONENTS
+   ========================================================= */
+
+import {
+  createAppShell,
+} from "./components/app-shell.js";
 
 import {
   initSidebar,
@@ -26,61 +37,149 @@ import {
   renderChatView,
 } from "./components/chat-view.js";
 
-/*
-=========================================================
-APP ROOT
-=========================================================
-*/
 
-const app = document.getElementById("app");
+/* =========================================================
+   STORE
+   ========================================================= */
+
+import {
+  setCurrentView,
+} from "./core/store.js";
+
+
+/* =========================================================
+   ROOT
+   ========================================================= */
+
+const app =
+  document.getElementById("app");
 
 if (!app) {
-  throw new Error("Bean: #app element not found.");
+  throw new Error(
+    "Bean: #app element not found."
+  );
 }
 
-/*
-=========================================================
-NAVIGATION
-=========================================================
-*/
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
 
 function handleNavigation(view) {
+  if (!view) {
+    return;
+  }
+
+  setCurrentView(view);
   setActiveSidebarView(view);
 
-  /*
-   * Actual Contacts, Search, Settings and Profile
-   * views will be connected as we build them.
-   */
 
-  console.log(`Bean navigation: ${view}`);
+  /* ---------------------------------------------------------
+     Current prototype behavior
+
+     Chats = active working view.
+
+     Contacts / Search / Settings / Profile
+     will be connected later without changing
+     the core app architecture.
+     --------------------------------------------------------- */
+
+  if (view !== "chats") {
+    console.log(
+      `Bean navigation: ${view}`
+    );
+  }
 }
 
-/*
-=========================================================
-APP INITIALIZATION
-=========================================================
-*/
+
+/* =========================================================
+   NEW CHAT
+   ========================================================= */
+
+function initNewChatActions() {
+  document.addEventListener(
+    "click",
+    (event) => {
+      const target =
+        event.target;
+
+      if (
+        !(target instanceof Element)
+      ) {
+        return;
+      }
+
+      const button =
+        target.closest(
+          "[data-new-chat]"
+        );
+
+      if (!button) {
+        return;
+      }
+
+      /*
+       * New chat screen will be connected later.
+       * Keeping this action centralized prevents
+       * duplicate listeners across components.
+       */
+
+      console.log(
+        "Bean action: new chat"
+      );
+    }
+  );
+}
+
+
+/* =========================================================
+   INITIALIZE APPLICATION
+   ========================================================= */
 
 function initApp() {
-  // Build application shell.
-  app.innerHTML = createAppShell();
+  /* ---------------------------------------------------------
+     1. Mount permanent app shell
+     --------------------------------------------------------- */
 
-  // Render prototype conversations.
+  app.innerHTML =
+    createAppShell();
+
+
+  /* ---------------------------------------------------------
+     2. Render conversations
+     --------------------------------------------------------- */
+
   renderChatList();
 
-  // Connect sidebar navigation.
-  initSidebar(handleNavigation);
 
-  // Connect conversation selection.
-  initChatList((conversation) => {
-    renderChatView(conversation);
+  /* ---------------------------------------------------------
+     3. Initialize primary navigation
+     --------------------------------------------------------- */
+
+  initSidebar(
+    handleNavigation
+  );
+
+
+  /* ---------------------------------------------------------
+     4. Initialize chat selection
+     --------------------------------------------------------- */
+
+  initChatList(() => {
+    renderChatView();
   });
+
+
+  /* ---------------------------------------------------------
+     5. Global shell actions
+     --------------------------------------------------------- */
+
+  initNewChatActions();
 }
 
-/*
-=========================================================
-START BEAN
-=========================================================
-*/
+
+/* =========================================================
+   START
+   ========================================================= */
 
 initApp();

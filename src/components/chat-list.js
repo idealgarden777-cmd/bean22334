@@ -6,16 +6,16 @@ BEAN — CHAT LIST
 =========================================================
 
 Owns:
-- Mock conversation data
+- Prototype conversation data
 - Conversation list rendering
 - Active conversation state
-- Conversation selection event
+- Conversation selection
 
 Does not own:
-- Message rendering
+- Chat messages
 - Backend
 - Realtime
-- Search filtering
+- Authentication
 =========================================================
 */
 
@@ -49,13 +49,34 @@ const conversations = [
     time: "Yesterday",
   },
   {
-    id: "team",
+    id: "bean-team",
     name: "Bean Team",
     initials: "BT",
     preview: "The new prototype is ready.",
     time: "Mon",
   },
 ];
+
+/*
+=========================================================
+HELPERS
+=========================================================
+*/
+
+function escapeHTML(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getConversationById(id) {
+  return conversations.find(
+    (conversation) => conversation.id === id
+  );
+}
 
 /*
 =========================================================
@@ -70,14 +91,15 @@ function createConversationItem(conversation, isActive) {
     <button
       class="bean-chat-item${activeClass}"
       type="button"
-      data-conversation-id="${conversation.id}"
+      data-conversation-id="${escapeHTML(conversation.id)}"
       aria-pressed="${isActive}"
+      role="listitem"
     >
       <span
         class="bean-avatar"
         aria-hidden="true"
       >
-        ${conversation.initials}
+        ${escapeHTML(conversation.initials)}
       </span>
 
       <span class="bean-chat-item__content">
@@ -85,17 +107,17 @@ function createConversationItem(conversation, isActive) {
         <span class="bean-chat-item__top">
 
           <span class="bean-chat-item__name">
-            ${conversation.name}
+            ${escapeHTML(conversation.name)}
           </span>
 
           <span class="bean-chat-item__time">
-            ${conversation.time}
+            ${escapeHTML(conversation.time)}
           </span>
 
         </span>
 
         <span class="bean-chat-item__preview">
-          ${conversation.preview}
+          ${escapeHTML(conversation.preview)}
         </span>
 
       </span>
@@ -105,15 +127,18 @@ function createConversationItem(conversation, isActive) {
 
 /*
 =========================================================
-RENDER
+RENDER CHAT LIST
 =========================================================
 */
 
 export function renderChatList(activeConversationId = null) {
-  const container = document.getElementById("conversationList");
+  const container =
+    document.getElementById("conversationList");
 
   if (!container) {
-    console.warn("Bean: conversation list container not found.");
+    console.warn(
+      "Bean: #conversationList element not found."
+    );
     return;
   }
 
@@ -129,51 +154,71 @@ export function renderChatList(activeConversationId = null) {
 
 /*
 =========================================================
-SELECTION
+INITIALIZE CHAT LIST
 =========================================================
 */
 
 export function initChatList(onConversationSelect) {
-  const container = document.getElementById("conversationList");
+  const container =
+    document.getElementById("conversationList");
 
   if (!container) {
-    console.warn("Bean: conversation list container not found.");
+    console.warn(
+      "Bean: #conversationList element not found."
+    );
     return;
   }
 
   container.addEventListener("click", (event) => {
-    const item = event.target.closest("[data-conversation-id]");
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const item = target.closest(
+      "[data-conversation-id]"
+    );
 
     if (!item) {
       return;
     }
 
-    const conversationId = item.dataset.conversationId;
+    const conversationId =
+      item.dataset.conversationId;
 
-    const conversation = conversations.find(
-      (item) => item.id === conversationId
-    );
-
-    if (!conversation) {
+    if (!conversationId) {
       return;
     }
 
-    renderChatList(conversationId);
+    const conversation =
+      getConversationById(conversationId);
+
+    if (!conversation) {
+      console.warn(
+        `Bean: conversation "${conversationId}" not found.`
+      );
+      return;
+    }
+
+    renderChatList(conversation.id);
 
     if (typeof onConversationSelect === "function") {
-      onConversationSelect(conversation);
+      onConversationSelect({
+        ...conversation,
+      });
     }
   });
 }
 
 /*
 =========================================================
-DATA ACCESS
+PUBLIC DATA
 =========================================================
 */
 
 export function getConversations() {
-  return conversations.map((conversation) => ({
-    ...conversation,
-  }));
+  return conversations.map(
+    (conversation) => ({ ...conversation })
+  );
 }

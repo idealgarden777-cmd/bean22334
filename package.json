@@ -1,6 +1,6 @@
 ```json
 {
-  "name": "@signaturesi/bean",
+  "name": "bean",
   "version": "0.1.0",
   "private": true,
   "description": "Bean — communication by Signaturesi.",
@@ -11,7 +11,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^8.2.2"
+    "vite": "8.2.2"
   }
 }
 ```

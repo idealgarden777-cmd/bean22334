@@ -1,303 +1,103 @@
 "use strict";
 
-/*
-=========================================================
-BEAN — FRONTEND STORE
-=========================================================
-
-Single source of truth for frontend prototype state.
-
-Owns:
-- Current navigation view
-- Active conversation
-- Contact panel state
-- Conversation collection
-- Message collection
-
-Does not own:
-- DOM rendering
-- UI events
-- Backend
-- Realtime
-=========================================================
-*/
-
 import {
   getMockConversations,
   getMockMessages,
 } from "../data/mock-data.js";
 
-
-/*
-=========================================================
-INITIAL STATE
-=========================================================
-*/
-
-const initialState = {
-  currentView: "chats",
-  activeConversationId: null,
-  isContactPanelOpen: false,
+const state = {
+  view: "chats",
+  selectedChatId: null,
+  contactPanelOpen: false,
   conversations: getMockConversations(),
   messages: getMockMessages(),
 };
 
-
-/*
-=========================================================
-STATE
-=========================================================
-*/
-
-let state = createStateCopy(initialState);
-
-
-/*
-=========================================================
-HELPERS
-=========================================================
-*/
-
-function createStateCopy(source) {
-  return {
-    currentView: source.currentView,
-    activeConversationId:
-      source.activeConversationId,
-    isContactPanelOpen:
-      source.isContactPanelOpen,
-
-    conversations:
-      source.conversations.map(
-        (conversation) => ({
-          ...conversation,
-        })
-      ),
-
-    messages:
-      Object.fromEntries(
-        Object.entries(source.messages).map(
-          ([conversationId, messages]) => [
-            conversationId,
-            messages.map((message) => ({
-              ...message,
-            })),
-          ]
-        )
-      ),
-  };
+function clone(value) {
+  return structuredClone(value);
 }
-
-
-function isValidId(value) {
-  return (
-    typeof value === "string" &&
-    value.trim().length > 0
-  );
-}
-
-
-function getConversationIndex(id) {
-  return state.conversations.findIndex(
-    (conversation) =>
-      conversation.id === id
-  );
-}
-
-
-/*
-=========================================================
-READ STATE
-=========================================================
-*/
 
 export function getState() {
-  return createStateCopy(state);
+  return clone(state);
 }
-
 
 export function getCurrentView() {
-  return state.currentView;
+  return state.view;
 }
-
-
-export function getConversations() {
-  return state.conversations.map(
-    (conversation) => ({
-      ...conversation,
-    })
-  );
-}
-
-
-export function getConversationById(id) {
-  if (!isValidId(id)) {
-    return null;
-  }
-
-  const conversation =
-    state.conversations.find(
-      (item) => item.id === id
-    );
-
-  return conversation
-    ? { ...conversation }
-    : null;
-}
-
-
-export function getActiveConversation() {
-  if (!state.activeConversationId) {
-    return null;
-  }
-
-  return getConversationById(
-    state.activeConversationId
-  );
-}
-
-
-export function getMessages(
-  conversationId
-) {
-  if (!isValidId(conversationId)) {
-    return [];
-  }
-
-  const messages =
-    state.messages[conversationId] ?? [];
-
-  return messages.map((message) => ({
-    ...message,
-  }));
-}
-
-
-export function isContactPanelOpen() {
-  return state.isContactPanelOpen;
-}
-
-
-/*
-=========================================================
-NAVIGATION
-=========================================================
-*/
 
 export function setCurrentView(view) {
-  if (!isValidId(view)) {
+  if (typeof view !== "string" || !view.trim()) {
     return false;
   }
 
-  state.currentView = view;
-
+  state.view = view.trim();
   return true;
 }
 
+export function getConversations() {
+  return clone(state.conversations);
+}
 
-/*
-=========================================================
-ACTIVE CONVERSATION
-=========================================================
-*/
+export function getConversationById(id) {
+  const conversation = state.conversations.find(
+    (item) => item.id === id
+  );
 
-export function setActiveConversation(
-  conversationId
-) {
-  if (!isValidId(conversationId)) {
-    return false;
+  return conversation ? clone(conversation) : null;
+}
+
+export function getActiveConversation() {
+  if (!state.selectedChatId) {
+    return null;
   }
 
-  const conversation =
-    getConversationById(conversationId);
+  return getConversationById(state.selectedChatId);
+}
+
+export function getActiveConversationId() {
+  return state.selectedChatId;
+}
+
+export function setActiveConversation(id) {
+  const conversation = state.conversations.find(
+    (item) => item.id === id
+  );
 
   if (!conversation) {
     return false;
   }
 
-  const conversationChanged =
-    state.activeConversationId !==
-    conversationId;
-
-  state.activeConversationId =
-    conversationId;
-
-  if (conversationChanged) {
-    state.isContactPanelOpen = false;
+  if (state.selectedChatId !== id) {
+    state.contactPanelOpen = false;
   }
+
+  state.selectedChatId = id;
 
   return true;
 }
-
 
 export function clearActiveConversation() {
-  state.activeConversationId = null;
-  state.isContactPanelOpen = false;
+  state.selectedChatId = null;
+  state.contactPanelOpen = false;
 }
 
+export function getMessages(conversationId) {
+  const messages = state.messages[conversationId];
 
-/*
-=========================================================
-CONTACT PANEL
-=========================================================
-*/
-
-export function openContactPanel() {
-  if (!state.activeConversationId) {
-    return false;
-  }
-
-  state.isContactPanelOpen = true;
-
-  return true;
+  return messages ? clone(messages) : [];
 }
 
-
-export function closeContactPanel() {
-  state.isContactPanelOpen = false;
-
-  return true;
-}
-
-
-export function toggleContactPanel() {
-  if (!state.activeConversationId) {
-    return false;
-  }
-
-  state.isContactPanelOpen =
-    !state.isContactPanelOpen;
-
-  return true;
-}
-
-
-/*
-=========================================================
-MESSAGES
-=========================================================
-*/
-
-export function addMessage(
-  conversationId,
-  message
-) {
-  if (
-    !isValidId(conversationId) ||
-    !message ||
-    typeof message !== "object"
-  ) {
-    return false;
-  }
-
-  const conversation =
-    getConversationById(conversationId);
+export function addMessage(conversationId, message) {
+  const conversation = state.conversations.find(
+    (item) => item.id === conversationId
+  );
 
   if (!conversation) {
     return false;
   }
 
   const text =
-    typeof message.text === "string"
+    typeof message?.text === "string"
       ? message.text.trim()
       : "";
 
@@ -305,15 +105,10 @@ export function addMessage(
     return false;
   }
 
-  if (!state.messages[conversationId]) {
-    state.messages[conversationId] = [];
-  }
-
   const newMessage = {
     id:
-      isValidId(message.id)
-        ? message.id
-        : `${conversationId}-${Date.now()}`,
+      message.id ??
+      `${conversationId}-${Date.now()}`,
 
     conversationId,
 
@@ -330,35 +125,27 @@ export function addMessage(
         : "",
   };
 
-  state.messages[
-    conversationId
-  ].push(newMessage);
+  if (!state.messages[conversationId]) {
+    state.messages[conversationId] = [];
+  }
+
+  state.messages[conversationId].push(newMessage);
 
   updateConversationPreview(
     conversationId,
     newMessage
   );
 
-  return {
-    ...newMessage,
-  };
+  return clone(newMessage);
 }
-
-
-/*
-=========================================================
-CONVERSATION PREVIEW
-=========================================================
-*/
 
 function updateConversationPreview(
   conversationId,
   message
 ) {
-  const index =
-    getConversationIndex(
-      conversationId
-    );
+  const index = state.conversations.findIndex(
+    (item) => item.id === conversationId
+  );
 
   if (index === -1) {
     return;
@@ -371,14 +158,38 @@ function updateConversationPreview(
   };
 }
 
+export function isContactPanelOpen() {
+  return state.contactPanelOpen;
+}
 
-/*
-=========================================================
-RESET STORE
-=========================================================
-*/
+export function openContactPanel() {
+  if (!state.selectedChatId) {
+    return false;
+  }
+
+  state.contactPanelOpen = true;
+  return true;
+}
+
+export function closeContactPanel() {
+  state.contactPanelOpen = false;
+}
+
+export function toggleContactPanel() {
+  if (!state.selectedChatId) {
+    return false;
+  }
+
+  state.contactPanelOpen =
+    !state.contactPanelOpen;
+
+  return state.contactPanelOpen;
+}
 
 export function resetStore() {
-  state =
-    createStateCopy(initialState);
+  state.view = "chats";
+  state.selectedChatId = null;
+  state.contactPanelOpen = false;
+  state.conversations = getMockConversations();
+  state.messages = getMockMessages();
 }

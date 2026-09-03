@@ -1,36 +1,17 @@
-/*
-=========================================================
-BEAN — MAIN ENTRY
-=========================================================
-
-Frontend prototype only.
-
-Backend, authentication, Supabase, realtime,
-messaging logic, NEYO and Ghost will be added later.
-=========================================================
-*/
-
 "use strict";
 
 const app = document.getElementById("app");
 
 if (!app) {
-  throw new Error("Bean: #app element not found.");
+  throw new Error("Bean: app root not found.");
 }
 
-/*
-=========================================================
-APP START
-=========================================================
-*/
-
-function startApp() {
+function initApp() {
   app.innerHTML = `
-    <div class="bean-app">
-      <!-- Bean frontend will render here -->
-    </div>
+    <main class="bean-app">
+      <div id="bean-root"></div>
+    </main>
   `;
 }
 
-startApp();
-
+initApp();

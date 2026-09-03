@@ -6,25 +6,25 @@ BEAN — COMPOSER
 =========================================================
 
 Owns:
-- Message input UI
-- Send button
-- Auto-resize
+- Message composer UI
+- Input resize
+- Send button state
 - Enter to send
 - Shift + Enter for new line
-- Composer events
+- Send callback
 
 Does not own:
 - Message storage
 - Message rendering
 - Backend
 - Realtime
-- Attachments
 =========================================================
 */
 
+
 /*
 =========================================================
-ICON
+SEND ICON
 =========================================================
 */
 
@@ -40,10 +40,11 @@ const sendIcon = `
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <path d="M12 19V5" />
-    <path d="m6 11 6-6 6 6" />
+    <path d="M12 19V5"></path>
+    <path d="M6 11l6-6 6 6"></path>
   </svg>
 `;
+
 
 /*
 =========================================================
@@ -88,22 +89,24 @@ export function createComposer() {
   `;
 }
 
+
 /*
 =========================================================
-AUTO RESIZE
+RESIZE INPUT
 =========================================================
 */
 
 function resizeInput(input) {
   input.style.height = "auto";
 
-  const height = Math.min(
+  const nextHeight = Math.min(
     input.scrollHeight,
     140
   );
 
-  input.style.height = `${height}px`;
+  input.style.height = `${nextHeight}px`;
 }
+
 
 /*
 =========================================================
@@ -112,15 +115,16 @@ SEND BUTTON STATE
 */
 
 function updateSendButton(input, button) {
-  const hasMessage =
+  const hasText =
     input.value.trim().length > 0;
 
-  button.disabled = !hasMessage;
+  button.disabled = !hasText;
 }
+
 
 /*
 =========================================================
-RESET
+RESET COMPOSER
 =========================================================
 */
 
@@ -128,12 +132,16 @@ function resetComposer(input, button) {
   input.value = "";
   input.style.height = "auto";
 
-  updateSendButton(input, button);
+  updateSendButton(
+    input,
+    button
+  );
 }
+
 
 /*
 =========================================================
-INITIALIZE
+INITIALIZE COMPOSER
 =========================================================
 */
 
@@ -145,82 +153,120 @@ export function initComposer(onSend) {
     document.getElementById("messageInput");
 
   const sendButton =
-    document.getElementById("messageSendButton");
+    document.getElementById(
+      "messageSendButton"
+    );
 
-  if (!form || !input || !sendButton) {
+
+  if (
+    !form ||
+    !input ||
+    !sendButton
+  ) {
     console.warn(
       "Bean: composer elements not found."
     );
+
     return;
   }
 
-  /*
-  =======================================================
-  INPUT
-  =======================================================
-  */
-
-  input.addEventListener("input", () => {
-    resizeInput(input);
-    updateSendButton(input, sendButton);
-  });
 
   /*
   =======================================================
-  KEYBOARD
+  INPUT CHANGE
   =======================================================
   */
 
-  input.addEventListener("keydown", (event) => {
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey &&
-      !event.isComposing
-    ) {
+  input.addEventListener(
+    "input",
+    () => {
+      resizeInput(input);
+
+      updateSendButton(
+        input,
+        sendButton
+      );
+    }
+  );
+
+
+  /*
+  =======================================================
+  ENTER TO SEND
+  =======================================================
+  */
+
+  input.addEventListener(
+    "keydown",
+    (event) => {
+      const shouldSend =
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        !event.isComposing;
+
+
+      if (!shouldSend) {
+        return;
+      }
+
+
       event.preventDefault();
 
-      if (input.value.trim()) {
-        form.requestSubmit();
+
+      if (!input.value.trim()) {
+        return;
       }
+
+
+      form.requestSubmit();
     }
-  });
+  );
+
 
   /*
   =======================================================
-  SUBMIT
+  FORM SUBMIT
   =======================================================
   */
 
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
+  form.addEventListener(
+    "submit",
+    (event) => {
+      event.preventDefault();
 
-    const text = input.value.trim();
 
-    if (!text) {
-      return;
+      const text =
+        input.value.trim();
+
+
+      if (!text) {
+        return;
+      }
+
+
+      if (
+        typeof onSend !== "function"
+      ) {
+        return;
+      }
+
+
+      const accepted =
+        onSend(text);
+
+
+      if (accepted === false) {
+        return;
+      }
+
+
+      resetComposer(
+        input,
+        sendButton
+      );
     }
+  );
 
-    if (typeof onSend !== "function") {
-      return;
-    }
-
-    const result = onSend(text);
-
-    /*
-     * Returning false means the message
-     * was not accepted.
-     */
-    if (result === false) {
-      return;
-    }
-
-    resetComposer(
-      input,
-      sendButton
-    );
-
-    input.focus();
-  });
 
   /*
   =======================================================
@@ -229,20 +275,31 @@ export function initComposer(onSend) {
   */
 
   resizeInput(input);
-  updateSendButton(input, sendButton);
+
+  updateSendButton(
+    input,
+    sendButton
+  );
 }
+
 
 /*
 =========================================================
-FOCUS
+FOCUS COMPOSER
 =========================================================
 */
 
 export function focusComposer() {
   const input =
-    document.getElementById("messageInput");
+    document.getElementById(
+      "messageInput"
+    );
 
-  if (input) {
-    input.focus();
+
+  if (!input) {
+    return;
   }
+
+
+  input.focus();
 }

@@ -1,42 +1,392 @@
 "use strict";
 
 function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-  })[char]);
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getInitials(conversation) {
+  if (conversation?.initials) {
+    return conversation.initials;
+  }
+
+  return String(conversation?.name ?? "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .toUpperCase() || "?";
+}
+
+const icons = {
+  close: `
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <path d="m6 6 12 12"/>
+      <path d="m18 6-12 12"/>
+    </svg>
+  `,
+
+  copy: `
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <rect x="9" y="9" width="10" height="10" rx="2"/>
+      <path d="M15 9V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+    </svg>
+  `,
+
+  video: `
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <rect x="3" y="5" width="14" height="14" rx="3"/>
+      <path d="m17 10 4-2v8l-4-2z"/>
+    </svg>
+  `,
+
+  phone: `
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2
+        19.8 19.8 0 0 1-8.6-3.1
+        19.5 19.5 0 0 1-6-6
+        19.8 19.8 0 0 1-3.1-8.6
+        A2 2 0 0 1 4.1 2h3
+        a2 2 0 0 1 2 1.7"/>
+    </svg>
+  `,
+
+  user: `
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M4 21a8 8 0 0 1 16 0"/>
+    </svg>
+  `,
+
+  bell: `
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <path d="M18 8a6 6 0 0 0-12 0
+        c0 7-3 7-3 9h18
+        c0-2-3-2-3-9"/>
+      <path d="M10 21h4"/>
+    </svg>
+  `,
+};
+
+function createAction(action, label, icon) {
+  return `
+    <button
+      class="bean-contact-action"
+      type="button"
+      data-contact-action="${action}"
+    >
+      <span class="bean-contact-action__icon">
+        ${icon}
+      </span>
+
+      <span>${label}</span>
+    </button>
+  `;
+}
+
+function createSharedFiles(files = []) {
+  if (!files.length) {
+    return `
+      <div class="bean-contact-empty">
+        No shared files yet.
+      </div>
+    `;
+  }
+
+  return files
+    .slice(0, 3)
+    .map(
+      (file) => `
+        <div class="bean-shared-file">
+          <div class="bean-shared-file__icon">
+            ${escapeHTML(file.type ?? "FILE")}
+          </div>
+
+          <div class="bean-shared-file__info">
+            <span class="bean-shared-file__name">
+              ${escapeHTML(file.name)}
+            </span>
+
+            <span class="bean-shared-file__meta">
+              ${escapeHTML(file.size ?? "")}
+            </span>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function createSharedMedia(media = []) {
+  if (!media.length) {
+    return `
+      <div class="bean-contact-empty">
+        No shared media yet.
+      </div>
+    `;
+  }
+
+  return media
+    .slice(0, 4)
+    .map(
+      (item) => `
+        <div class="bean-shared-media__item">
+          ${
+            item.url
+              ? `
+                <img
+                  src="${escapeHTML(item.url)}"
+                  alt="${escapeHTML(item.alt ?? "Shared media")}"
+                >
+              `
+              : `
+                <span aria-hidden="true">🖼</span>
+              `
+          }
+        </div>
+      `
+    )
+    .join("");
 }
 
 export function createContactPanel(conversation) {
+  if (!conversation) {
+    return "";
+  }
+
+  const online = conversation.status === "online";
+
+  const beanId =
+    conversation.beanId ??
+    `bean@${String(conversation.name ?? "")
+      .toLowerCase()
+      .replace(/\s+/g, ".")}`;
+
   return `
-    <aside class="bean-contact-panel" id="contactPanel" aria-label="Conversation details">
-      <header><h2>Details</h2><button type="button" data-contact-action="close" aria-label="Close">×</button></header>
-      <div class="bean-contact-panel__profile">
-        <div class="bean-contact-panel__avatar">${escapeHTML(conversation.initials)}</div>
-        <h3>${escapeHTML(conversation.name)}</h3>
-        <p>${escapeHTML(conversation.beanId)}</p>
-        <small>${conversation.status === "online" ? "Online" : "Offline"}</small>
-      </div>
-      <div class="bean-contact-panel__actions">
-        <button type="button" data-contact-action="voice">Call</button>
-        <button type="button" data-contact-action="video">Video</button>
-        <button type="button" data-contact-action="search">Search</button>
-        <button type="button" data-contact-action="mute">Mute</button>
-      </div>
-      <div class="bean-contact-panel__section">
-        <button type="button" data-contact-action="media">Media <span>›</span></button>
-        <button type="button" data-contact-action="files">Files <span>›</span></button>
-        <button type="button" data-contact-action="links">Links <span>›</span></button>
-        <button class="is-danger" type="button" data-contact-action="block">Block contact <span>›</span></button>
+    <aside
+      class="bean-contact-panel"
+      id="contactPanel"
+      aria-label="Contact details"
+    >
+      <header class="bean-contact-panel__header">
+        <h2>Details</h2>
+
+        <button
+          class="bean-icon-button"
+          type="button"
+          data-contact-action="close"
+          aria-label="Close details"
+          title="Close"
+        >
+          ${icons.close}
+        </button>
+      </header>
+
+      <div class="bean-contact-panel__content">
+        <section class="bean-contact-profile">
+          <div class="bean-contact-profile__avatar-wrap">
+            <div class="bean-contact-profile__avatar">
+              ${escapeHTML(getInitials(conversation))}
+            </div>
+
+            ${
+              online
+                ? `
+                  <span
+                    class="bean-contact-profile__status"
+                    aria-hidden="true"
+                  ></span>
+                `
+                : ""
+            }
+          </div>
+
+          <div class="bean-contact-profile__info">
+            <h3 class="bean-contact-profile__name">
+              ${escapeHTML(conversation.name)}
+            </h3>
+
+            <span class="bean-contact-profile__presence">
+              ${online ? "Online" : "Offline"}
+            </span>
+          </div>
+        </section>
+
+        <section class="bean-contact-card">
+          <div class="bean-contact-card__label">
+            Bean ID
+          </div>
+
+          <div class="bean-contact-id">
+            <span>
+              ${escapeHTML(beanId)}
+            </span>
+
+            <button
+              class="bean-contact-id__copy"
+              type="button"
+              data-contact-action="copy-id"
+              data-bean-id="${escapeHTML(beanId)}"
+              aria-label="Copy Bean ID"
+              title="Copy Bean ID"
+            >
+              ${icons.copy}
+            </button>
+          </div>
+        </section>
+
+        <section class="bean-contact-card">
+          <div class="bean-contact-card__label">
+            About
+          </div>
+
+          <p class="bean-contact-about">
+            ${escapeHTML(
+              conversation.about ??
+              "Available on Bean."
+            )}
+          </p>
+        </section>
+
+        <section class="bean-contact-section">
+          <h3 class="bean-contact-section__title">
+            Quick Actions
+          </h3>
+
+          <div class="bean-contact-actions">
+            ${createAction(
+              "video",
+              "Start Video Call",
+              icons.video
+            )}
+
+            ${createAction(
+              "call",
+              "Voice Call",
+              icons.phone
+            )}
+
+            ${createAction(
+              "profile",
+              "View Profile",
+              icons.user
+            )}
+
+            ${createAction(
+              "mute",
+              "Mute Notifications",
+              icons.bell
+            )}
+          </div>
+        </section>
+
+        <section class="bean-contact-section">
+          <div class="bean-contact-section__heading">
+            <h3 class="bean-contact-section__title">
+              Shared Files
+            </h3>
+
+            <button
+              class="bean-contact-section__link"
+              type="button"
+              data-contact-action="files"
+            >
+              View all
+            </button>
+          </div>
+
+          <div class="bean-shared-files">
+            ${createSharedFiles(conversation.files)}
+          </div>
+        </section>
+
+        <section class="bean-contact-section">
+          <div class="bean-contact-section__heading">
+            <h3 class="bean-contact-section__title">
+              Shared Media
+            </h3>
+
+            <button
+              class="bean-contact-section__link"
+              type="button"
+              data-contact-action="media"
+            >
+              View all
+            </button>
+          </div>
+
+          <div class="bean-shared-media">
+            ${createSharedMedia(conversation.media)}
+          </div>
+        </section>
       </div>
     </aside>
   `;
 }
 
-export function initContactPanel(onAction) {
-  const panel = document.getElementById("contactPanel");
-  if (!panel) return;
-  panel.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-contact-action]");
-    if (button?.dataset.contactAction) onAction?.(button.dataset.contactAction);
+export function initContactPanel(container, onAction) {
+  if (!(container instanceof Element)) {
+    return;
+  }
+
+  container.addEventListener("click", async (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const button = target.closest(
+      "[data-contact-action]"
+    );
+
+    if (!button) {
+      return;
+    }
+
+    const action = button.dataset.contactAction;
+
+    if (!action) {
+      return;
+    }
+
+    if (action === "copy-id") {
+      const beanId = button.dataset.beanId;
+
+      if (beanId && navigator.clipboard) {
+        try {
+          await navigator.clipboard.writeText(beanId);
+        } catch {
+          // Clipboard permission may be unavailable.
+        }
+      }
+    }
+
+    if (typeof onAction === "function") {
+      onAction(action);
+    }
   });
 }

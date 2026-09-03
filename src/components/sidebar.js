@@ -1,112 +1,49 @@
 "use strict";
 
-/*
-=========================================================
-BEAN — SIDEBAR
-=========================================================
-
-Owns:
-- Brand area
-- Primary navigation
-- Secondary navigation
-- Profile button
-- Active navigation state
-
-Does not own:
-- Page routing
-- Backend
-- Authentication
-- Profile data
-=========================================================
-*/
-
-/*
-=========================================================
-ICONS
-=========================================================
-*/
-
 const icons = {
   chats: `
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
       <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
     </svg>
   `,
 
   contacts: `
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
       <circle cx="12" cy="8" r="4"/>
       <path d="M4 21a8 8 0 0 1 16 0"/>
     </svg>
   `,
 
   search: `
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
       <circle cx="11" cy="11" r="7"/>
       <path d="m20 20-4-4"/>
     </svg>
   `,
 
   settings: `
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+      stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
       <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.5 19.3a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3V9.6h.1A1.7 1.7 0 0 0 4.7 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.7a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1v4h-.1A1.7 1.7 0 0 0 19.4 15z"/>
+      <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1A7 7 0 0 0 15 6l-.3-2.6h-4L10.4 6A7 7 0 0 0 8.8 7L6.4 6 4.4 9.5 6.3 11a7 7 0 0 0 0 2l-1.9 1.5L6.4 18l2.4-1a7 7 0 0 0 1.6 1l.3 2.6h4L15 18a7 7 0 0 0 1.6-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 0-1z"/>
     </svg>
   `,
 };
 
-/*
-=========================================================
-NAV BUTTON
-=========================================================
-*/
+function createNavButton(id, label, icon, activeView) {
+  const active = id === activeView;
 
-function createNavButton({
-  id,
-  label,
-  icon,
-  active = false,
-}) {
   return `
     <button
       class="bean-nav-button${active ? " is-active" : ""}"
@@ -121,69 +58,29 @@ function createNavButton({
   `;
 }
 
-/*
-=========================================================
-SIDEBAR
-=========================================================
-*/
-
 export function createSidebar(activeView = "chats") {
   return `
-    <aside
-      class="bean-sidebar"
-      aria-label="Main navigation"
-    >
-
+    <aside class="bean-sidebar" aria-label="Main navigation">
       <div class="bean-sidebar__top">
-
         <button
           class="bean-sidebar__logo"
           type="button"
-          data-nav="home"
-          aria-label="Bean home"
+          data-nav="chats"
+          aria-label="Bean"
           title="Bean"
         >
-          <span aria-hidden="true">B</span>
+          B
         </button>
-
       </div>
 
-      <nav
-        class="bean-sidebar__nav"
-        aria-label="Primary navigation"
-      >
-
-        ${createNavButton({
-          id: "chats",
-          label: "Chats",
-          icon: icons.chats,
-          active: activeView === "chats",
-        })}
-
-        ${createNavButton({
-          id: "contacts",
-          label: "Contacts",
-          icon: icons.contacts,
-          active: activeView === "contacts",
-        })}
-
-        ${createNavButton({
-          id: "search",
-          label: "Search",
-          icon: icons.search,
-          active: activeView === "search",
-        })}
-
+      <nav class="bean-sidebar__nav" aria-label="Primary navigation">
+        ${createNavButton("chats", "Chats", icons.chats, activeView)}
+        ${createNavButton("contacts", "Contacts", icons.contacts, activeView)}
+        ${createNavButton("search", "Search", icons.search, activeView)}
       </nav>
 
       <div class="bean-sidebar__bottom">
-
-        ${createNavButton({
-          id: "settings",
-          label: "Settings",
-          icon: icons.settings,
-          active: activeView === "settings",
-        })}
+        ${createNavButton("settings", "Settings", icons.settings, activeView)}
 
         <button
           class="bean-sidebar__profile"
@@ -192,36 +89,21 @@ export function createSidebar(activeView = "chats") {
           aria-label="Profile"
           title="Profile"
         >
-          <span
-            class="bean-avatar bean-avatar--profile"
-            aria-hidden="true"
-          >
+          <span class="bean-avatar bean-avatar--profile" aria-hidden="true">
             SY
           </span>
 
-          <span class="bean-status-dot"></span>
+          <span class="bean-status-dot" aria-hidden="true"></span>
         </button>
-
       </div>
-
     </aside>
   `;
 }
 
-/*
-=========================================================
-SIDEBAR EVENTS
-=========================================================
-*/
-
 export function initSidebar(onNavigate) {
-  const sidebar =
-    document.querySelector(".bean-sidebar");
+  const sidebar = document.querySelector(".bean-sidebar");
 
   if (!sidebar) {
-    console.warn(
-      "Bean: sidebar element not found."
-    );
     return;
   }
 
@@ -250,36 +132,19 @@ export function initSidebar(onNavigate) {
   });
 }
 
-/*
-=========================================================
-ACTIVE STATE
-=========================================================
-*/
-
 export function setActiveSidebarView(view) {
-  const buttons =
-    document.querySelectorAll(
-      ".bean-sidebar [data-nav]"
-    );
+  document
+    .querySelectorAll(".bean-sidebar [data-nav]")
+    .forEach((button) => {
+      const active = button.dataset.nav === view;
 
-  buttons.forEach((button) => {
-    const isActive =
-      button.dataset.nav === view;
+      button.classList.toggle("is-active", active);
 
-    button.classList.toggle(
-      "is-active",
-      isActive
-    );
-
-    if (
-      button.classList.contains(
-        "bean-nav-button"
-      )
-    ) {
-      button.setAttribute(
-        "aria-current",
-        isActive ? "page" : "false"
-      );
-    }
-  });
+      if (button.classList.contains("bean-nav-button")) {
+        button.setAttribute(
+          "aria-current",
+          active ? "page" : "false"
+        );
+      }
+    });
 }

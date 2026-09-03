@@ -6,17 +6,30 @@ BEAN — CHAT VIEW
 =========================================================
 
 Owns:
-- Selected conversation UI
-- Chat header
+- Selected conversation view
 - Prototype messages
-- Composer
+- Message composer
 - Local message sending
+
+Uses:
+- chat-header.js
 
 Does not own:
 - Backend
 - Realtime
 - Authentication
 - Persistence
+=========================================================
+*/
+
+import {
+  createChatHeader,
+  initChatHeader,
+} from "./chat-header.js";
+
+/*
+=========================================================
+PROTOTYPE MESSAGE DATA
 =========================================================
 */
 
@@ -98,7 +111,7 @@ HELPERS
 */
 
 function escapeHTML(value) {
-  return String(value)
+  return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -119,67 +132,6 @@ function getCurrentTime() {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date());
-}
-
-/*
-=========================================================
-CHAT HEADER
-=========================================================
-*/
-
-function createChatHeader(conversation) {
-  return `
-    <header class="bean-chat-header">
-
-      <div class="bean-chat-header__person">
-
-        <div
-          class="bean-avatar"
-          aria-hidden="true"
-        >
-          ${escapeHTML(conversation.initials)}
-        </div>
-
-        <div class="bean-chat-header__info">
-
-          <div class="bean-chat-header__name">
-            ${escapeHTML(conversation.name)}
-          </div>
-
-          <div class="bean-chat-header__status">
-            Online
-          </div>
-
-        </div>
-
-      </div>
-
-      <div class="bean-chat-header__actions">
-
-        <button
-          class="bean-nav-button"
-          type="button"
-          aria-label="Voice call"
-          title="Voice call"
-          data-chat-action="voice"
-        >
-          <span aria-hidden="true">☎</span>
-        </button>
-
-        <button
-          class="bean-nav-button"
-          type="button"
-          aria-label="Conversation information"
-          title="Info"
-          data-chat-action="info"
-        >
-          <span aria-hidden="true">ⓘ</span>
-        </button>
-
-      </div>
-
-    </header>
-  `;
 }
 
 /*
@@ -216,21 +168,16 @@ function createMessage(message) {
 
 /*
 =========================================================
-MESSAGES
+MESSAGE LIST
 =========================================================
 */
 
-function createMessages(conversation) {
+function createMessageList(conversation) {
   const messages = getMessages(conversation.id);
 
-  let content;
-
-  if (messages.length > 0) {
-    content = messages
-      .map(createMessage)
-      .join("");
-  } else {
-    content = `
+  const content = messages.length
+    ? messages.map(createMessage).join("")
+    : `
       <div class="bean-empty">
 
         <div class="bean-empty__content">
@@ -248,7 +195,6 @@ function createMessages(conversation) {
 
       </div>
     `;
-  }
 
   return `
     <section
@@ -285,7 +231,6 @@ function createComposer() {
           maxlength="5000"
           placeholder="Message"
           aria-label="Message"
-          autocomplete="off"
         ></textarea>
 
         <button
@@ -402,6 +347,46 @@ function initComposer(conversation) {
 
 /*
 =========================================================
+HEADER ACTIONS
+=========================================================
+*/
+
+function handleHeaderAction(action, conversation) {
+  switch (action) {
+    case "profile":
+    case "info":
+      console.log(
+        `Bean: open details for ${conversation.name}`
+      );
+      break;
+
+    case "voice":
+      console.log(
+        `Bean: voice call with ${conversation.name}`
+      );
+      break;
+
+    case "video":
+      console.log(
+        `Bean: video call with ${conversation.name}`
+      );
+      break;
+
+    case "search":
+      console.log(
+        `Bean: search conversation with ${conversation.name}`
+      );
+      break;
+
+    default:
+      console.warn(
+        `Bean: unknown chat header action "${action}".`
+      );
+  }
+}
+
+/*
+=========================================================
 RENDER CHAT VIEW
 =========================================================
 */
@@ -429,10 +414,18 @@ export function renderChatView(conversation) {
 
   chatView.innerHTML = `
     ${createChatHeader(conversation)}
-    ${createMessages(conversation)}
+    ${createMessageList(conversation)}
     ${createComposer()}
   `;
 
+  initChatHeader((action) => {
+    handleHeaderAction(
+      action,
+      conversation
+    );
+  });
+
   initComposer(conversation);
+
   scrollToLatestMessage();
 }

@@ -2,12 +2,20 @@
  * Main Entry Point - src/main.js                                    *
  * ================================================================= */
 
-import { createAppShell } from './components/app-shell.js';
+import { store } from './core/store.js';
+import { renderAppShell } from './components/app-shell.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const appElement = document.getElementById('app');
-  if (appElement) {
-    const shell = createAppShell();
-    appElement.appendChild(shell);
-  }
+  const root = document.getElementById('app');
+  if (!root) return;
+
+  const appShell = renderAppShell();
+  root.appendChild(appShell);
+
+  store.subscribe(() => {
+    if (appShell.updateShell) {
+      appShell.updateShell();
+    }
+  });
 });
+```[cite: 1]

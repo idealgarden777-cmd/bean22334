@@ -7,26 +7,46 @@ import { renderChatHeader } from './chat-header.js';
 import { renderMessageList } from './message-list.js';
 import { renderComposer } from './composer.js';
 
-export function renderChatView(state) {
-  const chatView = document.createElement('section');
-  chatView.className = 'chat-view';
-  chatView.style.flex = '1';
-  chatView.style.display = 'flex';
-  chatView.style.flexDirection = 'column';
-  chatView.style.backgroundColor = 'var(--bg-bone)'; // Warm Off-White / Bone background[cite: 1]
-  chatView.style.height = '100%';
-  chatView.style.overflow = 'hidden';
+export function renderChatView() {
+  const container = document.createElement('div');
+  container.className = 'chat-view';
+  container.style.cssText = `
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--bg-bone);
+    min-width: 0;
+    box-sizing: border-box;
+  `;
 
-  const activeContact = state.contacts.find(c => c.id === state.activeContactId);
-  const messages = state.messages[state.activeContactId] || [];
+  const state = store.getState();
+  const activeContact = state.activeContact;
+
+  if (!activeContact) {
+    const emptyState = document.createElement('div');
+    emptyState.style.cssText = `
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-espresso);
+      opacity: 0.5;
+      font-size: 14px;
+    `;
+    emptyState.textContent = 'Select a conversation to start messaging';
+    container.appendChild(emptyState);
+    return container;
+  }
 
   const header = renderChatHeader(activeContact);
-  const messageList = renderMessageList(messages, state.currentUser);
+  const messageList = renderMessageList();
   const composer = renderComposer();
 
-  chatView.appendChild(header);
-  chatView.appendChild(messageList);
-  chatView.appendChild(composer);
+  container.appendChild(header);
+  container.appendChild(messageList);
+  container.appendChild(composer);
 
-  return chatView;
+  return container;
 }
+```[cite: 2]

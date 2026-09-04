@@ -1,12 +1,19 @@
 /* ================================================================= *
- * App Styles & Responsive Layout - src/styles/app.css               *
+ * App Styles - src/styles/app.css                                   *
  * ================================================================= */
 
+:root {
+  --bg-bone: #FBF9F5;
+  --surface-sand: #F2ECE1;
+  --text-espresso: #2C2523;
+  --accent-sage: #5A6B5C;
+}
+
 body {
-  font-family: var(--font-family);
+  font-family: 'Sora', sans-serif;
   background-color: var(--bg-bone);
   color: var(--text-espresso);
-  font-size: var(--font-size-body);
+  font-size: 14px;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -24,7 +31,6 @@ body {
   width: 100%;
   height: 100%;
   position: relative;
-  overflow: hidden;
 }
 
 .sidebar {
@@ -35,7 +41,6 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  transition: transform 0.3s ease;
 }
 
 .chat-view {
@@ -43,28 +48,35 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-width: 0;
   background-color: var(--bg-bone);
-  overflow: hidden;
 }
 
-/* Responsive Breakpoint for Mobile / Tablets */
+/* Responsive Adaptive Layout for Mobile & Desktop */
 @media (max-width: 768px) {
-  .app-shell.mobile-chat-active .sidebar {
-    display: none;
-  }
-  
-  .app-shell:not(.mobile-chat-active) .chat-view {
-    display: none;
+  .app-shell {
+    position: relative;
+    overflow: hidden;
   }
 
   .sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     min-width: 100%;
-    border-right: none;
+    z-index: 10;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .chat-view {
     width: 100%;
+    height: 100%;
+  }
+
+  /* When a chat is selected on mobile, slide out the sidebar */
+  .app-shell.mobile-chat-open .sidebar {
+    transform: translateX(-100%);
   }
 }
 

@@ -1,4 +1,3 @@
-```js
 /* ================================================================= *
  * Composer Component - src/components/composer.js                   *
  * ================================================================= */
@@ -22,17 +21,17 @@ export function renderComposer() {
   composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
   composer.style.position = 'relative';
-  composer.style.transition = 'border-radius 0.15s ease';
 
   const attachWrapper = document.createElement('div');
   attachWrapper.style.position = 'relative';
   attachWrapper.style.display = 'flex';
-  attachWrapper.style.alignSelf = 'flex-end';
+  attachWrapper.style.alignItems = 'flex-end';
 
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
   attachBtn.innerHTML = icons.plus;
   styleButton(attachBtn, '9999px');
+  attachBtn.title = 'Attach';
 
   const dropup = document.createElement('div');
   dropup.className = 'composer-dropup';
@@ -94,8 +93,8 @@ export function renderComposer() {
   inputContainer.style.flex = '1';
   inputContainer.style.display = 'flex';
   inputContainer.style.alignItems = 'flex-end';
-  inputContainer.style.minWidth = '0';
   inputContainer.style.position = 'relative';
+  inputContainer.style.minWidth = '0';
 
   const input = document.createElement('textarea');
   input.rows = 1;
@@ -103,7 +102,6 @@ export function renderComposer() {
   input.style.width = '100%';
   input.style.minHeight = '36px';
   input.style.maxHeight = '160px';
-  input.style.height = '36px';
   input.style.background = 'transparent';
   input.style.border = 'none';
   input.style.outline = 'none';
@@ -116,17 +114,20 @@ export function renderComposer() {
   input.style.resize = 'none';
   input.style.overflowY = 'hidden';
   input.style.boxSizing = 'border-box';
+  input.style.display = 'block';
+
+  inputContainer.appendChild(input);
 
   function autoGrow() {
     input.style.height = 'auto';
 
     const maxHeight = 160;
-    const newHeight = Math.min(input.scrollHeight, maxHeight);
+    const height = Math.min(input.scrollHeight, maxHeight);
 
-    input.style.height = `${newHeight}px`;
+    input.style.height = `${height}px`;
     input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
 
-    composer.style.borderRadius = newHeight > 40 ? '20px' : '28px';
+    composer.style.borderRadius = height > 52 ? '22px' : '28px';
   }
 
   input.addEventListener('input', autoGrow);
@@ -138,12 +139,10 @@ export function renderComposer() {
     }
   });
 
-  inputContainer.appendChild(input);
-
   const emojiWrapper = document.createElement('div');
   emojiWrapper.style.position = 'relative';
   emojiWrapper.style.display = 'flex';
-  emojiWrapper.style.alignSelf = 'flex-end';
+  emojiWrapper.style.alignItems = 'flex-end';
 
   const emojiBtn = document.createElement('button');
   emojiBtn.type = 'button';
@@ -164,6 +163,7 @@ export function renderComposer() {
   emojiPicker.style.boxShadow = '0 -4px 20px rgba(44, 37, 35, 0.08)';
   emojiPicker.style.zIndex = '100';
   emojiPicker.style.padding = '10px';
+  emojiPicker.style.displayGrid = 'grid';
   emojiPicker.style.gridTemplateColumns = 'repeat(5, 1fr)';
   emojiPicker.style.gap = '6px';
 
@@ -198,81 +198,29 @@ export function renderComposer() {
 
       const start = input.selectionStart;
       const end = input.selectionEnd;
-      const value = input.value;
 
-      input.value = value.slice(0, start) + emo + value.slice(end);
-      input.focus();
+      input.value =
+        input.value.slice(0, start) +
+        emo +
+        input.value.slice(end);
+
       input.selectionStart = input.selectionEnd = start + emo.length;
-
+      input.focus();
       autoGrow();
     });
 
     emojiPicker.appendChild(emoItem);
   });
 
+  let isRecording = false;
+  let recordingTimer = null;
+  let secondsCount = 0;
+
   const micBtn = document.createElement('button');
   micBtn.type = 'button';
   micBtn.innerHTML = icons.mic;
   styleButton(micBtn, '9999px');
   micBtn.title = 'Record Voice Note';
-  micBtn.style.alignSelf = 'flex-end';
-
-  const sendBtn = document.createElement('button');
-  sendBtn.type = 'submit';
-  sendBtn.innerHTML = icons.send;
-  styleButton(sendBtn, '9999px');
-  sendBtn.style.backgroundColor = 'var(--accent-sage)';
-  sendBtn.style.color = '#FFFFFF';
-  sendBtn.style.alignSelf = 'flex-end';
-
-  let isRecording = false;
-  let recordingTimer = null;
-  let secondsCount = 0;
-
-  attachBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    emojiPicker.style.display = 'none';
-
-    const isVisible = dropup.style.display === 'block';
-    dropup.style.display = isVisible ? 'none' : 'block';
-  });
-
-  emojiBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    dropup.style.display = 'none';
-
-    const isVisible = emojiPicker.style.display === 'grid';
-    emojiPicker.style.display = isVisible ? 'none' : 'grid';
-  });
-
-  micBtn.addEventListener('click', () => {
-    if (isRecording) {
-      stopRecording();
-      store.sendMessage('[Voice Note]');
-      return;
-    }
-
-    isRecording = true;
-    secondsCount = 0;
-
-    micBtn.style.color = '#C94A4A';
-    micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
-    input.value = 'Recording voice note (0:00)...';
-    input.disabled = true;
-    autoGrow();
-
-    recordingTimer = setInterval(() => {
-      secondsCount++;
-
-      const mins = Math.floor(secondsCount / 60);
-      const secs = secondsCount % 60;
-
-      input.value =
-        `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
-
-      autoGrow();
-    }, 1000);
-  });
 
   function stopRecording() {
     clearInterval(recordingTimer);
@@ -288,6 +236,66 @@ export function renderComposer() {
     autoGrow();
     input.focus();
   }
+
+  micBtn.addEventListener('click', () => {
+    isRecording = !isRecording;
+
+    if (isRecording) {
+      micBtn.style.color = '#C94A4A';
+      micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
+
+      input.value = 'Recording voice note (0:00)...';
+      input.disabled = true;
+      secondsCount = 0;
+      autoGrow();
+
+      recordingTimer = setInterval(() => {
+        secondsCount++;
+
+        const mins = Math.floor(secondsCount / 60);
+        const secs = secondsCount % 60;
+
+        input.value =
+          `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
+
+        autoGrow();
+      }, 1000);
+    } else {
+      stopRecording();
+      store.sendMessage('[Voice Note]');
+    }
+  });
+
+  const sendBtn = document.createElement('button');
+  sendBtn.type = 'submit';
+  sendBtn.innerHTML = icons.send;
+  styleButton(sendBtn, '9999px');
+  sendBtn.style.backgroundColor = 'var(--accent-sage)';
+  sendBtn.style.color = '#FFFFFF';
+  sendBtn.title = 'Send';
+
+  attachBtn.addEventListener('click', e => {
+    e.stopPropagation();
+
+    emojiPicker.style.display = 'none';
+
+    const isVisible = dropup.style.display === 'block';
+    dropup.style.display = isVisible ? 'none' : 'block';
+  });
+
+  emojiBtn.addEventListener('click', e => {
+    e.stopPropagation();
+
+    dropup.style.display = 'none';
+
+    const isVisible = emojiPicker.style.display === 'grid';
+    emojiPicker.style.display = isVisible ? 'none' : 'grid';
+  });
+
+  document.addEventListener('click', () => {
+    dropup.style.display = 'none';
+    emojiPicker.style.display = 'none';
+  });
 
   composer.addEventListener('submit', e => {
     e.preventDefault();
@@ -305,17 +313,15 @@ export function renderComposer() {
     store.sendMessage(text);
 
     input.value = '';
-    autoGrow();
-    input.focus();
-  });
+    input.style.height = 'auto';
+    input.style.overflowY = 'hidden';
 
-  document.addEventListener('click', () => {
-    dropup.style.display = 'none';
-    emojiPicker.style.display = 'none';
-  });
+    composer.style.borderRadius = '28px';
 
-  composer.addEventListener('click', e => {
-    e.stopPropagation();
+    requestAnimationFrame(() => {
+      autoGrow();
+      input.focus();
+    });
   });
 
   composer.appendChild(attachWrapper);
@@ -332,6 +338,8 @@ export function renderComposer() {
 
   container.appendChild(composer);
 
+  autoGrow();
+
   return container;
 }
 
@@ -347,7 +355,6 @@ function styleButton(btn, radius) {
   btn.style.display = 'flex';
   btn.style.alignItems = 'center';
   btn.style.justifyContent = 'center';
-  btn.style.flexShrink = '0';
   btn.style.transition = 'background 0.2s ease, color 0.2s ease';
 
   btn.addEventListener('mouseenter', () => {
@@ -368,4 +375,3 @@ function styleButton(btn, radius) {
     }
   });
 }
-```

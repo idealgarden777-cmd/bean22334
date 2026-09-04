@@ -52,9 +52,12 @@ export function renderChatHeader(activeContact) {
   name.style.margin = '0';
 
   const status = document.createElement('span');
-  status.textContent = activeContact.status;
+  // Dynamic typing state check or fallback to regular status
+  status.textContent = activeContact.isTyping ? 'typing...' : activeContact.status;
   status.style.fontSize = '12px';
-  status.style.color = 'rgba(44, 37, 35, 0.6)';
+  status.style.color = activeContact.isTyping ? 'var(--accent-sage)' : 'rgba(44, 37, 35, 0.6)';
+  status.style.fontWeight = activeContact.isTyping ? '600' : '400';
+  status.style.transition = 'color 0.2s ease';
 
   details.appendChild(name);
   details.appendChild(status);
@@ -66,13 +69,12 @@ export function renderChatHeader(activeContact) {
   actions.style.display = 'flex';
   actions.style.alignItems = 'center';
   actions.style.gap = '8px';
-  actions.style.position = 'relative'; // Required for dropdown positioning
+  actions.style.position = 'relative';
 
   const callBtn = createActionButton(icons.phone);
   const videoBtn = createActionButton(icons.video);
   const menuBtn = createActionButton(icons.menu);
 
-  // Dropdown Menu Creation
   const dropdown = document.createElement('div');
   dropdown.className = 'chat-dropdown';
   dropdown.style.display = 'none';
@@ -119,7 +121,6 @@ export function renderChatHeader(activeContact) {
     dropdown.style.display = isVisible ? 'none' : 'block';
   });
 
-  // Close dropdown when clicking outside
   document.addEventListener('click', () => {
     dropdown.style.display = 'none';
   });

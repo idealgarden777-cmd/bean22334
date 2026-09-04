@@ -15,17 +15,19 @@ export function renderComposer() {
   composer.className = 'composer';
   composer.style.position = 'relative';
   composer.style.display = 'flex';
-  composer.style.flexDirection = 'column';
+  composer.style.alignItems = 'center';
   composer.style.backgroundColor = 'var(--surface-sand)';
-  composer.style.borderRadius = '28px';
+  composer.style.borderRadius = '9999px';
   composer.style.padding = '8px';
+  composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
   composer.style.boxSizing = 'border-box';
 
   const inputContainer = document.createElement('div');
-  inputContainer.style.width = '100%';
+  inputContainer.style.flex = '1';
   inputContainer.style.minWidth = '0';
   inputContainer.style.position = 'relative';
+  inputContainer.style.width = '100%';
 
   const input = document.createElement('textarea');
   input.rows = 1;
@@ -33,6 +35,7 @@ export function renderComposer() {
 
   input.style.display = 'block';
   input.style.width = '100%';
+  input.style.height = '36px';
   input.style.minHeight = '36px';
   input.style.maxHeight = '160px';
   input.style.background = 'transparent';
@@ -42,55 +45,26 @@ export function renderComposer() {
   input.style.fontSize = '14px';
   input.style.lineHeight = '20px';
   input.style.color = 'var(--text-espresso)';
-  input.style.padding = '8px 4px 8px 8px';
+  input.style.padding = '8px 0 8px 8px';
   input.style.margin = '0';
   input.style.resize = 'none';
   input.style.overflowY = 'hidden';
   input.style.overflowX = 'hidden';
-  input.style.boxSizing = 'border-box';
   input.style.scrollbarGutter = 'stable';
+  input.style.boxSizing = 'border-box';
 
   inputContainer.appendChild(input);
-  composer.appendChild(inputContainer);
-
-  function autoGrow() {
-    const maxHeight = 160;
-
-    input.style.height = 'auto';
-
-    const contentHeight = input.scrollHeight;
-    const height = Math.min(contentHeight, maxHeight);
-
-    input.style.height = `${height}px`;
-    input.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
-
-    if (contentHeight > maxHeight) {
-      input.scrollTop = input.scrollHeight;
-    }
-
-    composer.style.borderRadius = height > 52 ? '22px' : '28px';
-  }
-
-  input.addEventListener('input', autoGrow);
-
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      composer.requestSubmit();
-    }
-  });
 
   /* --------------------------------------------------------------- *
    * Bottom Toolbar
    * --------------------------------------------------------------- */
 
   const toolbar = document.createElement('div');
-  toolbar.style.width = '100%';
-  toolbar.style.height = '36px';
   toolbar.style.display = 'flex';
   toolbar.style.alignItems = 'center';
   toolbar.style.justifyContent = 'space-between';
-  toolbar.style.marginTop = '4px';
+  toolbar.style.flexShrink = '0';
+  toolbar.style.gap = '4px';
 
   const leftTools = document.createElement('div');
   leftTools.style.display = 'flex';
@@ -244,7 +218,7 @@ export function renderComposer() {
       input.selectionStart = input.selectionEnd = start + emo.length;
 
       input.focus();
-      autoGrow();
+      updateComposer();
     });
 
     emojiPicker.appendChild(emoItem);
@@ -278,7 +252,7 @@ export function renderComposer() {
     input.value = '';
     input.disabled = false;
 
-    autoGrow();
+    updateComposer();
     input.focus();
   }
 
@@ -293,7 +267,7 @@ export function renderComposer() {
       input.disabled = true;
       secondsCount = 0;
 
-      autoGrow();
+      updateComposer();
 
       recordingTimer = setInterval(() => {
         secondsCount++;
@@ -304,7 +278,7 @@ export function renderComposer() {
         input.value =
           `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
 
-        autoGrow();
+        updateComposer();
       }, 1000);
     } else {
       stopRecording();
@@ -325,7 +299,7 @@ export function renderComposer() {
   sendBtn.title = 'Send';
 
   /* --------------------------------------------------------------- *
-   * Toolbar Layout
+   * Toolbar
    * --------------------------------------------------------------- */
 
   leftTools.appendChild(attachWrapper);
@@ -337,7 +311,80 @@ export function renderComposer() {
   toolbar.appendChild(leftTools);
   toolbar.appendChild(rightTools);
 
-  composer.appendChild(toolbar);
+  /* --------------------------------------------------------------- *
+   * Composer Layout
+   * --------------------------------------------------------------- */
+
+  function updateComposer() {
+    input.style.height = 'auto';
+
+    const maxHeight = 160;
+    const contentHeight = input.scrollHeight;
+    const height = Math.min(contentHeight, maxHeight);
+
+    input.style.height = `${height}px`;
+
+    const expanded = contentHeight > 36 || input.value.includes('\n');
+
+    if (!expanded && !isRecording) {
+      composer.style.flexDirection = 'row';
+      composer.style.alignItems = 'center';
+      composer.style.borderRadius = '9999px';
+      composer.style.gap = '8px';
+
+      inputContainer.style.flex = '1';
+      inputContainer.style.width = '100%';
+
+      toolbar.style.width = 'auto';
+      toolbar.style.height = '36px';
+      toolbar.style.marginTop = '0';
+
+      composer.innerHTML = '';
+
+      composer.appendChild(attachWrapper);
+      composer.appendChild(inputContainer);
+      composer.appendChild(toolbar);
+
+      inputContainer.appendChild(input);
+
+      return;
+    }
+
+    composer.style.flexDirection = 'column';
+    composer.style.alignItems = 'stretch';
+    composer.style.borderRadius = '22px';
+    composer.style.gap = '4px';
+
+    inputContainer.style.flex = 'none';
+    inputContainer.style.width = '100%';
+
+    toolbar.style.width = '100%';
+    toolbar.style.height = '36px';
+    toolbar.style.marginTop = '0';
+
+    composer.innerHTML = '';
+
+    composer.appendChild(inputContainer);
+    composer.appendChild(toolbar);
+
+    inputContainer.appendChild(input);
+
+    input.style.overflowY =
+      contentHeight > maxHeight ? 'auto' : 'hidden';
+
+    if (contentHeight > maxHeight) {
+      input.scrollTop = input.scrollHeight;
+    }
+  }
+
+  input.addEventListener('input', updateComposer);
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      composer.requestSubmit();
+    }
+  });
 
   /* --------------------------------------------------------------- *
    * Menus
@@ -349,6 +396,7 @@ export function renderComposer() {
     emojiPicker.style.display = 'none';
 
     const visible = dropup.style.display === 'block';
+
     dropup.style.display = visible ? 'none' : 'block';
   });
 
@@ -358,6 +406,7 @@ export function renderComposer() {
     dropup.style.display = 'none';
 
     const visible = emojiPicker.style.display === 'grid';
+
     emojiPicker.style.display = visible ? 'none' : 'grid';
   });
 
@@ -386,21 +435,17 @@ export function renderComposer() {
     store.sendMessage(text);
 
     input.value = '';
-    input.style.height = 'auto';
+    input.style.height = '36px';
     input.style.overflowY = 'hidden';
     input.scrollTop = 0;
 
-    composer.style.borderRadius = '28px';
-
-    requestAnimationFrame(() => {
-      autoGrow();
-      input.focus();
-    });
+    updateComposer();
+    input.focus();
   });
 
   container.appendChild(composer);
 
-  autoGrow();
+  updateComposer();
 
   return container;
 }

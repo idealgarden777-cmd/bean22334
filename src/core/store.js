@@ -1,52 +1,72 @@
-import { initialData } from '../data/mock-data.js';
+import { mockChats, mockMessages, mockContacts } from '../data/mock-data.js';
 
 class Store {
   constructor() {
     this.state = {
-      currentUser: initialData.currentUser,
-      contacts: initialData.contacts,
-      messages: initialData.messages,
-      activeContactId: initialData.contacts[0].id,
+      chats: mockChats || [],
+      activeChatId: mockChats && mockChats.length > 0 ? mockChats[0].id : null,
+      messages: mockMessages || {},
+      contacts: mockContacts || [],
       searchQuery: '',
-      isContactPanelOpen: true
+      isContactPanelOpen: false
     };
-    this.listeners = [];
+    this.listeners = new Set();
   }
 
-  getState() { return this.state; }
+  getState() {
+    return this.state;
+  }
 
   subscribe(listener) {
-    this.listeners.push(listener);
-    return () => { this.listeners = this.listeners.filter(l => l !== listener); };
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
-  setState(partialState) {
-    this.state = { ...this.state, ...partialState };
-    this.listeners.forEach(listener => listener(this.state));
+  notify() {
+    this.listeners.forEach((listener) => listener(this.state));
   }
 
-  setActiveContact(contactId) {
-    const contacts = this.state.contacts.map(c => c.id === contactId ? { ...c, unreadCount: 0 } : c);
-    this.setState({ activeContactId: contactId, contacts });
+  setActiveChat(chatId) {
+    this.state.activeChatId = chatId;
+    this.notify();
   }
 
-  sendMessage(text) {
-    if (!text.trim()) return;
+  sendMessage(chatId, text) {
+    if (!text || !text.trim()) return;
+
     const newMessage = {
-      id: 'm_' + Date.now(),
-      senderId: this.state.currentUser.id,
+      id: `msg_${Date.now()}`,
+      senderId: 'user_me',
       text: text.trim(),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'sent'
     };
-    const list = this.state.messages[this.state.activeContactId] || [];
-    this.setState({
-      messages: { ...this.state.messages, [this.state.activeContactId]: [...list, newMessage] }
-    });
+
+    if (!this.state.messages[chatId]) {
+      this.state.messages[chatId] = [];
+    }
+
+    this.state.messages[chatId].push(newMessage);
+
+    const chat = this.state.chats.find((c) => c.id === chatId);
+    if (chat) {
+      chat.lastMessage = text.trim();
+      chat.lastMessageTime = 'Just now';
+    }
+
+    this.notify();
   }
 
-  setSearchQuery(query) { this.setState({ searchQuery: query }); }
-  toggleContactPanel() { this.setState({ isContactPanelOpen: !this.state.isContactPanelOpen }); }
+  toggleContactPanel(isOpen) {
+    this.state.isContactPanelOpen =
+      typeof isOpen === 'boolean' ? isOpen : !this.state.isContactPanelOpen;
+    this.notify();
+  }
+
+  setSearchQuery(query) {
+    this.state.searchQuery = query;
+    this.notify();
+  }
 }
 
 export const store = new Store();

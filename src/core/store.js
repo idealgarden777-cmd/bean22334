@@ -1,15 +1,25 @@
-import { mockChats, mockMessages, mockContacts } from '../data/mock-data.js';
+import {
+  mockChats,
+  mockMessages,
+  mockContacts
+} from '../data/mock-data.js';
 
 class Store {
   constructor() {
+    const chats = Array.isArray(mockChats) ? mockChats : [];
+
     this.state = {
-      chats: mockChats || [],
-      activeChatId: mockChats && mockChats.length > 0 ? mockChats[0].id : null,
-      messages: mockMessages || {},
-      contacts: mockContacts || [],
+      chats,
+      activeChatId: chats.length > 0 ? chats[0].id : null,
+      messages:
+        mockMessages && typeof mockMessages === 'object'
+          ? mockMessages
+          : {},
+      contacts: Array.isArray(mockContacts) ? mockContacts : [],
       searchQuery: '',
       isContactPanelOpen: false
     };
+
     this.listeners = new Set();
   }
 
@@ -18,39 +28,72 @@ class Store {
   }
 
   subscribe(listener) {
+    if (typeof listener !== 'function') {
+      return () => {};
+    }
+
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   notify() {
-    this.listeners.forEach((listener) => listener(this.state));
+    this.listeners.forEach((listener) => {
+      try {
+        listener(this.state);
+      } catch (error) {
+        console.error('[Store] Listener error:', error);
+      }
+    });
   }
 
   setActiveChat(chatId) {
+    if (this.state.activeChatId === chatId) return;
+
+    const chatExists = this.state.chats.some(
+      (chat) => chat.id === chatId
+    );
+
+    if (!chatExists) return;
+
     this.state.activeChatId = chatId;
     this.notify();
   }
 
   sendMessage(chatId, text) {
-    if (!text || !text.trim()) return;
+    if (!chatId || typeof text !== 'string') return;
+
+    const trimmedText = text.trim();
+
+    if (!trimmedText) return;
 
     const newMessage = {
-      id: `msg_${Date.now()}`,
+      id: `msg_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2, 8)}`,
       senderId: 'user_me',
-      text: text.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      text: trimmedText,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
       status: 'sent'
     };
 
-    if (!this.state.messages[chatId]) {
+    if (!Array.isArray(this.state.messages[chatId])) {
       this.state.messages[chatId] = [];
     }
 
     this.state.messages[chatId].push(newMessage);
 
-    const chat = this.state.chats.find((c) => c.id === chatId);
+    const chat = this.state.chats.find(
+      (item) => item.id === chatId
+    );
+
     if (chat) {
-      chat.lastMessage = text.trim();
+      chat.lastMessage = trimmedText;
       chat.lastMessageTime = 'Just now';
     }
 
@@ -58,13 +101,24 @@ class Store {
   }
 
   toggleContactPanel(isOpen) {
-    this.state.isContactPanelOpen =
-      typeof isOpen === 'boolean' ? isOpen : !this.state.isContactPanelOpen;
+    const nextValue =
+      typeof isOpen === 'boolean'
+        ? isOpen
+        : !this.state.isContactPanelOpen;
+
+    if (this.state.isContactPanelOpen === nextValue) return;
+
+    this.state.isContactPanelOpen = nextValue;
     this.notify();
   }
 
   setSearchQuery(query) {
-    this.state.searchQuery = query;
+    const nextQuery =
+      typeof query === 'string' ? query : '';
+
+    if (this.state.searchQuery === nextQuery) return;
+
+    this.state.searchQuery = nextQuery;
     this.notify();
   }
 }

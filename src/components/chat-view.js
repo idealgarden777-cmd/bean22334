@@ -1,52 +1,33 @@
-/* ================================================================= *
- * Chat View Component - src/components/chat-view.js                 *
- * ================================================================= */
+/* =================================================================
+   Chat View Component - Assembles header, message list, and composer
+   ================================================================ */
 
-import { store } from '../core/store.js';
 import { renderChatHeader } from './chat-header.js';
 import { renderMessageList } from './message-list.js';
 import { renderComposer } from './composer.js';
 
-export function renderChatView() {
-  const container = document.createElement('div');
-  container.className = 'chat-view';
-  container.style.cssText = `
-    flex: 1;
+export function renderChatView(container) {
+  container.innerHTML = `
+    <div class="chat-view-container">
+      <div class="chat-header-slot"></div>
+      <div class="message-list-slot"></div>
+      <div class="composer-slot"></div>
+    </div>
+  `;
+
+  renderChatHeader(container.querySelector('.chat-header-slot'));
+  renderMessageList(container.querySelector('.message-list-slot'));
+  renderComposer(container.querySelector('.composer-slot'));
+}
+
+const chatViewStyles = document.createElement('style');
+chatViewStyles.textContent = `
+  .chat-view-container {
     display: flex;
     flex-direction: column;
     height: 100%;
-    background-color: var(--bg-bone);
-    min-width: 0;
-    box-sizing: border-box;
-  `;
-
-  const state = store.getState();
-  const activeContact = state.activeContact;
-
-  if (!activeContact) {
-    const emptyState = document.createElement('div');
-    emptyState.style.cssText = `
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-espresso);
-      opacity: 0.5;
-      font-size: 14px;
-    `;
-    emptyState.textContent = 'Select a conversation to start messaging';
-    container.appendChild(emptyState);
-    return container;
+    width: 100%;
+    background-color: var(--color-bg);
   }
-
-  const header = renderChatHeader(activeContact);
-  const messageList = renderMessageList();
-  const composer = renderComposer();
-
-  container.appendChild(header);
-  container.appendChild(messageList);
-  container.appendChild(composer);
-
-  return container;
-}
-```[cite: 2]
+`;
+document.head.appendChild(chatViewStyles);

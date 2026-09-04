@@ -24,9 +24,9 @@ export function renderComposer() {
     box-sizing: border-box;
     background-color: var(--surface-sand);
     border: 1px solid rgba(44, 37, 35, 0.08);
-    border-radius: 9999px;
+    border-radius: 26px;
     padding: 8px;
-    transition: border-radius 0.18s ease, min-height 0.18s ease;
+    transition: border-radius 0.22s cubic-bezier(0.4, 0, 0.2, 1), min-height 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   `;
 
   /* --------------------------------------------------------------- *
@@ -272,7 +272,7 @@ export function renderComposer() {
   composer.appendChild(rightTools);
 
   /* --------------------------------------------------------------- *
-   * Component Logic & Auto-Resize (Pure Flexbox Implementation)
+   * Component Logic & Smooth Auto-Resize
    * --------------------------------------------------------------- */
 
   function updateComposer() {
@@ -287,7 +287,7 @@ export function renderComposer() {
     const expanded = input.value.length > 0 && (contentHeight > 20 || input.value.includes('\n'));
 
     if (expanded || isRecording) {
-      composer.style.borderRadius = '20px';
+      composer.style.borderRadius = '18px'; // Smooth rounded rectangle when expanded
       input.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
 
       if (contentHeight > maxHeight) {
@@ -296,7 +296,7 @@ export function renderComposer() {
         });
       }
     } else {
-      composer.style.borderRadius = '9999px';
+      composer.style.borderRadius = '26px'; // Exact pill curve when single line
       input.style.height = '20px';
       input.style.overflowY = 'hidden';
       input.scrollTop = 0;

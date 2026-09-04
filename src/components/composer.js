@@ -94,7 +94,7 @@ export function renderComposer() {
   inputContainer.style.display = 'flex';
   inputContainer.style.alignItems = 'flex-end';
   inputContainer.style.position = 'relative';
-  inputContainer.style.minWidth = '0';
+  inputContainer.style.minWidth = '0'; // Essential to prevent flex item overflowing/centering bugs
 
   const input = document.createElement('textarea');
   input.rows = 1;
@@ -115,6 +115,7 @@ export function renderComposer() {
   input.style.overflowY = 'hidden';
   input.style.boxSizing = 'border-box';
   input.style.display = 'block';
+  input.style.direction = 'ltr'; // Ensures text flows strictly from left to right
 
   inputContainer.appendChild(input);
 

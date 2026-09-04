@@ -1,5 +1,5 @@
 /* ================================================================= *
- * App Styles - src/styles/app.css                                   *
+ * App Styles & Responsive Layout - src/styles/app.css               *
  * ================================================================= */
 
 body {
@@ -7,6 +7,9 @@ body {
   background-color: var(--bg-bone);
   color: var(--text-espresso);
   font-size: var(--font-size-body);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 #app {
@@ -20,15 +23,19 @@ body {
   display: flex;
   width: 100%;
   height: 100%;
+  position: relative;
+  overflow: hidden;
 }
 
 .sidebar {
   width: 320px;
+  min-width: 320px;
   background-color: var(--bg-bone);
   border-right: 1px solid rgba(44, 37, 35, 0.08);
   display: flex;
   flex-direction: column;
   height: 100%;
+  transition: transform 0.3s ease;
 }
 
 .chat-view {
@@ -36,6 +43,29 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background-color: var(--bg-bone);
+  overflow: hidden;
+}
+
+/* Responsive Breakpoint for Mobile / Tablets */
+@media (max-width: 768px) {
+  .app-shell.mobile-chat-active .sidebar {
+    display: none;
+  }
+  
+  .app-shell:not(.mobile-chat-active) .chat-view {
+    display: none;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    border-right: none;
+  }
+
+  .chat-view {
+    width: 100%;
+  }
 }
 
 /* Custom Scrollbar */
@@ -50,7 +80,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: rgba(44, 37, 35, 0.15);
-  border-radius: var(--radius-avatar);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {

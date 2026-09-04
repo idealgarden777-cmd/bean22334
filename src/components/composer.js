@@ -331,8 +331,9 @@ export function renderComposer() {
       composer.style.paddingTop = '8px';
       composer.style.paddingBottom = '8px';
 
+      // Push scrollbar to the far right edge and reserve bottom space for tools
       inputContainer.style.paddingLeft = '40px';
-      inputContainer.style.paddingRight = '4px';
+      inputContainer.style.paddingRight = '8px';
       inputContainer.style.paddingBottom = '40px';
 
       input.style.overflowY =

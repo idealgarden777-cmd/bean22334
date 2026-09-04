@@ -1,100 +1,200 @@
-/* ================================================================= *
- * App Styles - src/styles/app.css                                   *
- * ================================================================= */
-
-:root {
-  --bg-bone: #FBF9F5;
-  --surface-sand: #F2ECE1;
-  --text-espresso: #2C2523;
-  --accent-sage: #5A6B5C;
-}
-
-body {
-  font-family: 'Sora', sans-serif;
-  background-color: var(--bg-bone);
-  color: var(--text-espresso);
-  font-size: 14px;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
+/* =================================================================
+   App Layout & Core Component Styles
+   ================================================================ */
 
 #app {
+  display: flex;
   width: 100vw;
   height: 100vh;
-  display: flex;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
   overflow: hidden;
 }
 
+/* App Shell Container */
 .app-shell {
   display: flex;
   width: 100%;
   height: 100%;
-  position: relative;
+  overflow: hidden;
 }
 
+/* Sidebar Area */
 .sidebar {
   width: 320px;
-  min-width: 320px;
-  background-color: var(--bg-bone);
-  border-right: 1px solid rgba(44, 37, 35, 0.08);
+  min-width: 280px;
+  height: 100%;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex-shrink: 0;
 }
 
+/* Chat List Items */
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-1);
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.chat-item:hover,
+.chat-item.active {
+  background-color: var(--color-surface-hover);
+}
+
+.chat-item .avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-avatar);
+  object-fit: cover;
+}
+
+/* Chat Main View */
 .chat-view {
   flex: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-width: 0;
-  background-color: var(--bg-bone);
+  background-color: var(--color-bg);
+  position: relative;
+  overflow: hidden;
 }
 
-/* Responsive Adaptive Layout for Mobile & Desktop */
-@media (max-width: 768px) {
-  .app-shell {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .sidebar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    min-width: 100%;
-    z-index: 10;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .chat-view {
-    width: 100%;
-    height: 100%;
-  }
-
-  /* When a chat is selected on mobile, slide out the sidebar */
-  .app-shell.mobile-chat-open .sidebar {
-    transform: translateX(-100%);
-  }
+/* Chat Header */
+.chat-header {
+  height: 64px;
+  padding: 0 var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg);
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.chat-header .participant-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+.chat-header .contact-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-avatar);
+  object-fit: cover;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(44, 37, 35, 0.15);
-  border-radius: 9999px;
+/* Message List Scroll Area */
+.message-list {
+  flex: 1;
+  padding: var(--space-2);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(44, 37, 35, 0.25);
+.message-item {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  max-width: 70%;
+}
+
+.message-item.sent {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-item.received {
+  align-self: flex-start;
+}
+
+.message-item .msg-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-avatar);
+  object-fit: cover;
+}
+
+.message-item .bubble {
+  padding: 10px 14px;
+  border-radius: var(--radius-bubble);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.message-item.sent .bubble {
+  background-color: var(--color-accent);
+  color: var(--color-white);
+  border-bottom-right-radius: 4px;
+}
+
+.message-item.received .bubble {
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  border-bottom-left-radius: 4px;
+}
+
+.message-item .meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  margin-top: 4px;
+  opacity: 0.75;
+}
+
+/* Composer Container */
+.composer {
+  padding: var(--space-2);
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+}
+
+.composer-pill {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-pill);
+  padding: 6px var(--space-2);
+  gap: var(--space-1);
+  border: 1px solid transparent;
+  transition: var(--transition-smooth);
+}
+
+.composer-pill:focus-within {
+  border-color: var(--color-border-focus);
+  background-color: var(--color-white);
+}
+
+.composer-pill input {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+/* Contact Details Side Panel */
+.contact-panel {
+  width: 300px;
+  height: 100%;
+  background-color: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
 }

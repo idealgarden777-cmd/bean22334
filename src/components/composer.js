@@ -14,10 +14,10 @@ export function renderComposer() {
   const composer = document.createElement('form');
   composer.className = 'composer';
   composer.style.display = 'flex';
-  composer.style.alignItems = 'flex-end'; // Aligns buttons nicely at the bottom as text grows
+  composer.style.alignItems = 'flex-end';
   composer.style.backgroundColor = 'var(--surface-sand)';
-  composer.style.borderRadius = '24px'; // Sleek pill-like shape that expands smoothly
-  composer.style.padding = '8px 12px';
+  composer.style.borderRadius = '28px';
+  composer.style.padding = '8px';
   composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
   composer.style.position = 'relative';
@@ -25,8 +25,6 @@ export function renderComposer() {
   const attachWrapper = document.createElement('div');
   attachWrapper.style.position = 'relative';
   attachWrapper.style.display = 'flex';
-  attachWrapper.style.alignItems = 'center';
-  attachWrapper.style.height = '36px';
 
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
@@ -66,11 +64,12 @@ export function renderComposer() {
     item.addEventListener('mouseenter', () => {
       item.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
     });
+
     item.addEventListener('mouseleave', () => {
       item.style.backgroundColor = 'transparent';
     });
 
-    item.addEventListener('click', (e) => {
+    item.addEventListener('click', e => {
       e.stopPropagation();
       dropup.style.display = 'none';
       opt.action();
@@ -79,42 +78,47 @@ export function renderComposer() {
     dropup.appendChild(item);
   });
 
-  attachBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    emojiPicker.style.display = 'none';
-    const isVisible = dropup.style.display === 'block';
-    dropup.style.display = isVisible ? 'none' : 'block';
-  });
-
-  attachWrapper.appendChild(attachBtn);
-  attachWrapper.appendChild(dropup);
-
   const inputContainer = document.createElement('div');
   inputContainer.style.flex = '1';
   inputContainer.style.display = 'flex';
-  inputContainer.style.alignItems = 'center';
+  inputContainer.style.alignItems = 'flex-end';
   inputContainer.style.position = 'relative';
 
-  // Using textarea for seamless auto-growing height while keeping the exact same design grid
   const input = document.createElement('textarea');
   input.rows = 1;
   input.placeholder = 'Type a message...';
   input.style.width = '100%';
+  input.style.minHeight = '36px';
+  input.style.maxHeight = '160px';
   input.style.background = 'transparent';
   input.style.border = 'none';
   input.style.outline = 'none';
+  input.style.resize = 'none';
+  input.style.overflowY = 'hidden';
+  input.style.boxSizing = 'border-box';
   input.style.fontFamily = 'inherit';
   input.style.fontSize = '14px';
+  input.style.lineHeight = '20px';
   input.style.color = 'var(--text-espresso)';
-  input.style.padding = '8px 8px';
-  input.style.resize = 'none';
-  input.style.maxHeight = '120px';
-  input.style.lineHeight = '1.4';
-  input.style.overflowY = 'auto';
+  input.style.padding = '8px';
 
-  input.addEventListener('input', () => {
+  function autoGrow() {
     input.style.height = 'auto';
-    input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+
+    const maxHeight = 160;
+    const height = Math.min(input.scrollHeight, maxHeight);
+
+    input.style.height = `${height}px`;
+    input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }
+
+  input.addEventListener('input', autoGrow);
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      composer.requestSubmit();
+    }
   });
 
   inputContainer.appendChild(input);
@@ -122,8 +126,6 @@ export function renderComposer() {
   const emojiWrapper = document.createElement('div');
   emojiWrapper.style.position = 'relative';
   emojiWrapper.style.display = 'flex';
-  emojiWrapper.style.alignItems = 'center';
-  emojiWrapper.style.height = '36px';
 
   const emojiBtn = document.createElement('button');
   emojiBtn.type = 'button';
@@ -148,7 +150,12 @@ export function renderComposer() {
   emojiPicker.style.gridTemplateColumns = 'repeat(5, 1fr)';
   emojiPicker.style.gap = '6px';
 
-  const emojis = ['😊', '😂', '❤️', '👍', '🔥', '✨', '🙌', '😍', '😎', '🙏', '🎉', '💡', '☕', '🌿', '💬'];
+  const emojis = [
+    '😊', '😂', '❤️', '👍', '🔥',
+    '✨', '🙌', '😍', '😎', '🙏',
+    '🎉', '💡', '☕', '🌿', '💬'
+  ];
+
   emojis.forEach(emo => {
     const emoItem = document.createElement('button');
     emoItem.type = 'button';
@@ -159,31 +166,31 @@ export function renderComposer() {
     emoItem.style.cursor = 'pointer';
     emoItem.style.padding = '6px';
     emoItem.style.borderRadius = '6px';
-    emoItem.style.transition = 'background 0.2s ease';
 
-    emoItem.addEventListener('mouseenter', () => {
-      emoItem.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
-    });
-    emoItem.addEventListener('mouseleave', () => {
-      emoItem.style.backgroundColor = 'transparent';
-    });
-
-    emoItem.addEventListener('click', (e) => {
+    emoItem.addEventListener('click', e => {
       e.stopPropagation();
       input.value += emo;
       input.focus();
-      input.style.height = 'auto';
-      input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+      autoGrow();
     });
 
     emojiPicker.appendChild(emoItem);
   });
 
-  emojiBtn.addEventListener('click', (e) => {
+  attachBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    emojiPicker.style.display = 'none';
+
+    dropup.style.display =
+      dropup.style.display === 'block' ? 'none' : 'block';
+  });
+
+  emojiBtn.addEventListener('click', e => {
     e.stopPropagation();
     dropup.style.display = 'none';
-    const isVisible = emojiPicker.style.display === 'grid';
-    emojiPicker.style.display = isVisible ? 'none' : 'grid';
+
+    emojiPicker.style.display =
+      emojiPicker.style.display === 'grid' ? 'none' : 'grid';
   });
 
   emojiWrapper.appendChild(emojiBtn);
@@ -198,11 +205,6 @@ export function renderComposer() {
   let recordingTimer = null;
   let secondsCount = 0;
 
-  const micWrapper = document.createElement('div');
-  micWrapper.style.display = 'flex';
-  micWrapper.style.alignItems = 'center';
-  micWrapper.style.height = '36px';
-
   const micBtn = document.createElement('button');
   micBtn.type = 'button';
   micBtn.innerHTML = icons.mic;
@@ -211,18 +213,23 @@ export function renderComposer() {
 
   micBtn.addEventListener('click', () => {
     isRecording = !isRecording;
+
     if (isRecording) {
       micBtn.style.color = '#C94A4A';
       micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
       input.value = 'Recording voice note (0:00)...';
       input.disabled = true;
       secondsCount = 0;
+      autoGrow();
 
       recordingTimer = setInterval(() => {
         secondsCount++;
+
         const mins = Math.floor(secondsCount / 60);
         const secs = secondsCount % 60;
-        input.value = `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
+
+        input.value =
+          `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
       }, 1000);
     } else {
       stopRecording();
@@ -233,19 +240,15 @@ export function renderComposer() {
   function stopRecording() {
     clearInterval(recordingTimer);
     isRecording = false;
+
     micBtn.style.color = 'var(--text-espresso)';
     micBtn.style.backgroundColor = 'transparent';
+
     input.value = '';
     input.disabled = false;
-    input.style.height = 'auto';
+    input.style.height = '36px';
+    input.style.overflowY = 'hidden';
   }
-
-  micWrapper.appendChild(micBtn);
-
-  const sendWrapper = document.createElement('div');
-  sendWrapper.style.display = 'flex';
-  sendWrapper.style.alignItems = 'center';
-  sendWrapper.style.height = '36px';
 
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
@@ -254,34 +257,33 @@ export function renderComposer() {
   sendBtn.style.backgroundColor = 'var(--accent-sage)';
   sendBtn.style.color = '#FFFFFF';
 
-  sendWrapper.appendChild(sendBtn);
-
-  composer.addEventListener('submit', (e) => {
+  composer.addEventListener('submit', e => {
     e.preventDefault();
+
     if (isRecording) {
       stopRecording();
       store.sendMessage('[Voice Note]');
       return;
     }
-    const text = input.value.trim();
-    if (text === '') return;
-    store.sendMessage(text);
-    input.value = '';
-    input.style.height = 'auto';
-  });
 
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      composer.requestSubmit();
-    }
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    store.sendMessage(text);
+
+    input.value = '';
+    input.style.height = '36px';
+    input.style.overflowY = 'hidden';
+    input.focus();
   });
 
   composer.appendChild(attachWrapper);
   composer.appendChild(inputContainer);
   composer.appendChild(emojiWrapper);
-  composer.appendChild(micWrapper);
-  composer.appendChild(sendWrapper);
+  composer.appendChild(micBtn);
+  composer.appendChild(sendBtn);
+
   container.appendChild(composer);
 
   return container;
@@ -302,12 +304,19 @@ function styleButton(btn, radius) {
   btn.style.transition = 'background 0.2s ease, color 0.2s ease';
 
   btn.addEventListener('mouseenter', () => {
-    if (btn.style.backgroundColor !== 'var(--accent-sage)' && !btn.style.color.includes('201')) {
+    if (
+      btn.style.backgroundColor !== 'var(--accent-sage)' &&
+      !btn.style.color.includes('201')
+    ) {
       btn.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
     }
   });
+
   btn.addEventListener('mouseleave', () => {
-    if (btn.style.backgroundColor !== 'var(--accent-sage)' && !btn.style.color.includes('201')) {
+    if (
+      btn.style.backgroundColor !== 'var(--accent-sage)' &&
+      !btn.style.color.includes('201')
+    ) {
       btn.style.backgroundColor = 'transparent';
     }
   });

@@ -1,223 +1,58 @@
 /* ================================================================= *
- * Warm Minimal Chat UI Design System - src/styles/app.css             *
+ * App Styles - src/styles/app.css                                   *
  * ================================================================= */
 
-:root {
-  /* Color Palette */
-  --bg-bone: #FBF9F5;
-  --surface-sand: #F2ECE1;
-  --text-espresso: #2C2523;
-  --accent-sage: #5A6B5C;
-  
-  /* Typography */
-  --font-main: 'Sora', sans-serif;
-  
-  /* Spacing Grid (8px Rule) */
-  --space-xs: 8px;
-  --space-sm: 16px;
-  --space-md: 24px;
-  --space-lg: 32px;
-  
-  /* Border Radius */
-  --radius-bubble: 12px;
-  --radius-button: 10px;
-  --radius-avatar: 9999px;
-  --radius-pill: 9999px;
-}
-
-/* Base Global Styles */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
 body {
+  font-family: var(--font-family);
   background-color: var(--bg-bone);
   color: var(--text-espresso);
-  font-family: var(--font-main);
-  font-weight: 600; /* Sora SemiBold base */
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--font-size-body);
+}
+
+#app {
+  width: 100vw;
   height: 100vh;
+  display: flex;
   overflow: hidden;
 }
 
-/* App Shell Layout */
 .app-shell {
   display: flex;
-  width: 100vw;
-  height: 100vh;
-  background-color: var(--bg-bone);
+  width: 100%;
+  height: 100%;
 }
 
-/* Sidebar & Chat List */
 .sidebar {
   width: 320px;
-  background-color: var(--surface-sand);
+  background-color: var(--bg-bone);
   border-right: 1px solid rgba(44, 37, 35, 0.08);
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
-.chat-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-sm);
-}
-
-/* Headings & Chat Names */
-h1, h2, h3, .chat-name, .header-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-espresso);
-}
-
-/* Chat View Area */
 .chat-view {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-bone);
   height: 100%;
 }
 
-/* Top Chat Header */
-.chat-header {
-  height: 72px;
-  background-color: var(--surface-sand);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-md);
-  border-bottom: 1px solid rgba(44, 37, 35, 0.08);
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.chat-header .profile-container {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.chat-header .actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-/* Profile Avatars */
-.avatar {
-  width: 40px;
-  height: 40px;
+::-webkit-scrollbar-thumb {
+  background: rgba(44, 37, 35, 0.15);
   border-radius: var(--radius-avatar);
-  object-fit: cover;
-  background-color: var(--accent-sage);
 }
 
-/* Message List & Bubbles */
-.message-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.message-bubble {
-  max-width: 65%;
-  padding: 12px var(--space-sm);
-  border-radius: var(--radius-bubble);
-  font-size: 14px;
-  font-weight: 400; /* Regular body text */
-  position: relative;
-  background-color: var(--surface-sand);
-  color: var(--text-espresso);
-  box-shadow: 0 1px 2px rgba(44, 37, 35, 0.04);
-}
-
-.message-bubble.outgoing {
-  background-color: var(--accent-sage);
-  color: #FFFFFF;
-  align-self: flex-end;
-}
-
-.message-bubble.incoming {
-  background-color: var(--surface-sand);
-  color: var(--text-espresso);
-  align-self: flex-start;
-}
-
-/* Timestamps & Status Badges */
-.timestamp, .status-badge {
-  font-size: 12px;
-  font-weight: 400;
-  color: rgba(44, 37, 35, 0.6);
-  margin-top: 4px;
-  display: block;
-  text-align: right;
-}
-
-.message-bubble.outgoing .timestamp {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-/* Bottom Composer Bar */
-.composer-container {
-  padding: var(--space-sm) var(--space-md) var(--space-md);
-  background-color: var(--bg-bone);
-}
-
-.composer {
-  display: flex;
-  align-items: center;
-  background-color: var(--surface-sand);
-  border-radius: var(--radius-pill);
-  padding: 8px var(--space-sm);
-  gap: var(--space-xs);
-  border: 1px solid rgba(44, 37, 35, 0.08);
-}
-
-.composer input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-family: var(--font-main);
-  font-size: 14px;
-  color: var(--text-espresso);
-  padding: 0 var(--space-xs);
-}
-
-.composer input::placeholder {
-  color: rgba(44, 37, 35, 0.4);
-}
-
-.attach-btn, .send-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-button);
-  border: none;
-  background: transparent;
-  color: var(--text-espresso);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.attach-btn:hover, .send-btn:hover {
-  background-color: rgba(44, 37, 35, 0.06);
-}
-
-.send-btn {
-  background-color: var(--accent-sage);
-  color: #FFFFFF;
-  border-radius: var(--radius-pill);
-}
-
-.send-btn:hover {
-  opacity: 0.9;
-  background-color: var(--accent-sage);
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(44, 37, 35, 0.25);
 }

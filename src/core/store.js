@@ -1,44 +1,80 @@
-/* ================================================================= *
- * Store Core - src/core/store.js                                    *
- * ================================================================= */
+/* =================================================================
+   Central Store & State Management
+   ================================================================ */
 
-import { initialContacts, initialMessages } from '../data/mock-data.js';
+import { initialData } from '../data/mock-data.js';
 
 class Store {
   constructor() {
     this.state = {
-      contacts: initialContacts || [],
-      activeContact: null,
-      messages: initialMessages || []
+      currentUser: initialData.currentUser,
+      contacts: initialData.contacts,
+      messages: initialData.messages,
+      activeContactId: initialData.contacts[0].id,
+      searchQuery: '',
+      isContactPanelOpen: true
     };
-    this.listeners = new Set();
+    this.listeners = [];
   }
 
   getState() {
     return this.state;
   }
 
-  setState(newState) {
-    this.state = { ...this.state, ...newState };
-    this.notify();
-  }
-
-  setActiveContact(contact) {
-    this.setState({ activeContact: contact });
-  }
-
-  addMessage(message) {
-    const messages = [...this.state.messages, { ...message, id: Date.now() }];
-    this.setState({ messages });
-  }
-
   subscribe(listener) {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
   }
 
-  notify() {
+  setState(partialState) {
+    this.state = { ...this.state, ...partialState };
     this.listeners.forEach(listener => listener(this.state));
+  }
+
+  setActiveContact(contactId) {
+    // Reset unread count for selected contact
+    const updatedContacts = this.state.contacts.map(contact => {
+      if (contact.id === contactId) {
+        return { ...contact, unreadCount: 0 };
+      }
+      return contact;
+    });
+
+    this.setState({
+      activeContactId: contactId,
+      contacts: updatedContacts
+    });
+  }
+
+  sendMessage(text) {
+    if (!text.trim()) return;
+
+    const newMessage = {
+      id: 'm_' + Date.now(),
+      senderId: this.state.currentUser.id,
+      text: text.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'sent'
+    };
+
+    const contactMessages = this.state.messages[this.state.activeContactId] || [];
+    
+    this.setState({
+      messages: {
+        ...this.state.messages,
+        [this.state.activeContactId]: [...contactMessages, newMessage]
+      }
+    });
+  }
+
+  setSearchQuery(query) {
+    this.setState({ searchQuery: query });
+  }
+
+  toggleContactPanel() {
+    this.setState({ isContactPanelOpen: !this.state.isContactPanelOpen });
   }
 }
 

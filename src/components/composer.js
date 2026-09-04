@@ -21,10 +21,69 @@ export function renderComposer() {
   composer.style.gap = 'var(--spacing-xs)';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
 
+  const attachWrapper = document.createElement('div');
+  attachWrapper.style.position = 'relative'; // Required for dropup positioning
+  attachWrapper.style.display = 'flex';
+
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
   attachBtn.innerHTML = icons.plus;
   styleButton(attachBtn, 'var(--radius-button)');
+
+  // Dropup Menu Creation
+  const dropup = document.createElement('div');
+  dropup.className = 'composer-dropup';
+  dropup.style.display = 'none';
+  dropup.style.position = 'absolute';
+  dropup.style.bottom = '48px';
+  dropup.style.left = '0';
+  dropup.style.width = '160px';
+  dropup.style.backgroundColor = 'var(--surface-sand)';
+  dropup.style.border = '1px solid rgba(44, 37, 35, 0.08)';
+  dropup.style.borderRadius = '10px';
+  dropup.style.boxShadow = '0 -4px 16px rgba(44, 37, 35, 0.08)';
+  dropup.style.zIndex = '100';
+  dropup.style.padding = '6px';
+
+  const options = ['Photos & Videos', 'Document', 'Audio'];
+  options.forEach(text => {
+    const item = document.createElement('div');
+    item.textContent = text;
+    item.style.padding = '8px 12px';
+    item.style.fontSize = '13px';
+    item.style.borderRadius = '6px';
+    item.style.cursor = 'pointer';
+    item.style.color = 'var(--text-espresso)';
+    item.style.transition = 'background 0.2s ease';
+
+    item.addEventListener('mouseenter', () => {
+      item.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
+    });
+    item.addEventListener('mouseleave', () => {
+      item.style.backgroundColor = 'transparent';
+    });
+
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropup.style.display = 'none';
+    });
+
+    dropup.appendChild(item);
+  });
+
+  attachBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = dropup.style.display === 'block';
+    dropup.style.display = isVisible ? 'none' : 'block';
+  });
+
+  // Close dropup when clicking outside
+  document.addEventListener('click', () => {
+    dropup.style.display = 'none';
+  });
+
+  attachWrapper.appendChild(attachBtn);
+  attachWrapper.appendChild(dropup);
 
   const input = document.createElement('input');
   input.type = 'text';
@@ -41,7 +100,7 @@ export function renderComposer() {
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
   sendBtn.innerHTML = icons.send;
-  styleButton(sendBtn, 'var(--radius-avatar)');
+  styleButton(sendBtn, '9999px');
   sendBtn.style.backgroundColor = 'var(--accent-sage)';
   sendBtn.style.color = '#FFFFFF';
 
@@ -51,7 +110,7 @@ export function renderComposer() {
     input.value = '';
   });
 
-  composer.appendChild(attachBtn);
+  composer.appendChild(attachWrapper);
   composer.appendChild(input);
   composer.appendChild(sendBtn);
   container.appendChild(composer);

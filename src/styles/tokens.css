@@ -1,19 +1,39 @@
 :root {
-  --color-bg: #FBF9F5;                 /* Warm Off-White / Bone background */
-  --color-surface: #F2ECE1;            /* Soft Sand for surfaces and cards */
-  --color-text-primary: #2C2523;       /* Deep Espresso Brown for primary text */
-  --color-accent: #5A6B5C;             /* Muted Sage Green / Terracotta brand accent[cite: 1] */
+  /* Color Palette */
+  --color-bg: #FBF9F5;
+  --color-surface: #F2ECE1;
+  --color-surface-hover: #E8E0D2;
+  --color-text-primary: #2C2523;
+  --color-muted: rgba(44, 37, 35, 0.55);
+  --color-accent: #5A6B5C;
+  --color-accent-hover: #48564A;
   --color-white: #FFFFFF;
   --color-border: rgba(44, 37, 35, 0.08);
-  --color-muted: rgba(44, 37, 35, 0.55);
+  --color-border-focus: rgba(44, 37, 35, 0.25);
 
-  --font-family: 'Sora', sans-serif;    /* Sora SemiBold base family[cite: 1] */
-  --font-size-xs: 12px;                /* Timestamps and status badges[cite: 1] */
-  --font-size-sm: 14px;                /* Body text and messages[cite: 1] */
-  --font-size-base: 16px;              /* Main headings and chat names[cite: 1] */
+  /* Typography */
+  --font-family: 'Sora', sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
 
-  --radius-bubble: 12px;               /* 10px to 12px for chat bubbles and buttons[cite: 1] */
+  /* 8px Grid Spacing System */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+
+  /* Border Radii */
+  --radius-bubble: 12px;
   --radius-button: 10px;
-  --radius-avatar: 9999px;             /* 9999px for profile avatars[cite: 1] */
-  --radius-pill: 9999px;               /* Pill-shaped container[cite: 1] */
+  --radius-pill: 9999px;
+  --radius-avatar: 9999px;
+
+  /* Transitions & Shadows */
+  --transition-smooth: all 0.2s ease-in-out;
+  --shadow-subtle: 0 2px 8px rgba(44, 37, 35, 0.04);
 }

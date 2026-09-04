@@ -16,7 +16,9 @@ export function renderComposer() {
   const composer = document.createElement('form');
   composer.className = 'composer';
   composer.style.cssText = `
-    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
     width: 100%;
     min-height: 52px;
     box-sizing: border-box;
@@ -28,61 +30,11 @@ export function renderComposer() {
   `;
 
   /* --------------------------------------------------------------- *
-   * Input Area
-   * --------------------------------------------------------------- */
-
-  const inputContainer = document.createElement('div');
-  inputContainer.style.cssText = `
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    padding-left: 40px;
-    padding-right: 126px;
-    padding-bottom: 0;
-    transition: padding-bottom 0.16s ease;
-  `;
-
-  const input = document.createElement('textarea');
-  input.rows = 1;
-  input.placeholder = 'Type a message...';
-  input.style.cssText = `
-    display: block;
-    width: 100%;
-    height: 36px;
-    min-height: 36px;
-    max-height: 160px;
-    background: transparent;
-    border: none;
-    outline: none;
-    font-family: inherit;
-    font-size: 14px;
-    line-height: 20px;
-    color: var(--text-espresso);
-    padding: 8px 2px 8px 4px;
-    margin: 0;
-    resize: none;
-    overflow-y: hidden;
-    overflow-x: hidden;
-    scrollbar-gutter: stable;
-    box-sizing: border-box;
-    transition: height 0.16s ease;
-  `;
-
-  inputContainer.appendChild(input);
-  composer.appendChild(inputContainer);
-
-  /* --------------------------------------------------------------- *
-   * Attachment Dropup Menu
+   * Attachment Button (Left)
    * --------------------------------------------------------------- */
 
   const attachWrapper = document.createElement('div');
-  attachWrapper.style.cssText = `
-    position: absolute;
-    left: 8px;
-    bottom: 8px;
-    display: flex;
-    z-index: 20;
-  `;
+  attachWrapper.style.cssText = 'position: relative; display: flex; flex-shrink: 0;';
 
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
@@ -141,18 +93,56 @@ export function renderComposer() {
   composer.appendChild(attachWrapper);
 
   /* --------------------------------------------------------------- *
+   * Input Area (Middle - Fluid Flex Item)
+   * --------------------------------------------------------------- */
+
+  const inputContainer = document.createElement('div');
+  inputContainer.style.cssText = `
+    flex: 1;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    position: relative;
+    box-sizing: border-box;
+  `;
+
+  const input = document.createElement('textarea');
+  input.rows = 1;
+  input.placeholder = 'Type a message...';
+  input.style.cssText = `
+    display: block;
+    width: 100%;
+    height: 20px;
+    min-height: 20px;
+    max-height: 160px;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-espresso);
+    padding: 6px 4px;
+    margin: 0;
+    resize: none;
+    overflow-y: hidden;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  `;
+
+  inputContainer.appendChild(input);
+  composer.appendChild(inputContainer);
+
+  /* --------------------------------------------------------------- *
    * Right Tools Wrapper (Emoji, Mic, Send)
    * --------------------------------------------------------------- */
 
   const rightTools = document.createElement('div');
   rightTools.style.cssText = `
-    position: absolute;
-    right: 8px;
-    bottom: 8px;
     display: flex;
     align-items: center;
     gap: 2px;
-    z-index: 20;
+    flex-shrink: 0;
   `;
 
   /* Emoji Picker Setup */
@@ -282,12 +272,11 @@ export function renderComposer() {
   composer.appendChild(rightTools);
 
   /* --------------------------------------------------------------- *
-   * Component Logic & Auto-Resize
+   * Component Logic & Auto-Resize (Pure Flexbox Implementation)
    * --------------------------------------------------------------- */
 
   function updateComposer() {
     const maxHeight = 160;
-    const previousHeight = input.offsetHeight;
 
     input.style.height = 'auto';
     const contentHeight = input.scrollHeight;
@@ -295,13 +284,10 @@ export function renderComposer() {
 
     input.style.height = `${targetHeight}px`;
 
-    const expanded = input.value.length > 0 && (contentHeight > 36 || input.value.includes('\n'));
+    const expanded = input.value.length > 0 && (contentHeight > 20 || input.value.includes('\n'));
 
     if (expanded || isRecording) {
-      composer.style.borderRadius = '22px';
-      inputContainer.style.paddingLeft = '40px';
-      inputContainer.style.paddingRight = '4px';
-      inputContainer.style.paddingBottom = '40px';
+      composer.style.borderRadius = '20px';
       input.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
 
       if (contentHeight > maxHeight) {
@@ -311,20 +297,9 @@ export function renderComposer() {
       }
     } else {
       composer.style.borderRadius = '9999px';
-      inputContainer.style.paddingLeft = '40px';
-      inputContainer.style.paddingRight = '126px';
-      inputContainer.style.paddingBottom = '0';
-      input.style.height = '36px';
+      input.style.height = '20px';
       input.style.overflowY = 'hidden';
       input.scrollTop = 0;
-    }
-
-    if (previousHeight !== targetHeight) {
-      requestAnimationFrame(() => {
-        if (contentHeight <= maxHeight) {
-          input.style.height = `${targetHeight}px`;
-        }
-      });
     }
   }
 
@@ -372,7 +347,7 @@ export function renderComposer() {
     store.sendMessage(text);
 
     input.value = '';
-    input.style.height = '36px';
+    input.style.height = '20px';
     input.style.overflowY = 'hidden';
     input.scrollTop = 0;
 

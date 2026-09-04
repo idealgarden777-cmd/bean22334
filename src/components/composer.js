@@ -14,19 +14,19 @@ export function renderComposer() {
   const composer = document.createElement('form');
   composer.className = 'composer';
   composer.style.display = 'flex';
-  composer.style.alignItems = 'flex-end'; // Aligns buttons to the bottom as textarea grows
+  composer.style.alignItems = 'flex-end'; // Align items to bottom for growing textarea
   composer.style.backgroundColor = 'var(--surface-sand)';
-  composer.style.borderRadius = '24px'; // Smooth modern rounded container for multi-line support
-  composer.style.padding = '8px 12px';
+  composer.style.borderRadius = '24px'; // Clean rounded rectangle to support vertical growth cleanly
+  composer.style.padding = '10px 12px';
   composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
   composer.style.position = 'relative';
-  composer.style.transition = 'border-radius 0.2s ease';
 
   const attachWrapper = document.createElement('div');
   attachWrapper.style.position = 'relative';
   attachWrapper.style.display = 'flex';
-  attachWrapper.style.marginBottom = '2px'; // Align with bottom buttons
+  attachWrapper.style.alignItems = 'center';
+  attachWrapper.style.height = '36px';
 
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
@@ -95,10 +95,10 @@ export function renderComposer() {
   inputContainer.style.alignItems = 'center';
   inputContainer.style.position = 'relative';
 
-  // Replaced input with auto-growing textarea
+  // Upgraded to a ChatGPT-style auto-growing textarea with a clean side scrollbar
   const textarea = document.createElement('textarea');
-  textarea.rows = 1;
   textarea.placeholder = 'Type a message...';
+  textarea.rows = 1;
   textarea.style.width = '100%';
   textarea.style.background = 'transparent';
   textarea.style.border = 'none';
@@ -107,15 +107,15 @@ export function renderComposer() {
   textarea.style.fontSize = '14px';
   textarea.style.lineHeight = '1.4';
   textarea.style.color = 'var(--text-espresso)';
-  textarea.style.padding = '6px 8px';
+  textarea.style.padding = '8px 8px';
   textarea.style.resize = 'none';
-  textarea.style.maxHeight = '120px'; // Prevents it from growing infinitely
   textarea.style.overflowY = 'auto';
+  textarea.style.maxHeight = '130px'; // Restricts height before side scrollbar engages smoothly
+  textarea.style.minHeight = '36px';
 
-  // Auto-grow logic based on scrollHeight
   textarea.addEventListener('input', () => {
     textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+    textarea.style.height = Math.min(textarea.scrollHeight, 130) + 'px';
   });
 
   inputContainer.appendChild(textarea);
@@ -123,7 +123,8 @@ export function renderComposer() {
   const emojiWrapper = document.createElement('div');
   emojiWrapper.style.position = 'relative';
   emojiWrapper.style.display = 'flex';
-  emojiWrapper.style.marginBottom = '2px';
+  emojiWrapper.style.alignItems = 'center';
+  emojiWrapper.style.height = '36px';
 
   const emojiBtn = document.createElement('button');
   emojiBtn.type = 'button';
@@ -171,9 +172,9 @@ export function renderComposer() {
     emoItem.addEventListener('click', (e) => {
       e.stopPropagation();
       textarea.value += emo;
-      textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
       textarea.focus();
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 130) + 'px';
     });
 
     emojiPicker.appendChild(emoItem);
@@ -198,12 +199,16 @@ export function renderComposer() {
   let recordingTimer = null;
   let secondsCount = 0;
 
+  const micWrapper = document.createElement('div');
+  micWrapper.style.display = 'flex';
+  micWrapper.style.alignItems = 'center';
+  micWrapper.style.height = '36px';
+
   const micBtn = document.createElement('button');
   micBtn.type = 'button';
   micBtn.innerHTML = icons.mic;
   styleButton(micBtn, '9999px');
   micBtn.title = 'Record Voice Note';
-  micBtn.style.marginBottom = '2px';
 
   micBtn.addEventListener('click', () => {
     isRecording = !isRecording;
@@ -233,8 +238,15 @@ export function renderComposer() {
     micBtn.style.backgroundColor = 'transparent';
     textarea.value = '';
     textarea.disabled = false;
-    textarea.style.height = 'auto';
+    textarea.style.height = '36px';
   }
+
+  micWrapper.appendChild(micBtn);
+
+  const sendWrapper = document.createElement('div');
+  sendWrapper.style.display = 'flex';
+  sendWrapper.style.alignItems = 'center';
+  sendWrapper.style.height = '36px';
 
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
@@ -242,7 +254,8 @@ export function renderComposer() {
   styleButton(sendBtn, '9999px');
   sendBtn.style.backgroundColor = 'var(--accent-sage)';
   sendBtn.style.color = '#FFFFFF';
-  sendBtn.style.marginBottom = '2px';
+
+  sendWrapper.appendChild(sendBtn);
 
   composer.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -255,22 +268,14 @@ export function renderComposer() {
     if (text === '') return;
     store.sendMessage(text);
     textarea.value = '';
-    textarea.style.height = 'auto';
-  });
-
-  // Support Enter to send (Shift + Enter for new line)
-  textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      composer.dispatchEvent(new Event('submit', { cancelable: true }));
-    }
+    textarea.style.height = '36px';
   });
 
   composer.appendChild(attachWrapper);
   composer.appendChild(inputContainer);
   composer.appendChild(emojiWrapper);
-  composer.appendChild(micBtn);
-  composer.appendChild(sendBtn);
+  composer.appendChild(micWrapper);
+  composer.appendChild(sendWrapper);
   container.appendChild(composer);
 
   return container;

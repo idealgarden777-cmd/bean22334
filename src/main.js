@@ -5,8 +5,9 @@
 import { createAppShell } from './components/app-shell.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const appRoot = document.getElementById('app');
-  if (appRoot) {
-    appRoot.appendChild(createAppShell());
+  const appElement = document.getElementById('app');
+  if (appElement) {
+    const shell = createAppShell();
+    appElement.appendChild(shell);
   }
 });

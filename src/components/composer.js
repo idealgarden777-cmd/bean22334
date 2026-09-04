@@ -22,7 +22,7 @@ export function renderComposer() {
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
 
   const attachWrapper = document.createElement('div');
-  attachWrapper.style.position = 'relative'; // Required for dropup positioning
+  attachWrapper.style.position = 'relative';
   attachWrapper.style.display = 'flex';
 
   const attachBtn = document.createElement('button');
@@ -30,7 +30,6 @@ export function renderComposer() {
   attachBtn.innerHTML = icons.plus;
   styleButton(attachBtn, 'var(--radius-button)');
 
-  // Dropup Menu Creation
   const dropup = document.createElement('div');
   dropup.className = 'composer-dropup';
   dropup.style.display = 'none';
@@ -77,7 +76,6 @@ export function renderComposer() {
     dropup.style.display = isVisible ? 'none' : 'block';
   });
 
-  // Close dropup when clicking outside
   document.addEventListener('click', () => {
     dropup.style.display = 'none';
   });
@@ -97,6 +95,17 @@ export function renderComposer() {
   input.style.color = 'var(--text-espresso)';
   input.style.padding = '0 var(--spacing-xs)';
 
+  // Microphone Button for Voice Notes
+  const micBtn = document.createElement('button');
+  micBtn.type = 'button';
+  micBtn.innerHTML = icons.mic;
+  styleButton(micBtn, 'var(--radius-button)');
+  micBtn.title = 'Record Voice Note';
+  micBtn.addEventListener('click', () => {
+    // Voice note recording action placeholder
+    console.log('Voice note recording triggered');
+  });
+
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
   sendBtn.innerHTML = icons.send;
@@ -106,12 +115,14 @@ export function renderComposer() {
 
   composer.addEventListener('submit', (e) => {
     e.preventDefault();
+    if (input.value.trim() === '') return;
     store.sendMessage(input.value);
     input.value = '';
   });
 
   composer.appendChild(attachWrapper);
   composer.appendChild(input);
+  composer.appendChild(micBtn);
   composer.appendChild(sendBtn);
   container.appendChild(composer);
 
@@ -129,4 +140,16 @@ function styleButton(btn, radius) {
   btn.style.display = 'flex';
   btn.style.alignItems = 'center';
   btn.style.justifyContent = 'center';
+  btn.style.transition = 'background 0.2s ease';
+
+  btn.addEventListener('mouseenter', () => {
+    if (btn.style.backgroundColor !== 'var(--accent-sage)') {
+      btn.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
+    }
+  });
+  btn.addEventListener('mouseleave', () => {
+    if (btn.style.backgroundColor !== 'var(--accent-sage)') {
+      btn.style.backgroundColor = 'transparent';
+    }
+  });
 }

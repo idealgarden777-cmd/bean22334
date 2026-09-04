@@ -14,19 +14,19 @@ export function renderComposer() {
   const composer = document.createElement('form');
   composer.className = 'composer';
   composer.style.display = 'flex';
-  composer.style.alignItems = 'flex-end'; // Align items to bottom for growing textarea
+  composer.style.alignItems = 'flex-end'; // Anchors buttons to bottom as textarea grows
   composer.style.backgroundColor = 'var(--surface-sand)';
-  composer.style.borderRadius = '24px'; // Clean rounded rectangle to support vertical growth cleanly
-  composer.style.padding = '10px 12px';
+  composer.style.borderRadius = '24px'; // Clean pill container shape that expands naturally
+  composer.style.padding = '8px 12px';
   composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
   composer.style.position = 'relative';
+  composer.style.transition = 'border-radius 0.2s ease';
 
   const attachWrapper = document.createElement('div');
   attachWrapper.style.position = 'relative';
   attachWrapper.style.display = 'flex';
-  attachWrapper.style.alignItems = 'center';
-  attachWrapper.style.height = '36px';
+  attachWrapper.style.marginBottom = '2px';
 
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
@@ -37,7 +37,7 @@ export function renderComposer() {
   dropup.className = 'composer-dropup';
   dropup.style.display = 'none';
   dropup.style.position = 'absolute';
-  dropup.style.bottom = '52px';
+  dropup.style.bottom = '46px';
   dropup.style.left = '0';
   dropup.style.width = '180px';
   dropup.style.backgroundColor = 'var(--surface-sand)';
@@ -95,7 +95,7 @@ export function renderComposer() {
   inputContainer.style.alignItems = 'center';
   inputContainer.style.position = 'relative';
 
-  // Upgraded to a ChatGPT-style auto-growing textarea with a clean side scrollbar
+  // Upgraded to Textarea with auto-growing height logic
   const textarea = document.createElement('textarea');
   textarea.placeholder = 'Type a message...';
   textarea.rows = 1;
@@ -105,17 +105,16 @@ export function renderComposer() {
   textarea.style.outline = 'none';
   textarea.style.fontFamily = 'inherit';
   textarea.style.fontSize = '14px';
-  textarea.style.lineHeight = '1.4';
   textarea.style.color = 'var(--text-espresso)';
-  textarea.style.padding = '8px 8px';
+  textarea.style.padding = '6px 8px';
   textarea.style.resize = 'none';
+  textarea.style.maxHeight = '120px';
   textarea.style.overflowY = 'auto';
-  textarea.style.maxHeight = '130px'; // Restricts height before side scrollbar engages smoothly
-  textarea.style.minHeight = '36px';
+  textarea.style.lineHeight = '1.4';
 
   textarea.addEventListener('input', () => {
     textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 130) + 'px';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
   });
 
   inputContainer.appendChild(textarea);
@@ -123,8 +122,7 @@ export function renderComposer() {
   const emojiWrapper = document.createElement('div');
   emojiWrapper.style.position = 'relative';
   emojiWrapper.style.display = 'flex';
-  emojiWrapper.style.alignItems = 'center';
-  emojiWrapper.style.height = '36px';
+  emojiWrapper.style.marginBottom = '2px';
 
   const emojiBtn = document.createElement('button');
   emojiBtn.type = 'button';
@@ -136,7 +134,7 @@ export function renderComposer() {
   emojiPicker.className = 'emoji-picker';
   emojiPicker.style.display = 'none';
   emojiPicker.style.position = 'absolute';
-  emojiPicker.style.bottom = '52px';
+  emojiPicker.style.bottom = '46px';
   emojiPicker.style.right = '0';
   emojiPicker.style.width = '220px';
   emojiPicker.style.backgroundColor = 'var(--surface-sand)';
@@ -174,7 +172,7 @@ export function renderComposer() {
       textarea.value += emo;
       textarea.focus();
       textarea.style.height = 'auto';
-      textarea.style.height = Math.min(textarea.scrollHeight, 130) + 'px';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
     });
 
     emojiPicker.appendChild(emoItem);
@@ -201,8 +199,7 @@ export function renderComposer() {
 
   const micWrapper = document.createElement('div');
   micWrapper.style.display = 'flex';
-  micWrapper.style.alignItems = 'center';
-  micWrapper.style.height = '36px';
+  micWrapper.style.marginBottom = '2px';
 
   const micBtn = document.createElement('button');
   micBtn.type = 'button';
@@ -238,15 +235,14 @@ export function renderComposer() {
     micBtn.style.backgroundColor = 'transparent';
     textarea.value = '';
     textarea.disabled = false;
-    textarea.style.height = '36px';
+    textarea.style.height = 'auto';
   }
 
   micWrapper.appendChild(micBtn);
 
   const sendWrapper = document.createElement('div');
   sendWrapper.style.display = 'flex';
-  sendWrapper.style.alignItems = 'center';
-  sendWrapper.style.height = '36px';
+  sendWrapper.style.marginBottom = '2px';
 
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
@@ -268,7 +264,15 @@ export function renderComposer() {
     if (text === '') return;
     store.sendMessage(text);
     textarea.value = '';
-    textarea.style.height = '36px';
+    textarea.style.height = 'auto';
+  });
+
+  // Handle Enter to send (Shift + Enter for new line)
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      composer.requestSubmit();
+    }
   });
 
   composer.appendChild(attachWrapper);

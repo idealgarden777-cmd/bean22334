@@ -1,45 +1,19 @@
-/* =================================================================auts
-   Design Tokens & Variables
-   Strictly aligned with project style specifications
-   ================================================================ */
-
 :root {
-  /* --- Color Palette --- */
-  --color-bg: #FBF9F5;                 /* Warm Off-White / Bone background[cite: 1] */
-  --color-surface: #F2ECE1;            /* Soft Sand for surfaces and cards[cite: 1] */
-  --color-text-primary: #2C2523;       /* Deep Espresso Brown for primary text[cite: 1] */
-  --color-accent: #5A6B5C;             /* Muted Sage Green / Terracotta for brand accent[cite: 1] */
-  
+  --color-bg: #FBF9F5;                 /* Warm Off-White / Bone background */
+  --color-surface: #F2ECE1;            /* Soft Sand for surfaces and cards */
+  --color-text-primary: #2C2523;       /* Deep Espresso Brown for primary text */
+  --color-accent: #5A6B5C;             /* Muted Sage Green / Terracotta brand accent[cite: 1] */
   --color-white: #FFFFFF;
   --color-border: rgba(44, 37, 35, 0.08);
-  --color-border-focus: rgba(90, 107, 92, 0.4);
   --color-muted: rgba(44, 37, 35, 0.55);
 
-  /* --- Typography --- */
   --font-family: 'Sora', sans-serif;    /* Sora SemiBold base family[cite: 1] */
-  
   --font-size-xs: 12px;                /* Timestamps and status badges[cite: 1] */
-  --font-size-sm: 14px;                /* Body text and chat messages[cite: 1] */
+  --font-size-sm: 14px;                /* Body text and messages[cite: 1] */
   --font-size-base: 16px;              /* Main headings and chat names[cite: 1] */
-  
-  --font-weight-regular: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
 
-  /* --- Spacing System (8px Grid Rule)[cite: 1] --- */
-  --space-1: 8px;
-  --space-2: 16px;
-  --space-3: 24px;
-  --space-4: 32px;
-
-  /* --- Border Radius --- */
   --radius-bubble: 12px;               /* 10px to 12px for chat bubbles and buttons[cite: 1] */
   --radius-button: 10px;
   --radius-avatar: 9999px;             /* 9999px for profile avatars[cite: 1] */
-  --radius-pill: 9999px;               /* For pill-shaped inputs */
-
-  /* --- Transitions & Shadows --- */
-  --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --shadow-subtle: 0 2px 8px rgba(44, 37, 35, 0.04);
-  --shadow-card: 0 4px 16px rgba(44, 37, 35, 0.06);
+  --radius-pill: 9999px;               /* Pill-shaped container[cite: 1] */
 }

@@ -97,6 +97,7 @@ export function renderComposer() {
   const input = document.createElement('textarea');
   input.rows = 1;
   input.placeholder = 'Type a message...';
+
   input.style.width = '100%';
   input.style.minHeight = '36px';
   input.style.maxHeight = '160px';
@@ -107,23 +108,30 @@ export function renderComposer() {
   input.style.fontSize = '14px';
   input.style.lineHeight = '20px';
   input.style.color = 'var(--text-espresso)';
-  input.style.padding = '8px';
+  input.style.padding = '8px 2px 8px 8px';
   input.style.margin = '0';
   input.style.resize = 'none';
   input.style.overflowY = 'hidden';
+  input.style.scrollbarGutter = 'stable';
   input.style.boxSizing = 'border-box';
   input.style.display = 'block';
 
   inputContainer.appendChild(input);
 
   function autoGrow() {
+    const maxHeight = 160;
+
     input.style.height = 'auto';
 
-    const maxHeight = 160;
-    const height = Math.min(input.scrollHeight, maxHeight);
+    const contentHeight = input.scrollHeight;
+    const height = Math.min(contentHeight, maxHeight);
 
     input.style.height = `${height}px`;
-    input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    input.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
+
+    if (contentHeight > maxHeight) {
+      input.scrollTop = input.scrollHeight;
+    }
 
     composer.style.borderRadius = height > 52 ? '22px' : '28px';
   }
@@ -161,7 +169,6 @@ export function renderComposer() {
   emojiPicker.style.boxShadow = '0 -4px 20px rgba(44, 37, 35, 0.08)';
   emojiPicker.style.zIndex = '100';
   emojiPicker.style.padding = '10px';
-  emojiPicker.style.displayGrid = 'grid';
   emojiPicker.style.gridTemplateColumns = 'repeat(5, 1fr)';
   emojiPicker.style.gap = '6px';
 
@@ -204,6 +211,7 @@ export function renderComposer() {
 
       input.selectionStart = input.selectionEnd = start + emo.length;
       input.focus();
+
       autoGrow();
     });
 
@@ -245,6 +253,7 @@ export function renderComposer() {
       input.value = 'Recording voice note (0:00)...';
       input.disabled = true;
       secondsCount = 0;
+
       autoGrow();
 
       recordingTimer = setInterval(() => {

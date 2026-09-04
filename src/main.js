@@ -1,8 +1,13 @@
-import { renderAppShell } from './components/app-shell.js';
+/* ================================================================= *
+ * Main Entry Point - src/main.js                                    *
+ * ================================================================= */
+
+import { createAppShell } from './components/app-shell.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const appContainer = document.getElementById('app');
-  if (appContainer) {
-    renderAppShell(appContainer);
+  const appElement = document.getElementById('app');
+  if (appElement) {
+    const shell = createAppShell();
+    appElement.appendChild(shell);
   }
 });

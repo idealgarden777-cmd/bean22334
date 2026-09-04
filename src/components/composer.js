@@ -24,9 +24,9 @@ export function renderComposer() {
     box-sizing: border-box;
     background-color: var(--surface-sand);
     border: 1px solid rgba(44, 37, 35, 0.08);
-    border-radius: 9999px;
-    padding: 8px 12px;
-    transition: border-radius 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+    border-radius: 24px;
+    padding: 8px;
+    transition: box-shadow 0.2s ease;
   `;
 
   /* --------------------------------------------------------------- *
@@ -100,7 +100,7 @@ export function renderComposer() {
   inputContainer.style.cssText = `
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     min-width: 0;
     position: relative;
     box-sizing: border-box;
@@ -122,7 +122,7 @@ export function renderComposer() {
     font-size: 14px;
     line-height: 20px;
     color: var(--text-espresso);
-    padding: 6px 0;
+    padding: 6px 4px;
     margin: 0;
     resize: none;
     overflow-y: hidden;
@@ -273,7 +273,7 @@ export function renderComposer() {
   composer.appendChild(rightTools);
 
   /* --------------------------------------------------------------- *
-   * Component Logic & Smooth Morphing Transition
+   * Component Logic & Auto-Resize (Clean Flexbox Transition)
    * --------------------------------------------------------------- */
 
   function updateComposer() {
@@ -285,20 +285,12 @@ export function renderComposer() {
 
     input.style.height = `${targetHeight}px`;
 
-    const shouldExpand = (input.value.length > 0 && (contentHeight > 20 || input.value.includes('\n'))) || isRecording;
-
-    if (shouldExpand) {
-      composer.style.borderRadius = '16px';
-      input.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
-
-      if (contentHeight > maxHeight) {
-        requestAnimationFrame(() => {
-          input.scrollTop = input.scrollHeight;
-        });
-      }
+    if (contentHeight > maxHeight) {
+      input.style.overflowY = 'auto';
+      requestAnimationFrame(() => {
+        input.scrollTop = input.scrollHeight;
+      });
     } else {
-      composer.style.borderRadius = '9999px';
-      input.style.height = '20px';
       input.style.overflowY = 'hidden';
       input.scrollTop = 0;
     }

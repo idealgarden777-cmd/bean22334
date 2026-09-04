@@ -25,7 +25,6 @@ export function renderChatHeader(activeContact) {
   profileContainer.style.alignItems = 'center';
   profileContainer.style.gap = '12px';
 
-  // Back button for mobile view to reopen sidebar smoothly
   if (window.innerWidth <= 768) {
     const backBtn = createActionButton(icons.arrowLeft);
     backBtn.style.marginRight = '-4px';
@@ -67,14 +66,68 @@ export function renderChatHeader(activeContact) {
   actions.style.display = 'flex';
   actions.style.alignItems = 'center';
   actions.style.gap = '8px';
+  actions.style.position = 'relative'; // Required for dropdown positioning
 
   const callBtn = createActionButton(icons.phone);
   const videoBtn = createActionButton(icons.video);
   const menuBtn = createActionButton(icons.menu);
 
+  // Dropdown Menu Creation
+  const dropdown = document.createElement('div');
+  dropdown.className = 'chat-dropdown';
+  dropdown.style.display = 'none';
+  dropdown.style.position = 'absolute';
+  dropdown.style.top = '44px';
+  dropdown.style.right = '0';
+  dropdown.style.width = '160px';
+  dropdown.style.backgroundColor = 'var(--surface-sand)';
+  dropdown.style.border = '1px solid rgba(44, 37, 35, 0.08)';
+  dropdown.style.borderRadius = '10px';
+  dropdown.style.boxShadow = '0 4px 16px rgba(44, 37, 35, 0.08)';
+  dropdown.style.zIndex = '100';
+  dropdown.style.padding = '6px';
+
+  const options = ['View Profile', 'Clear Chat', 'Block Contact'];
+  options.forEach(text => {
+    const item = document.createElement('div');
+    item.textContent = text;
+    item.style.padding = '8px 12px';
+    item.style.fontSize = '13px';
+    item.style.borderRadius = '6px';
+    item.style.cursor = 'pointer';
+    item.style.color = text === 'Block Contact' ? '#C94A4A' : 'var(--text-espresso)';
+    item.style.transition = 'background 0.2s ease';
+
+    item.addEventListener('mouseenter', () => {
+      item.style.backgroundColor = text === 'Block Contact' ? 'rgba(201, 74, 74, 0.08)' : 'rgba(44, 37, 35, 0.06)';
+    });
+    item.addEventListener('mouseleave', () => {
+      item.style.backgroundColor = 'transparent';
+    });
+
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.style.display = 'none';
+    });
+
+    dropdown.appendChild(item);
+  });
+
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = dropdown.style.display === 'block';
+    dropdown.style.display = isVisible ? 'none' : 'block';
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', () => {
+    dropdown.style.display = 'none';
+  });
+
   actions.appendChild(callBtn);
   actions.appendChild(videoBtn);
   actions.appendChild(menuBtn);
+  actions.appendChild(dropdown);
 
   header.appendChild(profileContainer);
   header.appendChild(actions);

@@ -16,7 +16,7 @@ export function renderComposer() {
   composer.style.display = 'flex';
   composer.style.alignItems = 'flex-end';
   composer.style.backgroundColor = 'var(--surface-sand)';
-  composer.style.borderRadius = '28px';
+  composer.style.borderRadius = '9999px';
   composer.style.padding = '8px';
   composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
@@ -69,7 +69,7 @@ export function renderComposer() {
       item.style.backgroundColor = 'transparent';
     });
 
-    item.addEventListener('click', e => {
+    item.addEventListener('click', (e) => {
       e.stopPropagation();
       dropup.style.display = 'none';
       opt.action();
@@ -93,28 +93,28 @@ export function renderComposer() {
   input.style.background = 'transparent';
   input.style.border = 'none';
   input.style.outline = 'none';
-  input.style.resize = 'none';
-  input.style.overflowY = 'hidden';
-  input.style.boxSizing = 'border-box';
   input.style.fontFamily = 'inherit';
   input.style.fontSize = '14px';
-  input.style.lineHeight = '20px';
   input.style.color = 'var(--text-espresso)';
   input.style.padding = '8px';
+  input.style.resize = 'none';
+  input.style.overflowY = 'hidden';
+  input.style.lineHeight = '20px';
+  input.style.boxSizing = 'border-box';
 
   function autoGrow() {
     input.style.height = 'auto';
 
     const maxHeight = 160;
-    const height = Math.min(input.scrollHeight, maxHeight);
+    const newHeight = Math.min(input.scrollHeight, maxHeight);
 
-    input.style.height = `${height}px`;
+    input.style.height = `${newHeight}px`;
     input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
   }
 
   input.addEventListener('input', autoGrow);
 
-  input.addEventListener('keydown', e => {
+  input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       composer.requestSubmit();
@@ -123,13 +123,14 @@ export function renderComposer() {
 
   inputContainer.appendChild(input);
 
+  // Premium Emoji Icon Wrapper & Button
   const emojiWrapper = document.createElement('div');
   emojiWrapper.style.position = 'relative';
   emojiWrapper.style.display = 'flex';
 
   const emojiBtn = document.createElement('button');
   emojiBtn.type = 'button';
-  emojiBtn.innerHTML = icons.emoji;
+  emojiBtn.innerHTML = icons.emoji; // High-end minimalist outline SVG icon
   styleButton(emojiBtn, '9999px');
   emojiBtn.title = 'Add Emoji';
 
@@ -150,11 +151,7 @@ export function renderComposer() {
   emojiPicker.style.gridTemplateColumns = 'repeat(5, 1fr)';
   emojiPicker.style.gap = '6px';
 
-  const emojis = [
-    '😊', '😂', '❤️', '👍', '🔥',
-    '✨', '🙌', '😍', '😎', '🙏',
-    '🎉', '💡', '☕', '🌿', '💬'
-  ];
+  const emojis = ['😊', '😂', '❤️', '👍', '🔥', '✨', '🙌', '😍', '😎', '🙏', '🎉', '💡', '☕', '🌿', '💬'];
 
   emojis.forEach(emo => {
     const emoItem = document.createElement('button');
@@ -166,8 +163,17 @@ export function renderComposer() {
     emoItem.style.cursor = 'pointer';
     emoItem.style.padding = '6px';
     emoItem.style.borderRadius = '6px';
+    emoItem.style.transition = 'background 0.2s ease';
 
-    emoItem.addEventListener('click', e => {
+    emoItem.addEventListener('mouseenter', () => {
+      emoItem.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
+    });
+
+    emoItem.addEventListener('mouseleave', () => {
+      emoItem.style.backgroundColor = 'transparent';
+    });
+
+    emoItem.addEventListener('click', (e) => {
       e.stopPropagation();
       input.value += emo;
       input.focus();
@@ -177,20 +183,20 @@ export function renderComposer() {
     emojiPicker.appendChild(emoItem);
   });
 
-  attachBtn.addEventListener('click', e => {
+  attachBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     emojiPicker.style.display = 'none';
 
-    dropup.style.display =
-      dropup.style.display === 'block' ? 'none' : 'block';
+    const isVisible = dropup.style.display === 'block';
+    dropup.style.display = isVisible ? 'none' : 'block';
   });
 
-  emojiBtn.addEventListener('click', e => {
+  emojiBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     dropup.style.display = 'none';
 
-    emojiPicker.style.display =
-      emojiPicker.style.display === 'grid' ? 'none' : 'grid';
+    const isVisible = emojiPicker.style.display === 'grid';
+    emojiPicker.style.display = isVisible ? 'none' : 'grid';
   });
 
   emojiWrapper.appendChild(emojiBtn);
@@ -224,12 +230,10 @@ export function renderComposer() {
 
       recordingTimer = setInterval(() => {
         secondsCount++;
-
         const mins = Math.floor(secondsCount / 60);
         const secs = secondsCount % 60;
 
-        input.value =
-          `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
+        input.value = `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
       }, 1000);
     } else {
       stopRecording();
@@ -240,10 +244,8 @@ export function renderComposer() {
   function stopRecording() {
     clearInterval(recordingTimer);
     isRecording = false;
-
     micBtn.style.color = 'var(--text-espresso)';
     micBtn.style.backgroundColor = 'transparent';
-
     input.value = '';
     input.disabled = false;
     input.style.height = '36px';
@@ -257,7 +259,7 @@ export function renderComposer() {
   sendBtn.style.backgroundColor = 'var(--accent-sage)';
   sendBtn.style.color = '#FFFFFF';
 
-  composer.addEventListener('submit', e => {
+  composer.addEventListener('submit', (e) => {
     e.preventDefault();
 
     if (isRecording) {
@@ -267,11 +269,9 @@ export function renderComposer() {
     }
 
     const text = input.value.trim();
-
-    if (!text) return;
+    if (text === '') return;
 
     store.sendMessage(text);
-
     input.value = '';
     input.style.height = '36px';
     input.style.overflowY = 'hidden';
@@ -304,19 +304,13 @@ function styleButton(btn, radius) {
   btn.style.transition = 'background 0.2s ease, color 0.2s ease';
 
   btn.addEventListener('mouseenter', () => {
-    if (
-      btn.style.backgroundColor !== 'var(--accent-sage)' &&
-      !btn.style.color.includes('201')
-    ) {
+    if (btn.style.backgroundColor !== 'var(--accent-sage)' && !btn.style.color.includes('201')) {
       btn.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
     }
   });
 
   btn.addEventListener('mouseleave', () => {
-    if (
-      btn.style.backgroundColor !== 'var(--accent-sage)' &&
-      !btn.style.color.includes('201')
-    ) {
+    if (btn.style.backgroundColor !== 'var(--accent-sage)' && !btn.style.color.includes('201')) {
       btn.style.backgroundColor = 'transparent';
     }
   });

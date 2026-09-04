@@ -1,331 +1,96 @@
-"use strict";
+/* ================================================================= *
+ * Chat Header Component - src/components/chat-header.js             *
+ * ================================================================= */
 
-/* =========================================================
-   BEAN — CHAT HEADER
-   Minimal conversation header
-   ========================================================= */
+export function renderChatHeader(activeContact) {
+  const header = document.createElement('div');
+  header.className = 'chat-header';
+  header.style.height = '72px';
+  header.style.backgroundColor = 'var(--surface-sand)';
+  header.style.display = 'flex';
+  header.style.alignItems = 'center';
+  header.style.justifyContent = 'space-between';
+  header.style.padding = '0 var(--spacing-md)';
+  header.style.borderBottom = '1px solid rgba(44, 37, 35, 0.08)';
 
-
-/* =========================================================
-   ICONS
-   ========================================================= */
-
-const icons = {
-  back: `
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m15 18-6-6 6-6"/>
-    </svg>
-  `,
-
-  phone: `
-    <svg
-      viewBox="0 0 24 24"
-      width="19"
-      height="19"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M22 16.9v3a2 2 0 0 1-2.2 2
-        19.8 19.8 0 0 1-8.6-3.1
-        19.5 19.5 0 0 1-6-6
-        19.8 19.8 0 0 1-3.1-8.6
-        A2 2 0 0 1 4.1 2h3
-        a2 2 0 0 1 2 1.7"
-      />
-    </svg>
-  `,
-
-  video: `
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="5" width="14" height="14" rx="3"/>
-      <path d="m17 10 4-2v8l-4-2z"/>
-    </svg>
-  `,
-
-  info: `
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9"/>
-      <path d="M12 10v6"/>
-      <path d="M12 7h.01"/>
-    </svg>
-  `,
-};
-
-
-/* =========================================================
-   HELPERS
-   ========================================================= */
-
-function escapeHTML(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-
-function getInitials(name) {
-  const parts = String(name ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length === 0) {
-    return "B";
+  if (!activeContact) {
+    return header;
   }
 
-  if (parts.length === 1) {
-    return parts[0]
-      .slice(0, 2)
-      .toUpperCase();
-  }
+  // Participant profile alignment[cite: 3]
+  const profileContainer = document.createElement('div');
+  profileContainer.style.display = 'flex';
+  profileContainer.style.alignItems = 'center';
+  profileContainer.style.gap = 'var(--spacing-sm)';
 
-  return (
-    parts[0][0] +
-    parts[parts.length - 1][0]
-  ).toUpperCase();
+  const avatar = document.createElement('img');
+  avatar.src = activeContact.avatar;
+  avatar.alt = activeContact.name;
+  avatar.style.width = '40px';
+  avatar.style.height = '40px';
+  avatar.style.borderRadius = 'var(--radius-avatar)';
+  avatar.style.objectFit = 'cover';
+
+  const details = document.createElement('div');
+  
+  const name = document.createElement('h3');
+  name.textContent = activeContact.name;
+  name.style.fontSize = '16px';
+  name.style.fontWeight = '600';
+  name.style.color = 'var(--text-espresso)';
+
+  const status = document.createElement('span');
+  status.textContent = activeContact.status;
+  status.style.fontSize = '12px';
+  status.style.color = 'rgba(44, 37, 35, 0.6)';
+
+  details.appendChild(name);
+  details.appendChild(status);
+
+  profileContainer.appendChild(avatar);
+  profileContainer.appendChild(details);
+
+  // Actions: call buttons, video icon, action menu[cite: 3]
+  const actions = document.createElement('div');
+  actions.style.display = 'flex';
+  actions.style.alignItems = 'center';
+  actions.style.gap = 'var(--spacing-xs)';
+
+  const callBtn = createActionButton('📞');
+  const videoBtn = createActionButton('🎥');
+  const menuBtn = createActionButton('⋮');
+
+  actions.appendChild(callBtn);
+  actions.appendChild(videoBtn);
+  actions.appendChild(menuBtn);
+
+  header.appendChild(profileContainer);
+  header.appendChild(actions);
+
+  return header;
 }
 
+function createActionButton(text) {
+  const btn = document.createElement('button');
+  btn.textContent = text;
+  btn.style.width = '36px';
+  btn.style.height = '36px';
+  btn.style.borderRadius = 'var(--radius-button)';
+  btn.style.border = 'none';
+  btn.style.background = 'transparent';
+  btn.style.color = 'var(--text-espresso)';
+  btn.style.cursor = 'pointer';
+  btn.style.display = 'flex';
+  btn.style.alignItems = 'center';
+  btn.style.justifyContent = 'center';
+  btn.style.fontSize = '16px';
 
-/* =========================================================
-   ACTION BUTTON
-   ========================================================= */
+  btn.addEventListener('mouseenter', () => {
+    btn.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
+  });
+  btn.addEventListener('mouseleave', () => {
+    btn.style.backgroundColor = 'transparent';
+  });
 
-function createActionButton(
-  action,
-  label,
-  icon
-) {
-  return `
-    <button
-      class="bean-chat-header__action"
-      type="button"
-      data-chat-action="${action}"
-      aria-label="${label}"
-      title="${label}"
-    >
-      ${icon}
-    </button>
-  `;
-}
-
-
-/* =========================================================
-   CREATE HEADER
-   ========================================================= */
-
-export function createChatHeader(
-  conversation
-) {
-  if (!conversation) {
-    return "";
-  }
-
-  const name =
-    escapeHTML(
-      conversation.name ||
-      "Conversation"
-    );
-
-  const initials =
-    escapeHTML(
-      conversation.initials ||
-      getInitials(
-        conversation.name
-      )
-    );
-
-  const online =
-    conversation.status === "online";
-
-  const status =
-    online
-      ? "Online"
-      : "Offline";
-
-  return `
-    <header class="bean-chat-header">
-
-      <div class="bean-chat-header__left">
-
-        <button
-          class="bean-chat-header__back"
-          type="button"
-          data-chat-action="back"
-          aria-label="Back to chats"
-          title="Back"
-        >
-          ${icons.back}
-        </button>
-
-
-        <button
-          class="bean-chat-header__person"
-          type="button"
-          data-chat-action="info"
-          aria-label="Open details for ${name}"
-        >
-
-          <span class="bean-chat-header__avatar">
-
-            ${
-              conversation.avatar
-                ? `
-                  <img
-                    src="${escapeHTML(conversation.avatar)}"
-                    alt=""
-                  >
-                `
-                : initials
-            }
-
-            ${
-              online
-                ? `
-                  <span
-                    class="bean-presence is-online"
-                    aria-hidden="true"
-                  ></span>
-                `
-                : ""
-            }
-
-          </span>
-
-
-          <span class="bean-chat-header__identity">
-
-            <strong>
-              ${name}
-            </strong>
-
-            <small>
-              ${status}
-            </small>
-
-          </span>
-
-        </button>
-
-      </div>
-
-
-      <div
-        class="bean-chat-header__actions"
-        aria-label="Conversation actions"
-      >
-
-        ${createActionButton(
-          "voice",
-          "Voice call",
-          icons.phone
-        )}
-
-        ${createActionButton(
-          "video",
-          "Video call",
-          icons.video
-        )}
-
-        ${createActionButton(
-          "info",
-          "Conversation details",
-          icons.info
-        )}
-
-      </div>
-
-    </header>
-  `;
-}
-
-
-/* =========================================================
-   INITIALIZE
-   ========================================================= */
-
-export function initChatHeader(
-  onAction
-) {
-  const header =
-    document.querySelector(
-      ".bean-chat-header"
-    );
-
-  if (!header) {
-    return;
-  }
-
-  header.addEventListener(
-    "click",
-    (event) => {
-      const target =
-        event.target;
-
-      if (
-        !(target instanceof Element)
-      ) {
-        return;
-      }
-
-      const button =
-        target.closest(
-          "[data-chat-action]"
-        );
-
-      if (!button) {
-        return;
-      }
-
-      const action =
-        button.dataset.chatAction;
-
-      if (!action) {
-        return;
-      }
-
-      if (
-        typeof onAction ===
-        "function"
-      ) {
-        onAction(action);
-      }
-    }
-  );
+  return btn;
 }

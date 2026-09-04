@@ -1,49 +1,30 @@
-/* ================================================================= *
- * Theme & Design System - src/styles/theme.css                      *
- * ================================================================= */
+/* =================================================================
+   Theme Styles & Global Application Rules
+   Aligned with color palette and layout guidelines[cite: 1]
+   ================================================================ */
 
-:root {
-  /* Color Palette Setup */
-  --bg-bone: #FBF9F5;              /* Background color: Warm Off-White / Bone[cite: 1] */
-  --surface-sand: #F2ECE1;         /* Surface and card elements: Soft Sand[cite: 1] */
-  --text-espresso: #2C2523;        /* Primary text: Deep Espresso Brown[cite: 1] */
-  --accent-sage: #5A6B5C;          /* Brand accent: Muted Sage Green / Terracotta[cite: 1] */
-
-  /* Typography Guidelines */
-  --font-family: 'Sora', sans-serif; /* Font family uses Sora SemiBold[cite: 1] */
-  
-  /* Spacing Grid (8px Rule) */
-  --spacing-xs: 8px;
-  --spacing-sm: 16px;
-  --spacing-md: 24px;
-  --spacing-lg: 32px;
-
-  /* Border Radius Rules */
-  --radius-bubble: 12px;           /* Border radius measures 10px to 12px for chat bubbles and buttons[cite: 1] */
-  --radius-button: 12px;
-  --radius-avatar: 9999px;         /* Profile avatars use 9999px[cite: 1] */
-}
-
-/* Global Reset & Typography Base */
 body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--bg-bone);
-  font-family: var(--font-family);
-  color: var(--text-espresso);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
 }
 
-h1, h2, h3, .chat-name {
-  font-size: 16px;                  /* Main headings and chat names are set to 16px[cite: 1] */
-  font-weight: 600;                 /* Medium or bold weights[cite: 1] */
+/* Custom scrollbars for clean aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-p, .message-body {
-  font-size: 14px;                  /* Body text and messages are sized at 14px regular[cite: 1] */
-  font-weight: 400;
-  line-height: 20px;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.timestamp, .status-badge {
-  font-size: 12px;                  /* Timestamps and status badges use muted 12px sizing[cite: 1] */
+::-webkit-scrollbar-thumb {
+  background: rgba(44, 37, 35, 0.15);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(44, 37, 35, 0.25);
 }

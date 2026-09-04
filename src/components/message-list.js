@@ -1,5 +1,5 @@
 /* ================================================================= *
- * Message List Component - src/components/messageList.js            *
+ * Message List Component - src/components/message-list.js           *
  * ================================================================= */
 
 import { store } from '../core/store.js';
@@ -20,7 +20,8 @@ export function renderMessageList() {
 
   function updateMessages() {
     container.innerHTML = '';
-    const messages = store.getState().messages || [];
+    const state = store.getState();
+    const messages = state.messages || [];
 
     if (messages.length === 0) {
       const emptyState = document.createElement('div');
@@ -28,8 +29,7 @@ export function renderMessageList() {
         text-align: center;
         color: var(--text-espresso);
         opacity: 0.5;
-        margin-top: auto;
-        margin-bottom: auto;
+        margin: auto;
         font-size: 14px;
       `;
       emptyState.textContent = 'No messages yet. Start the conversation!';
@@ -44,7 +44,7 @@ export function renderMessageList() {
       bubble.style.cssText = `
         max-width: 70%;
         padding: 10px 14px;
-        border-radius: 16px;
+        border-radius: 12px;
         font-size: 14px;
         line-height: 20px;
         word-break: break-word;
@@ -59,15 +59,12 @@ export function renderMessageList() {
       container.appendChild(bubble);
     });
 
-    // Auto-scroll to bottom on new message
     container.scrollTop = container.scrollHeight;
   }
 
-  // Subscribe to store updates if store supports reactivity, or call on initialization
   updateMessages();
-  
-  // Expose an update method on the container element if needed externally
   container.updateMessages = updateMessages;
 
   return container;
 }
+```[cite: 2]

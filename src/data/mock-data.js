@@ -1,77 +1,116 @@
-/* =================================================================
-   Mock Data for Chat Application
-   ================================================================ */
-
-export const initialData = {
-  currentUser: {
-    id: "u_me",
-    name: "Yash",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    status: "online"
+export const mockChats = [
+  {
+    id: 'chat_1',
+    name: 'Elena Rostova',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
+    lastMessage: 'The new design tokens look clean! Let us review tomorrow.',
+    lastMessageTime: '10:42 AM',
+    unreadCount: 2,
+    online: true,
+    role: 'Lead Designer',
+    bio: 'Crafting minimalist user experiences and design systems.',
+    phone: '+1 (555) 234-5678',
+    email: 'elena.rostova@design.co'
   },
-  contacts: [
+  {
+    id: 'chat_2',
+    name: 'Liam Vance',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256',
+    lastMessage: 'Vite build issue resolved on the main branch.',
+    lastMessageTime: 'Yesterday',
+    unreadCount: 0,
+    online: false,
+    role: 'Frontend Engineer',
+    bio: 'Building fast, accessible web applications.',
+    phone: '+1 (555) 876-5432',
+    email: 'liam.vance@tech.io'
+  },
+  {
+    id: 'chat_3',
+    name: 'Sophia Chen',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256',
+    lastMessage: 'Can you share the updated color system spec?',
+    lastMessageTime: 'Sep 2',
+    unreadCount: 0,
+    online: true,
+    role: 'Product Manager',
+    bio: 'Bridging user needs with elegant tech solutions.',
+    phone: '+1 (555) 345-6789',
+    email: 'sophia.chen@product.com'
+  }
+];
+
+export const mockMessages = {
+  chat_1: [
     {
-      id: "c_1",
-      name: "Samuel Yusuf",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-      status: "Online",
-      unreadCount: 2,
-      lastSeen: "Just now",
-      isPinned: true
+      id: 'msg_101',
+      senderId: 'chat_1',
+      text: 'Hey! Have you had a chance to check the updated typography tokens?',
+      timestamp: '10:30 AM',
+      status: 'read'
     },
     {
-      id: "c_2",
-      name: "Srishna Yusuf",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-      status: "Active 2h ago",
-      unreadCount: 0,
-      lastSeen: "2h ago",
-      isPinned: false
+      id: 'msg_102',
+      senderId: 'user_me',
+      text: 'Yes, looking at them right now. The warm palette contrast is spot on.',
+      timestamp: '10:35 AM',
+      status: 'read'
     },
     {
-      id: "c_3",
-      name: "Ideal Garden Team",
-      avatar: "https://images.unsplash.com/photo-1558904541-efa843a88f01?w=150&auto=format&fit=crop&q=80",
-      status: "Landscape Studio",
-      unreadCount: 0,
-      lastSeen: "Yesterday",
-      isPinned: true
+      id: 'msg_103',
+      senderId: 'chat_1',
+      text: 'The new design tokens look clean! Let us review tomorrow.',
+      timestamp: '10:42 AM',
+      status: 'delivered'
     }
   ],
-  messages: {
-    "c_1": [
-      {
-        id: "m_1",
-        senderId: "c_1",
-        text: "Hey Yash, check out the new hardscaping layout designs for the head office project.",
-        timestamp: "10:42 AM",
-        status: "read"
-      },
-      {
-        id: "m_2",
-        senderId: "u_me",
-        text: "Just reviewed them! The spacing grid and layout structure look solid.",
-        timestamp: "10:45 AM",
-        status: "read"
-      }
-    ],
-    "c_2": [
-      {
-        id: "m_3",
-        senderId: "c_2",
-        text: "Are we launching the updated web component repository today?",
-        timestamp: "Yesterday",
-        status: "read"
-      }
-    ],
-    "c_3": [
-      {
-        id: "m_4",
-        senderId: "c_3",
-        text: "Client catalog quotations updated with new plant inventory specs.",
-        timestamp: "Monday",
-        status: "read"
-      }
-    ]
-  }
+  chat_2: [
+    {
+      id: 'msg_201',
+      senderId: 'chat_2',
+      text: 'Hey, I checked the repository configuration for Vercel.',
+      timestamp: 'Yesterday',
+      status: 'read'
+    },
+    {
+      id: 'msg_202',
+      senderId: 'user_me',
+      text: 'Great, thanks Liam! Vite build issue resolved on the main branch.',
+      timestamp: 'Yesterday',
+      status: 'read'
+    }
+  ],
+  chat_3: [
+    {
+      id: 'msg_301',
+      senderId: 'chat_3',
+      text: 'Can you share the updated color system spec?',
+      timestamp: 'Sep 2',
+      status: 'read'
+    }
+  ]
 };
+
+export const mockContacts = [
+  {
+    id: 'chat_1',
+    name: 'Elena Rostova',
+    role: 'Lead Designer',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
+    online: true
+  },
+  {
+    id: 'chat_2',
+    name: 'Liam Vance',
+    role: 'Frontend Engineer',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256',
+    online: false
+  },
+  {
+    id: 'chat_3',
+    name: 'Sophia Chen',
+    role: 'Product Manager',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=256',
+    online: true
+  }
+];

@@ -15,16 +15,17 @@ export function renderComposer() {
   composer.className = 'composer';
   composer.style.position = 'relative';
   composer.style.width = '100%';
+  composer.style.minHeight = '52px';
   composer.style.boxSizing = 'border-box';
   composer.style.backgroundColor = 'var(--surface-sand)';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
   composer.style.borderRadius = '9999px';
   composer.style.padding = '8px';
-  composer.style.transition = 'border-radius 0.15s ease';
-  composer.style.minHeight = '52px';
+  composer.style.transition =
+    'border-radius 0.18s ease, min-height 0.18s ease';
 
   /* --------------------------------------------------------------- *
-   * Input
+   * Input Area
    * --------------------------------------------------------------- */
 
   const inputContainer = document.createElement('div');
@@ -33,6 +34,8 @@ export function renderComposer() {
   inputContainer.style.boxSizing = 'border-box';
   inputContainer.style.paddingLeft = '40px';
   inputContainer.style.paddingRight = '126px';
+  inputContainer.style.paddingBottom = '0';
+  inputContainer.style.transition = 'padding-bottom 0.16s ease';
 
   const input = document.createElement('textarea');
   input.rows = 1;
@@ -50,13 +53,14 @@ export function renderComposer() {
   input.style.fontSize = '14px';
   input.style.lineHeight = '20px';
   input.style.color = 'var(--text-espresso)';
-  input.style.padding = '8px 4px 8px 4px';
+  input.style.padding = '8px 2px 8px 4px';
   input.style.margin = '0';
   input.style.resize = 'none';
   input.style.overflowY = 'hidden';
   input.style.overflowX = 'hidden';
   input.style.scrollbarGutter = 'stable';
   input.style.boxSizing = 'border-box';
+  input.style.transition = 'height 0.16s ease';
 
   inputContainer.appendChild(input);
   composer.appendChild(inputContainer);
@@ -70,7 +74,7 @@ export function renderComposer() {
   attachWrapper.style.left = '8px';
   attachWrapper.style.bottom = '8px';
   attachWrapper.style.display = 'flex';
-  attachWrapper.style.zIndex = '10';
+  attachWrapper.style.zIndex = '20';
 
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
@@ -150,7 +154,7 @@ export function renderComposer() {
   rightTools.style.display = 'flex';
   rightTools.style.alignItems = 'center';
   rightTools.style.gap = '2px';
-  rightTools.style.zIndex = '10';
+  rightTools.style.zIndex = '20';
 
   /* --------------------------------------------------------------- *
    * Emoji
@@ -221,8 +225,8 @@ export function renderComposer() {
         input.value.slice(end);
 
       input.selectionStart = input.selectionEnd = start + emo.length;
-
       input.focus();
+
       updateComposer();
     });
 
@@ -262,9 +266,9 @@ export function renderComposer() {
   }
 
   micBtn.addEventListener('click', () => {
-    isRecording = !isRecording;
+    if (!isRecording) {
+      isRecording = true;
 
-    if (isRecording) {
       micBtn.style.color = '#C94A4A';
       micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
 
@@ -285,10 +289,12 @@ export function renderComposer() {
 
         updateComposer();
       }, 1000);
-    } else {
-      stopRecording();
-      store.sendMessage('[Voice Note]');
+
+      return;
     }
+
+    stopRecording();
+    store.sendMessage('[Voice Note]');
   });
 
   /* --------------------------------------------------------------- *
@@ -310,17 +316,20 @@ export function renderComposer() {
   composer.appendChild(rightTools);
 
   /* --------------------------------------------------------------- *
-   * Composer State
+   * Composer Growth
    * --------------------------------------------------------------- */
 
   function updateComposer() {
+    const maxHeight = 160;
+
+    const previousHeight = input.offsetHeight;
+
     input.style.height = 'auto';
 
-    const maxHeight = 160;
     const contentHeight = input.scrollHeight;
-    const height = Math.min(contentHeight, maxHeight);
+    const targetHeight = Math.min(contentHeight, maxHeight);
 
-    input.style.height = `${height}px`;
+    input.style.height = `${targetHeight}px`;
 
     const expanded =
       input.value.length > 0 &&
@@ -328,24 +337,21 @@ export function renderComposer() {
 
     if (expanded || isRecording) {
       composer.style.borderRadius = '22px';
-      composer.style.paddingTop = '8px';
-      composer.style.paddingBottom = '8px';
 
-      // Push scrollbar to the far right edge and reserve bottom space for tools
       inputContainer.style.paddingLeft = '40px';
-      inputContainer.style.paddingRight = '8px';
+      inputContainer.style.paddingRight = '4px';
       inputContainer.style.paddingBottom = '40px';
 
       input.style.overflowY =
         contentHeight > maxHeight ? 'auto' : 'hidden';
 
       if (contentHeight > maxHeight) {
-        input.scrollTop = input.scrollHeight;
+        requestAnimationFrame(() => {
+          input.scrollTop = input.scrollHeight;
+        });
       }
     } else {
       composer.style.borderRadius = '9999px';
-      composer.style.paddingTop = '8px';
-      composer.style.paddingBottom = '8px';
 
       inputContainer.style.paddingLeft = '40px';
       inputContainer.style.paddingRight = '126px';
@@ -355,10 +361,18 @@ export function renderComposer() {
       input.style.overflowY = 'hidden';
       input.scrollTop = 0;
     }
+
+    if (previousHeight !== targetHeight) {
+      requestAnimationFrame(() => {
+        if (contentHeight <= maxHeight) {
+          input.style.height = `${targetHeight}px`;
+        }
+      });
+    }
   }
 
   /* --------------------------------------------------------------- *
-   * Input Events
+   * Input
    * --------------------------------------------------------------- */
 
   input.addEventListener('input', updateComposer);
@@ -380,7 +394,6 @@ export function renderComposer() {
     emojiPicker.style.display = 'none';
 
     const visible = dropup.style.display === 'block';
-
     dropup.style.display = visible ? 'none' : 'block';
   });
 
@@ -390,7 +403,6 @@ export function renderComposer() {
     dropup.style.display = 'none';
 
     const visible = emojiPicker.style.display === 'grid';
-
     emojiPicker.style.display = visible ? 'none' : 'grid';
   });
 
@@ -426,6 +438,10 @@ export function renderComposer() {
     updateComposer();
     input.focus();
   });
+
+  /* --------------------------------------------------------------- *
+   * Final
+   * --------------------------------------------------------------- */
 
   container.appendChild(composer);
 

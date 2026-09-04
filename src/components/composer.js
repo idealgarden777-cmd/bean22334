@@ -3,6 +3,7 @@
  * ================================================================= */
 
 import { store } from '../core/store.js';
+import { icons } from './icons.js';
 
 export function renderComposer() {
   const container = document.createElement('div');
@@ -10,7 +11,6 @@ export function renderComposer() {
   container.style.padding = 'var(--spacing-sm) var(--spacing-md) var(--spacing-md)';
   container.style.backgroundColor = 'var(--bg-bone)';
 
-  // Pill-shaped input container[cite: 3]
   const composer = document.createElement('form');
   composer.className = 'composer';
   composer.style.display = 'flex';
@@ -21,14 +21,11 @@ export function renderComposer() {
   composer.style.gap = 'var(--spacing-xs)';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
 
-  // Attachment action button (+) on the left[cite: 3]
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
-  attachBtn.textContent = '+';
-  attachBtn.className = 'attach-btn';
+  attachBtn.innerHTML = icons.plus;
   styleButton(attachBtn, 'var(--radius-button)');
 
-  // Input field
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = 'Type a message...';
@@ -41,11 +38,9 @@ export function renderComposer() {
   input.style.color = 'var(--text-espresso)';
   input.style.padding = '0 var(--spacing-xs)';
 
-  // Rounded send button with an arrow icon on the right[cite: 3]
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
-  sendBtn.textContent = '➔';
-  sendBtn.className = 'send-btn';
+  sendBtn.innerHTML = icons.send;
   styleButton(sendBtn, 'var(--radius-avatar)');
   sendBtn.style.backgroundColor = 'var(--accent-sage)';
   sendBtn.style.color = '#FFFFFF';
@@ -75,5 +70,4 @@ function styleButton(btn, radius) {
   btn.style.display = 'flex';
   btn.style.alignItems = 'center';
   btn.style.justifyContent = 'center';
-  btn.style.fontSize = '16px';
 }

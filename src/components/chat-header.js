@@ -2,6 +2,8 @@
  * Chat Header Component - src/components/chat-header.js             *
  * ================================================================= */
 
+import { icons } from './icons.js';
+
 export function renderChatHeader(activeContact) {
   const header = document.createElement('div');
   header.className = 'chat-header';
@@ -17,7 +19,6 @@ export function renderChatHeader(activeContact) {
     return header;
   }
 
-  // Participant profile alignment[cite: 3]
   const profileContainer = document.createElement('div');
   profileContainer.style.display = 'flex';
   profileContainer.style.alignItems = 'center';
@@ -50,15 +51,14 @@ export function renderChatHeader(activeContact) {
   profileContainer.appendChild(avatar);
   profileContainer.appendChild(details);
 
-  // Actions: call buttons, video icon, action menu[cite: 3]
   const actions = document.createElement('div');
   actions.style.display = 'flex';
   actions.style.alignItems = 'center';
   actions.style.gap = 'var(--spacing-xs)';
 
-  const callBtn = createActionButton('📞');
-  const videoBtn = createActionButton('🎥');
-  const menuBtn = createActionButton('⋮');
+  const callBtn = createActionButton(icons.phone);
+  const videoBtn = createActionButton(icons.video);
+  const menuBtn = createActionButton(icons.menu);
 
   actions.appendChild(callBtn);
   actions.appendChild(videoBtn);
@@ -70,9 +70,9 @@ export function renderChatHeader(activeContact) {
   return header;
 }
 
-function createActionButton(text) {
+function createActionButton(svgHtml) {
   const btn = document.createElement('button');
-  btn.textContent = text;
+  btn.innerHTML = svgHtml;
   btn.style.width = '36px';
   btn.style.height = '36px';
   btn.style.borderRadius = 'var(--radius-button)';
@@ -83,7 +83,7 @@ function createActionButton(text) {
   btn.style.display = 'flex';
   btn.style.alignItems = 'center';
   btn.style.justifyContent = 'center';
-  btn.style.fontSize = '16px';
+  btn.style.transition = 'background 0.2s ease';
 
   btn.addEventListener('mouseenter', () => {
     btn.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';

@@ -10,7 +10,7 @@ export function renderMessageList(messages, currentUser) {
   container.style.padding = '16px'; //[cite: 1]
   container.style.display = 'flex';
   container.style.flexDirection = 'column';
-  container.style.gap = '4px'; // Tighter spacing for grouped messages
+  container.style.gap = '3px'; // Tighter gap for seamless stacking
 
   if (!messages || messages.length === 0) {
     const emptyState = document.createElement('div');
@@ -26,7 +26,6 @@ export function renderMessageList(messages, currentUser) {
   messages.forEach((msg, index) => {
     const isOutgoing = msg.senderId === currentUser.id;
 
-    // Check grouping with adjacent messages from the same sender for modern stacked feel
     const prevMsg = messages[index - 1];
     const nextMsg = messages[index + 1];
     
@@ -47,16 +46,16 @@ export function renderMessageList(messages, currentUser) {
       bubble.style.color = '#FFFFFF';
       bubble.style.alignSelf = 'flex-end';
 
-      // Dynamic Instagram/Telegram-style corner rounding based on position in group
-      let tl = '18px', tr = '18px', br = '18px', bl = '18px';
-      if (!isSameAsPrev && isSameAsNext) {
-        tl = '18px'; tr = '18px'; br = '4px'; bl = '18px';
-      } else if (isSameAsPrev && isSameAsNext) {
-        tl = '18px'; tr = '4px'; br = '4px'; bl = '18px';
-      } else if (isSameAsPrev && !isSameAsNext) {
-        tl = '18px'; tr = '4px'; br = '18px'; bl = '18px';
-      } else {
-        tl = '18px'; tr = '18px'; br = '4px'; bl = '18px';
+      // Full pill-like shape with a crisp Instagram-style corner tail on the bottom-right for the last message
+      let tl = '20px', tr = '20px', br = '20px', bl = '20px';
+      if (!isSameAsNext) {
+        br = '4px'; // Tail corner
+      }
+      if (isSameAsPrev) {
+        tr = '6px';
+      }
+      if (isSameAsNext) {
+        br = '6px';
       }
       bubble.style.borderRadius = `${tl} ${tr} ${br} ${bl}`;
     } else {
@@ -64,15 +63,15 @@ export function renderMessageList(messages, currentUser) {
       bubble.style.color = 'var(--text-espresso)'; //[cite: 1]
       bubble.style.alignSelf = 'flex-start';
 
-      let tl = '18px', tr = '18px', br = '18px', bl = '18px';
-      if (!isSameAsPrev && isSameAsNext) {
-        tl = '18px'; tr = '18px'; bl = '4px'; br = '18px';
-      } else if (isSameAsPrev && isSameAsNext) {
-        tl = '4px'; tr = '18px'; bl = '4px'; br = '18px';
-      } else if (isSameAsPrev && !isSameAsNext) {
-        tl = '4px'; tr = '18px'; bl = '18px'; br = '18px';
-      } else {
-        tl = '18px'; tr = '18px'; bl = '4px'; br = '18px';
+      let tl = '20px', tr = '20px', br = '20px', bl = '20px';
+      if (!isSameAsNext) {
+        bl = '4px'; // Tail corner
+      }
+      if (isSameAsPrev) {
+        tl = '6px';
+      }
+      if (isSameAsNext) {
+        bl = '6px';
       }
       bubble.style.borderRadius = `${tl} ${tr} ${br} ${bl}`;
     }

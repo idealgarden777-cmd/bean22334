@@ -31,7 +31,6 @@ export function renderComposer() {
   attachBtn.innerHTML = icons.plus;
   styleButton(attachBtn, '9999px');
 
-  // Functional Dropup Menu
   const dropup = document.createElement('div');
   dropup.className = 'composer-dropup';
   dropup.style.display = 'none';
@@ -47,9 +46,9 @@ export function renderComposer() {
   dropup.style.padding = '6px';
 
   const dropupOptions = [
-    { label: 'Photos & Videos', action: () => simulateAttachment('photo') },
-    { label: 'Document', action: () => simulateAttachment('document') },
-    { label: 'Audio File', action: () => simulateAttachment('audio') }
+    { label: 'Photos & Videos', action: () => store.sendMessage('[Photo Attachment]') },
+    { label: 'Document', action: () => store.sendMessage('[Document Attachment]') },
+    { label: 'Audio File', action: () => store.sendMessage('[Audio Attachment]') }
   ];
 
   dropupOptions.forEach(opt => {
@@ -80,12 +79,9 @@ export function renderComposer() {
 
   attachBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    emojiPicker.style.display = 'none';
     const isVisible = dropup.style.display === 'block';
     dropup.style.display = isVisible ? 'none' : 'block';
-  });
-
-  document.addEventListener('click', () => {
-    dropup.style.display = 'none';
   });
 
   attachWrapper.appendChild(attachBtn);
@@ -111,7 +107,82 @@ export function renderComposer() {
 
   inputContainer.appendChild(input);
 
-  // Functional Microphone / Voice Recording State
+  // Emoji Picker Wrapper & Button
+  const emojiWrapper = document.createElement('div');
+  emojiWrapper.style.position = 'relative';
+  emojiWrapper.style.display = 'flex';
+
+  const emojiBtn = document.createElement('button');
+  emojiBtn.type = 'button';
+  emojiBtn.innerHTML = '😊';
+  emojiBtn.style.fontSize = '16px';
+  styleButton(emojiBtn, '9999px');
+  emojiBtn.title = 'Add Emoji';
+
+  const emojiPicker = document.createElement('div');
+  emojiPicker.className = 'emoji-picker';
+  emojiPicker.style.display = 'none';
+  emojiPicker.style.position = 'absolute';
+  emojiPicker.style.bottom = '52px';
+  emojiPicker.style.right = '0';
+  emojiPicker.style.width = '220px';
+  emojiPicker.style.backgroundColor = 'var(--surface-sand)';
+  emojiPicker.style.border = '1px solid rgba(44, 37, 35, 0.08)';
+  emojiPicker.style.borderRadius = '12px';
+  emojiPicker.style.boxShadow = '0 -4px 20px rgba(44, 37, 35, 0.08)';
+  emojiPicker.style.zIndex = '100';
+  emojiPicker.style.padding = '10px';
+  emojiPicker.style.displayGrid = 'grid';
+  emojiPicker.style.gridTemplateColumns = 'repeat(5, 1fr)';
+  emojiPicker.style.gap = '6px';
+  emojiPicker.style.display = 'none'; // Controlled via toggle
+
+  const emojis = ['😊', '😂', '❤️', '👍', '🔥', '✨', '🙌', '😍', '😎', '🙏', '🎉', '💡', '☕', '🌿', '💬'];
+  emojis.forEach(emo => {
+    const emoItem = document.createElement('button');
+    emoItem.type = 'button';
+    emoItem.textContent = emo;
+    emoItem.style.background = 'transparent';
+    emoItem.style.border = 'none';
+    emoItem.style.fontSize = '18px';
+    emoItem.style.cursor = 'pointer';
+    emoItem.style.padding = '6px';
+    emoItem.style.borderRadius = '6px';
+    emoItem.style.transition = 'background 0.2s ease';
+
+    emoItem.addEventListener('mouseenter', () => {
+      emoItem.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
+    });
+    emoItem.addEventListener('mouseleave', () => {
+      emoItem.style.backgroundColor = 'transparent';
+    });
+
+    emoItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      input.value += emo;
+      input.focus();
+    });
+
+    emojiPicker.appendChild(emoItem);
+  });
+
+  emojiBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropup.style.display = 'none';
+    const isVisible = emojiPicker.style.display === 'grid';
+    emojiPicker.style.display = isVisible ? 'none' : 'grid';
+  });
+
+  emojiWrapper.appendChild(emojiBtn);
+  emojiWrapper.appendChild(emojiPicker);
+
+  // Global click listener to close dropdowns/pickers
+  document.addEventListener('click', () => {
+    dropup.style.display = 'none';
+    emojiPicker.style.display = 'none';
+  });
+
+  // Microphone Button for Voice Notes
   let isRecording = false;
   let recordingTimer = null;
   let secondsCount = 0;
@@ -125,7 +196,7 @@ export function renderComposer() {
   micBtn.addEventListener('click', () => {
     isRecording = !isRecording;
     if (isRecording) {
-      micBtn.style.color = '#C94A4A'; // Active red recording color indicator
+      micBtn.style.color = '#C94A4A';
       micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
       input.value = 'Recording voice note (0:00)...';
       input.disabled = true;
@@ -152,15 +223,6 @@ export function renderComposer() {
     input.disabled = false;
   }
 
-  function simulateAttachment(type) {
-    const labels = {
-      photo: '[Photo Attachment]',
-      document: '[Document Attachment]',
-      audio: '[Audio Attachment]'
-    };
-    store.sendMessage(labels[type] || '[Attachment]');
-  }
-
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
   sendBtn.innerHTML = icons.send;
@@ -183,6 +245,7 @@ export function renderComposer() {
 
   composer.appendChild(attachWrapper);
   composer.appendChild(inputContainer);
+  composer.appendChild(emojiWrapper);
   composer.appendChild(micBtn);
   composer.appendChild(sendBtn);
   container.appendChild(composer);

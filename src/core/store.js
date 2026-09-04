@@ -1,126 +1,160 @@
-import {
-  mockChats,
-  mockMessages,
-  mockContacts
-} from '../data/mock-data.js';
+/* ================================================================= *
+ * Simple State Store - src/core/store.js                            *
+ * ================================================================= */
 
-class Store {
-  constructor() {
-    const chats = Array.isArray(mockChats) ? mockChats : [];
+export const store = {
+  state: {
+    currentUser: {
+      id: 'user_me',
+      name: 'You'
+    },
 
-    this.state = {
-      chats,
-      activeChatId: chats.length > 0 ? chats[0].id : null,
-      messages:
-        mockMessages && typeof mockMessages === 'object'
-          ? mockMessages
-          : {},
-      contacts: Array.isArray(mockContacts) ? mockContacts : [],
-      searchQuery: '',
-      isContactPanelOpen: false
-    };
+    activeContactId: 'contact_1',
 
-    this.listeners = new Set();
-  }
+    contacts: [
+      {
+        id: 'contact_1',
+        name: 'Ayesha Khan',
+        status: 'Online',
+        avatar: 'https://i.pravatar.cc/150?img=47',
+        isTyping: false
+      },
+      {
+        id: 'contact_2',
+        name: 'Zain Ahmed',
+        status: 'Offline',
+        avatar: 'https://i.pravatar.cc/150?img=12',
+        isTyping: false
+      }
+    ],
+
+    messages: {
+      contact_1: [
+        {
+          id: 'msg_1',
+          senderId: 'contact_1',
+          text: 'Hi',
+          timestamp: '04:34 PM',
+          status: 'received'
+        },
+        {
+          id: 'msg_2',
+          senderId: 'user_me',
+          text: 'Hello! How are you doing?',
+          timestamp: '04:35 PM',
+          status: 'sent'
+        }
+      ],
+
+      contact_2: [
+        {
+          id: 'msg_3',
+          senderId: 'contact_2',
+          text: 'Hey, are we still meeting?',
+          timestamp: '02:10 PM',
+          status: 'received'
+        }
+      ]
+    }
+  },
+
+  listeners: [],
 
   getState() {
     return this.state;
-  }
+  },
 
   subscribe(listener) {
-    if (typeof listener !== 'function') {
-      return () => {};
-    }
+    if (typeof listener !== 'function') return;
 
-    this.listeners.add(listener);
+    this.listeners.push(listener);
 
     return () => {
-      this.listeners.delete(listener);
+      this.listeners = this.listeners.filter(
+        item => item !== listener
+      );
     };
-  }
+  },
 
   notify() {
-    this.listeners.forEach((listener) => {
-      try {
-        listener(this.state);
-      } catch (error) {
-        console.error('[Store] Listener error:', error);
-      }
+    this.listeners.forEach(listener => {
+      listener(this.state);
     });
-  }
+  },
 
-  setActiveChat(chatId) {
-    if (this.state.activeChatId === chatId) return;
-
-    const chatExists = this.state.chats.some(
-      (chat) => chat.id === chatId
+  setActiveContact(contactId) {
+    const contact = this.state.contacts.find(
+      item => item.id === contactId
     );
 
-    if (!chatExists) return;
+    if (!contact) return;
 
-    this.state.activeChatId = chatId;
+    this.state.activeContactId = contactId;
     this.notify();
-  }
+  },
 
-  sendMessage(chatId, text) {
-    if (!chatId || typeof text !== 'string') return;
+  sendMessage(text) {
+    const messageText = String(text || '').trim();
 
-    const trimmedText = text.trim();
+    if (!messageText) return;
 
-    if (!trimmedText) return;
+    const contactId = this.state.activeContactId;
 
-    const newMessage = {
-      id: `msg_${Date.now()}_${Math.random()
-        .toString(36)
-        .slice(2, 8)}`,
-      senderId: 'user_me',
-      text: trimmedText,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+    if (!contactId) return;
+
+    if (!this.state.messages[contactId]) {
+      this.state.messages[contactId] = [];
+    }
+
+    const time = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    this.state.messages[contactId].push({
+      id: `msg_${Date.now()}`,
+      senderId: this.state.currentUser.id,
+      text: messageText,
+      timestamp: time,
       status: 'sent'
-    };
+    });
 
-    if (!Array.isArray(this.state.messages[chatId])) {
-      this.state.messages[chatId] = [];
-    }
+    this.notify();
 
-    this.state.messages[chatId].push(newMessage);
+    this.simulateReply(contactId);
+  },
 
-    const chat = this.state.chats.find(
-      (item) => item.id === chatId
+  simulateReply(contactId) {
+    const contact = this.state.contacts.find(
+      item => item.id === contactId
     );
 
-    if (chat) {
-      chat.lastMessage = trimmedText;
-      chat.lastMessageTime = 'Just now';
-    }
+    if (!contact) return;
 
-    this.notify();
+    setTimeout(() => {
+      contact.isTyping = true;
+      this.notify();
+
+      setTimeout(() => {
+        contact.isTyping = false;
+
+        if (!this.state.messages[contactId]) {
+          this.state.messages[contactId] = [];
+        }
+
+        this.state.messages[contactId].push({
+          id: `reply_${Date.now()}`,
+          senderId: contactId,
+          text: 'Got it! Thanks for letting me know.',
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          status: 'received'
+        });
+
+        this.notify();
+      }, 1500);
+    }, 700);
   }
-
-  toggleContactPanel(isOpen) {
-    const nextValue =
-      typeof isOpen === 'boolean'
-        ? isOpen
-        : !this.state.isContactPanelOpen;
-
-    if (this.state.isContactPanelOpen === nextValue) return;
-
-    this.state.isContactPanelOpen = nextValue;
-    this.notify();
-  }
-
-  setSearchQuery(query) {
-    const nextQuery =
-      typeof query === 'string' ? query : '';
-
-    if (this.state.searchQuery === nextQuery) return;
-
-    this.state.searchQuery = nextQuery;
-    this.notify();
-  }
-}
-
-export const store = new Store();
+};

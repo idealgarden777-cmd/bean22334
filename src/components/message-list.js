@@ -7,10 +7,10 @@ export function renderMessageList(messages, currentUser) {
   container.className = 'message-list';
   container.style.flex = '1';
   container.style.overflowY = 'auto';
-  container.style.padding = '16px';[cite: 1]
+  container.style.padding = '16px'; //[cite: 1]
   container.style.display = 'flex';
   container.style.flexDirection = 'column';
-  container.style.gap = '8px';
+  container.style.gap = '4px'; // Tighter spacing for grouped messages
 
   if (!messages || messages.length === 0) {
     const emptyState = document.createElement('div');
@@ -18,35 +18,63 @@ export function renderMessageList(messages, currentUser) {
     emptyState.style.textAlign = 'center';
     emptyState.style.color = 'rgba(44, 37, 35, 0.5)';
     emptyState.style.marginTop = '40px';
-    emptyState.style.fontSize = '14px';[cite: 1]
+    emptyState.style.fontSize = '14px'; //[cite: 1]
     container.appendChild(emptyState);
     return container;
   }
 
-  messages.forEach(msg => {
+  messages.forEach((msg, index) => {
     const isOutgoing = msg.senderId === currentUser.id;
+
+    // Check grouping with adjacent messages from the same sender for modern stacked feel
+    const prevMsg = messages[index - 1];
+    const nextMsg = messages[index + 1];
+    
+    const isSameAsPrev = prevMsg && prevMsg.senderId === msg.senderId;
+    const isSameAsNext = nextMsg && nextMsg.senderId === msg.senderId;
 
     const bubble = document.createElement('div');
     bubble.className = `message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`;
     bubble.style.maxWidth = '60%';
     bubble.style.padding = '10px 16px';
-    bubble.style.fontSize = '14px';[cite: 1]
+    bubble.style.fontSize = '14px'; //[cite: 1]
     bubble.style.lineHeight = '1.4';
     bubble.style.position = 'relative';
     bubble.style.wordBreak = 'break-word';
 
     if (isOutgoing) {
-      bubble.style.backgroundColor = 'var(--accent-sage)';[cite: 1]
+      bubble.style.backgroundColor = 'var(--accent-sage)'; //[cite: 1]
       bubble.style.color = '#FFFFFF';
       bubble.style.alignSelf = 'flex-end';
-      // Asymmetric pill shape with a sleek tail on the bottom-right corner
-      bubble.style.borderRadius = '18px 18px 4px 18px';
+
+      // Dynamic Instagram/Telegram-style corner rounding based on position in group
+      let tl = '18px', tr = '18px', br = '18px', bl = '18px';
+      if (!isSameAsPrev && isSameAsNext) {
+        tl = '18px'; tr = '18px'; br = '4px'; bl = '18px';
+      } else if (isSameAsPrev && isSameAsNext) {
+        tl = '18px'; tr = '4px'; br = '4px'; bl = '18px';
+      } else if (isSameAsPrev && !isSameAsNext) {
+        tl = '18px'; tr = '4px'; br = '18px'; bl = '18px';
+      } else {
+        tl = '18px'; tr = '18px'; br = '4px'; bl = '18px';
+      }
+      bubble.style.borderRadius = `${tl} ${tr} ${br} ${bl}`;
     } else {
-      bubble.style.backgroundColor = 'var(--surface-sand)';[cite: 1]
-      bubble.style.color = 'var(--text-espresso)';[cite: 1]
+      bubble.style.backgroundColor = 'var(--surface-sand)'; //[cite: 1]
+      bubble.style.color = 'var(--text-espresso)'; //[cite: 1]
       bubble.style.alignSelf = 'flex-start';
-      // Asymmetric pill shape with a sleek tail on the bottom-left corner
-      bubble.style.borderRadius = '18px 18px 18px 4px';
+
+      let tl = '18px', tr = '18px', br = '18px', bl = '18px';
+      if (!isSameAsPrev && isSameAsNext) {
+        tl = '18px'; tr = '18px'; bl = '4px'; br = '18px';
+      } else if (isSameAsPrev && isSameAsNext) {
+        tl = '4px'; tr = '18px'; bl = '4px'; br = '18px';
+      } else if (isSameAsPrev && !isSameAsNext) {
+        tl = '4px'; tr = '18px'; bl = '18px'; br = '18px';
+      } else {
+        tl = '18px'; tr = '18px'; bl = '4px'; br = '18px';
+      }
+      bubble.style.borderRadius = `${tl} ${tr} ${br} ${bl}`;
     }
 
     const text = document.createElement('div');
@@ -54,8 +82,8 @@ export function renderMessageList(messages, currentUser) {
     bubble.appendChild(text);
 
     const timestamp = document.createElement('span');
-    timestamp.textContent = `${msg.timestamp} ${isOutgoing ? '✓✓' : ''}`;[cite: 1]
-    timestamp.style.fontSize = '12px';[cite: 1]
+    timestamp.textContent = `${msg.timestamp} ${isOutgoing ? '✓✓' : ''}`; //[cite: 1]
+    timestamp.style.fontSize = '11px';
     timestamp.style.display = 'block';
     timestamp.style.textAlign = 'right';
     timestamp.style.marginTop = '4px';

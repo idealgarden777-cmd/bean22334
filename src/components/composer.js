@@ -107,15 +107,14 @@ export function renderComposer() {
 
   inputContainer.appendChild(input);
 
-  // Emoji Picker Wrapper & Button
+  // Premium Emoji Icon Wrapper & Button
   const emojiWrapper = document.createElement('div');
   emojiWrapper.style.position = 'relative';
   emojiWrapper.style.display = 'flex';
 
   const emojiBtn = document.createElement('button');
   emojiBtn.type = 'button';
-  emojiBtn.innerHTML = '😊';
-  emojiBtn.style.fontSize = '16px';
+  emojiBtn.innerHTML = icons.emoji; // High-end minimalist outline SVG icon
   styleButton(emojiBtn, '9999px');
   emojiBtn.title = 'Add Emoji';
 
@@ -135,7 +134,6 @@ export function renderComposer() {
   emojiPicker.style.displayGrid = 'grid';
   emojiPicker.style.gridTemplateColumns = 'repeat(5, 1fr)';
   emojiPicker.style.gap = '6px';
-  emojiPicker.style.display = 'none'; // Controlled via toggle
 
   const emojis = ['😊', '😂', '❤️', '👍', '🔥', '✨', '🙌', '😍', '😎', '🙏', '🎉', '💡', '☕', '🌿', '💬'];
   emojis.forEach(emo => {
@@ -176,13 +174,11 @@ export function renderComposer() {
   emojiWrapper.appendChild(emojiBtn);
   emojiWrapper.appendChild(emojiPicker);
 
-  // Global click listener to close dropdowns/pickers
   document.addEventListener('click', () => {
     dropup.style.display = 'none';
     emojiPicker.style.display = 'none';
   });
 
-  // Microphone Button for Voice Notes
   let isRecording = false;
   let recordingTimer = null;
   let secondsCount = 0;

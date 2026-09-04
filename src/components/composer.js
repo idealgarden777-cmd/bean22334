@@ -13,39 +13,33 @@ export function renderComposer() {
 
   const composer = document.createElement('form');
   composer.className = 'composer';
-  composer.style.position = 'relative';
-  composer.style.width = '100%';
-  composer.style.minHeight = '52px';
-  composer.style.boxSizing = 'border-box';
+  composer.style.display = 'flex';
+  composer.style.alignItems = 'flex-end';
+  composer.style.gap = '8px';
+  composer.style.padding = '8px';
   composer.style.backgroundColor = 'var(--surface-sand)';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
   composer.style.borderRadius = '9999px';
-  composer.style.padding = '8px';
-  composer.style.transition =
-    'border-radius 0.18s ease, min-height 0.18s ease';
+  composer.style.position = 'relative';
+  composer.style.minHeight = '52px';
+  composer.style.boxSizing = 'border-box';
+  composer.style.transition = 'border-radius 0.18s ease, min-height 0.18s ease';
 
-  /* --------------------------------------------------------------- *
-   * Input Area
-   * --------------------------------------------------------------- */
-
+  /* ---- Input Area ---- */
   const inputContainer = document.createElement('div');
-  inputContainer.style.width = '100%';
+  inputContainer.style.flex = '1';
+  inputContainer.style.display = 'flex';
+  inputContainer.style.alignItems = 'flex-end';
   inputContainer.style.minWidth = '0';
-  inputContainer.style.boxSizing = 'border-box';
-  inputContainer.style.paddingLeft = '40px';
-  inputContainer.style.paddingRight = '126px';
-  inputContainer.style.paddingBottom = '0';
-  inputContainer.style.transition = 'padding-bottom 0.16s ease';
+  inputContainer.style.position = 'relative';
 
   const input = document.createElement('textarea');
   input.rows = 1;
   input.placeholder = 'Type a message...';
-
-  input.style.display = 'block';
   input.style.width = '100%';
-  input.style.height = '36px';
   input.style.minHeight = '36px';
   input.style.maxHeight = '160px';
+  input.style.height = '36px';
   input.style.background = 'transparent';
   input.style.border = 'none';
   input.style.outline = 'none';
@@ -53,41 +47,36 @@ export function renderComposer() {
   input.style.fontSize = '14px';
   input.style.lineHeight = '20px';
   input.style.color = 'var(--text-espresso)';
-  input.style.padding = '8px 2px 8px 4px';
+  input.style.padding = '8px 0';
   input.style.margin = '0';
   input.style.resize = 'none';
   input.style.overflowY = 'hidden';
   input.style.overflowX = 'hidden';
-  input.style.scrollbarGutter = 'stable';
   input.style.boxSizing = 'border-box';
   input.style.transition = 'height 0.16s ease';
 
   inputContainer.appendChild(input);
   composer.appendChild(inputContainer);
 
-  /* --------------------------------------------------------------- *
-   * Attachment
-   * --------------------------------------------------------------- */
-
+  /* ---- Attachment (with dropup) ---- */
   const attachWrapper = document.createElement('div');
-  attachWrapper.style.position = 'absolute';
-  attachWrapper.style.left = '8px';
-  attachWrapper.style.bottom = '8px';
+  attachWrapper.style.position = 'relative';
   attachWrapper.style.display = 'flex';
-  attachWrapper.style.zIndex = '20';
+  attachWrapper.style.alignSelf = 'flex-end';
 
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
   attachBtn.innerHTML = icons.plus;
   styleButton(attachBtn);
   attachBtn.title = 'Attach';
+  attachBtn.setAttribute('aria-label', 'Attach file');
 
   const dropup = document.createElement('div');
   dropup.className = 'composer-dropup';
   dropup.style.display = 'none';
   dropup.style.position = 'absolute';
-  dropup.style.left = '0';
   dropup.style.bottom = '44px';
+  dropup.style.left = '0';
   dropup.style.width = '180px';
   dropup.style.backgroundColor = 'var(--surface-sand)';
   dropup.style.border = '1px solid rgba(44, 37, 35, 0.08)';
@@ -96,24 +85,17 @@ export function renderComposer() {
   dropup.style.zIndex = '100';
   dropup.style.padding = '6px';
 
+  // Prevent clicks inside dropup from closing it prematurely
+  dropup.addEventListener('click', e => e.stopPropagation());
+
   const dropupOptions = [
-    {
-      label: 'Photos & Videos',
-      action: () => store.sendMessage('[Photo Attachment]')
-    },
-    {
-      label: 'Document',
-      action: () => store.sendMessage('[Document Attachment]')
-    },
-    {
-      label: 'Audio File',
-      action: () => store.sendMessage('[Audio Attachment]')
-    }
+    { label: 'Photos & Videos', action: () => store.sendMessage('[Photo Attachment]') },
+    { label: 'Document', action: () => store.sendMessage('[Document Attachment]') },
+    { label: 'Audio File', action: () => store.sendMessage('[Audio Attachment]') }
   ];
 
   dropupOptions.forEach(opt => {
     const item = document.createElement('div');
-
     item.textContent = opt.label;
     item.style.padding = '8px 12px';
     item.style.fontSize = '13px';
@@ -125,11 +107,9 @@ export function renderComposer() {
     item.addEventListener('mouseenter', () => {
       item.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
     });
-
     item.addEventListener('mouseleave', () => {
       item.style.backgroundColor = 'transparent';
     });
-
     item.addEventListener('click', e => {
       e.stopPropagation();
       dropup.style.display = 'none';
@@ -143,23 +123,14 @@ export function renderComposer() {
   attachWrapper.appendChild(dropup);
   composer.appendChild(attachWrapper);
 
-  /* --------------------------------------------------------------- *
-   * Right Tools
-   * --------------------------------------------------------------- */
-
+  /* ---- Right Tools Wrapper (Emoji, Mic, Send) ---- */
   const rightTools = document.createElement('div');
-  rightTools.style.position = 'absolute';
-  rightTools.style.right = '8px';
-  rightTools.style.bottom = '8px';
   rightTools.style.display = 'flex';
   rightTools.style.alignItems = 'center';
   rightTools.style.gap = '2px';
-  rightTools.style.zIndex = '20';
+  rightTools.style.alignSelf = 'flex-end';
 
-  /* --------------------------------------------------------------- *
-   * Emoji
-   * --------------------------------------------------------------- */
-
+  /* ---- Emoji ---- */
   const emojiWrapper = document.createElement('div');
   emojiWrapper.style.position = 'relative';
   emojiWrapper.style.display = 'flex';
@@ -169,10 +140,10 @@ export function renderComposer() {
   emojiBtn.innerHTML = icons.emoji;
   styleButton(emojiBtn);
   emojiBtn.title = 'Add Emoji';
+  emojiBtn.setAttribute('aria-label', 'Add emoji');
 
   const emojiPicker = document.createElement('div');
   emojiPicker.className = 'emoji-picker';
-  emojiPicker.style.display = 'none';
   emojiPicker.style.position = 'absolute';
   emojiPicker.style.right = '0';
   emojiPicker.style.bottom = '44px';
@@ -183,8 +154,12 @@ export function renderComposer() {
   emojiPicker.style.boxShadow = '0 -4px 20px rgba(44, 37, 35, 0.08)';
   emojiPicker.style.zIndex = '100';
   emojiPicker.style.padding = '10px';
+  emojiPicker.style.display = 'none';
   emojiPicker.style.gridTemplateColumns = 'repeat(5, 1fr)';
   emojiPicker.style.gap = '6px';
+
+  // Prevent clicks inside emoji picker from closing it prematurely
+  emojiPicker.addEventListener('click', e => e.stopPropagation());
 
   const emojis = [
     '😊', '😂', '❤️', '👍', '🔥',
@@ -194,7 +169,6 @@ export function renderComposer() {
 
   emojis.forEach(emo => {
     const emoItem = document.createElement('button');
-
     emoItem.type = 'button';
     emoItem.textContent = emo;
     emoItem.style.background = 'transparent';
@@ -208,25 +182,16 @@ export function renderComposer() {
     emoItem.addEventListener('mouseenter', () => {
       emoItem.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
     });
-
     emoItem.addEventListener('mouseleave', () => {
       emoItem.style.backgroundColor = 'transparent';
     });
-
     emoItem.addEventListener('click', e => {
       e.stopPropagation();
-
       const start = input.selectionStart;
       const end = input.selectionEnd;
-
-      input.value =
-        input.value.slice(0, start) +
-        emo +
-        input.value.slice(end);
-
+      input.value = input.value.slice(0, start) + emo + input.value.slice(end);
       input.selectionStart = input.selectionEnd = start + emo.length;
       input.focus();
-
       updateComposer();
     });
 
@@ -236,10 +201,7 @@ export function renderComposer() {
   emojiWrapper.appendChild(emojiBtn);
   emojiWrapper.appendChild(emojiPicker);
 
-  /* --------------------------------------------------------------- *
-   * Mic
-   * --------------------------------------------------------------- */
-
+  /* ---- Microphone (Voice Recording) ---- */
   let isRecording = false;
   let recordingTimer = null;
   let secondsCount = 0;
@@ -249,58 +211,45 @@ export function renderComposer() {
   micBtn.innerHTML = icons.mic;
   styleButton(micBtn);
   micBtn.title = 'Record Voice Note';
+  micBtn.setAttribute('aria-label', 'Record voice note');
 
   function stopRecording() {
     clearInterval(recordingTimer);
     recordingTimer = null;
     isRecording = false;
-
     micBtn.style.color = 'var(--text-espresso)';
     micBtn.style.backgroundColor = 'transparent';
-
     input.value = '';
     input.disabled = false;
-
     updateComposer();
     input.focus();
   }
 
   micBtn.addEventListener('click', () => {
-    if (!isRecording) {
-      isRecording = true;
-
-      micBtn.style.color = '#C94A4A';
-      micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
-
-      input.value = 'Recording voice note (0:00)...';
-      input.disabled = true;
-      secondsCount = 0;
-
-      updateComposer();
-
-      recordingTimer = setInterval(() => {
-        secondsCount++;
-
-        const mins = Math.floor(secondsCount / 60);
-        const secs = secondsCount % 60;
-
-        input.value =
-          `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
-
-        updateComposer();
-      }, 1000);
-
+    if (isRecording) {
+      stopRecording();
+      store.sendMessage('[Voice Note]');
       return;
     }
 
-    stopRecording();
-    store.sendMessage('[Voice Note]');
+    isRecording = true;
+    secondsCount = 0;
+    micBtn.style.color = '#C94A4A';
+    micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
+    input.value = 'Recording voice note (0:00)...';
+    input.disabled = true;
+    updateComposer();
+
+    recordingTimer = setInterval(() => {
+      secondsCount++;
+      const mins = Math.floor(secondsCount / 60);
+      const secs = secondsCount % 60;
+      input.value = `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
+      updateComposer();
+    }, 1000);
   });
 
-  /* --------------------------------------------------------------- *
-   * Send
-   * --------------------------------------------------------------- */
-
+  /* ---- Send Button ---- */
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
   sendBtn.innerHTML = icons.send;
@@ -308,43 +257,38 @@ export function renderComposer() {
   sendBtn.style.backgroundColor = 'var(--accent-sage)';
   sendBtn.style.color = '#FFFFFF';
   sendBtn.title = 'Send';
+  sendBtn.setAttribute('aria-label', 'Send message');
 
   rightTools.appendChild(emojiWrapper);
   rightTools.appendChild(micBtn);
   rightTools.appendChild(sendBtn);
-
   composer.appendChild(rightTools);
 
-  /* --------------------------------------------------------------- *
-   * Composer Growth
-   * --------------------------------------------------------------- */
-
+  /* ----------------------------------------------------------------
+   * Unified updateComposer() – handles height, radius, and overflow
+   * ---------------------------------------------------------------- */
   function updateComposer() {
     const maxHeight = 160;
-
     const previousHeight = input.offsetHeight;
 
+    // Reset to measure scrollHeight
     input.style.height = 'auto';
-
     const contentHeight = input.scrollHeight;
     const targetHeight = Math.min(contentHeight, maxHeight);
 
+    // Apply new height
     input.style.height = `${targetHeight}px`;
 
+    // Determine if we are in "expanded" state
     const expanded =
-      input.value.length > 0 &&
-      (contentHeight > 36 || input.value.includes('\n'));
+      (input.value.length > 0 && (contentHeight > 36 || input.value.includes('\n'))) ||
+      isRecording;
 
-    if (expanded || isRecording) {
-      composer.style.borderRadius = '22px';
+    if (expanded) {
+      composer.style.borderRadius = '20px';
+      input.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
 
-      inputContainer.style.paddingLeft = '40px';
-      inputContainer.style.paddingRight = '4px';
-      inputContainer.style.paddingBottom = '40px';
-
-      input.style.overflowY =
-        contentHeight > maxHeight ? 'auto' : 'hidden';
-
+      // If content exceeds max, scroll to bottom
       if (contentHeight > maxHeight) {
         requestAnimationFrame(() => {
           input.scrollTop = input.scrollHeight;
@@ -352,29 +296,20 @@ export function renderComposer() {
       }
     } else {
       composer.style.borderRadius = '9999px';
-
-      inputContainer.style.paddingLeft = '40px';
-      inputContainer.style.paddingRight = '126px';
-      inputContainer.style.paddingBottom = '0';
-
       input.style.height = '36px';
       input.style.overflowY = 'hidden';
       input.scrollTop = 0;
     }
 
-    if (previousHeight !== targetHeight) {
+    // Stabilise height after reflow (smooths out any flicker)
+    if (previousHeight !== targetHeight && contentHeight <= maxHeight) {
       requestAnimationFrame(() => {
-        if (contentHeight <= maxHeight) {
-          input.style.height = `${targetHeight}px`;
-        }
+        input.style.height = `${targetHeight}px`;
       });
     }
   }
 
-  /* --------------------------------------------------------------- *
-   * Input
-   * --------------------------------------------------------------- */
-
+  /* ---- Input events ---- */
   input.addEventListener('input', updateComposer);
 
   input.addEventListener('keydown', e => {
@@ -384,26 +319,17 @@ export function renderComposer() {
     }
   });
 
-  /* --------------------------------------------------------------- *
-   * Menus
-   * --------------------------------------------------------------- */
-
+  /* ---- Menu toggles ---- */
   attachBtn.addEventListener('click', e => {
     e.stopPropagation();
-
     emojiPicker.style.display = 'none';
-
-    const visible = dropup.style.display === 'block';
-    dropup.style.display = visible ? 'none' : 'block';
+    dropup.style.display = dropup.style.display === 'block' ? 'none' : 'block';
   });
 
   emojiBtn.addEventListener('click', e => {
     e.stopPropagation();
-
     dropup.style.display = 'none';
-
-    const visible = emojiPicker.style.display === 'grid';
-    emojiPicker.style.display = visible ? 'none' : 'grid';
+    emojiPicker.style.display = emojiPicker.style.display === 'grid' ? 'none' : 'grid';
   });
 
   document.addEventListener('click', () => {
@@ -411,10 +337,7 @@ export function renderComposer() {
     emojiPicker.style.display = 'none';
   });
 
-  /* --------------------------------------------------------------- *
-   * Submit
-   * --------------------------------------------------------------- */
-
+  /* ---- Submit ---- */
   composer.addEventListener('submit', e => {
     e.preventDefault();
 
@@ -425,31 +348,29 @@ export function renderComposer() {
     }
 
     const text = input.value.trim();
-
     if (!text) return;
 
     store.sendMessage(text);
 
+    // Reset input cleanly
     input.value = '';
     input.style.height = '36px';
     input.style.overflowY = 'hidden';
     input.scrollTop = 0;
-
     updateComposer();
     input.focus();
   });
 
-  /* --------------------------------------------------------------- *
-   * Final
-   * --------------------------------------------------------------- */
-
+  /* ---- Final assembly ---- */
   container.appendChild(composer);
 
+  // Initial sizing
   updateComposer();
 
   return container;
 }
 
+/* ---- Shared button styler ---- */
 function styleButton(btn) {
   btn.style.width = '36px';
   btn.style.height = '36px';

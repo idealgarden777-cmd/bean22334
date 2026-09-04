@@ -17,7 +17,7 @@ export function renderComposer() {
   composer.style.alignItems = 'center';
   composer.style.backgroundColor = 'var(--surface-sand)';
   composer.style.borderRadius = 'var(--radius-avatar)';
-  composer.style.padding = '8px var(--spacing-sm)';
+  composer.style.padding = '8px';
   composer.style.gap = 'var(--spacing-xs)';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
 

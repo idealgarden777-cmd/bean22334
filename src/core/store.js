@@ -1,40 +1,10 @@
 // src/core/store.js
 
-// ----- Helper: safe clone (fallback for older browsers) -----
-function safeClone(obj) {
-  if (typeof structuredClone === 'function') {
-    return structuredClone(obj);
-  }
-  return JSON.parse(JSON.stringify(obj));
-}
-
-// ----- Helper: generate unique ID -----
-function generateId() {
-  if (crypto?.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-}
-
-// ----- Initial state with consistent ISO timestamps -----
-const now = new Date();
-const todayStr = (h, m) => {
-  const d = new Date(now);
-  d.setHours(h, m, 0, 0);
-  return d.toISOString();
-};
-const yesterdayStr = () => {
-  const d = new Date(now);
-  d.setDate(d.getDate() - 1);
-  d.setHours(14, 0, 0, 0); // arbitrary time
-  return d.toISOString();
-};
-
-export const INITIAL_STATE = {
+const INITIAL_STATE = {
   currentUser: {
     id: 'user_1',
     name: 'You',
-    avatar: '/avatars/user_1.png'
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=You'
   },
   activeContactId: 'contact_1',
   contacts: [
@@ -42,17 +12,17 @@ export const INITIAL_STATE = {
       id: 'contact_1',
       name: 'Ayesha Khan',
       status: 'online',
-      avatar: '/avatars/ayesha.png',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ayesha',
       lastMessage: 'Hey, let us review the design',
-      lastTime: todayStr(10, 42)  // ISO string
+      lastTime: '10:42 AM'
     },
     {
       id: 'contact_2',
       name: 'Zain Ahmed',
       status: 'offline',
-      avatar: '/avatars/zain.png',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zain',
       lastMessage: 'Check the uploaded PDF',
-      lastTime: yesterdayStr()    // ISO string
+      lastTime: 'Yesterday'
     }
   ],
   messages: {
@@ -61,7 +31,7 @@ export const INITIAL_STATE = {
         id: 'msg_1',
         senderId: 'contact_1',
         text: 'Hey, let us review the design',
-        timestamp: todayStr(10, 42)
+        timestamp: '10:42 AM'
       }
     ],
     contact_2: [
@@ -69,117 +39,103 @@ export const INITIAL_STATE = {
         id: 'msg_2',
         senderId: 'user_1',
         text: 'Check the uploaded PDF',
-        timestamp: yesterdayStr()
+        timestamp: 'Yesterday'
       }
     ]
   }
 };
 
-// ----- Store class -----
-class Store {
-  #state;
-  #listeners = new Set();
-
+export class Store {
   constructor(initialState = INITIAL_STATE) {
-    this.#state = safeClone(initialState);
+    this.state = structuredClone(initialState);
+    this.listeners = new Set();
   }
 
-  // ---------- Public API ----------
+  /**
+   * Returns current store state
+   */
   getState() {
-    // Return a deep clone to prevent external mutation
-    return safeClone(this.#state);
+    return this.state;
   }
 
+  /**
+   * Subscribe to state updates
+   * @param {Function} listener 
+   * @returns {Function} Unsubscribe function
+   */
   subscribe(listener) {
-    this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
+    if (typeof listener !== 'function') {
+      return () => {};
+    }
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
-  // Set active contact – throws if contact does not exist
-  setActiveContact(contactId) {
-    if (typeof contactId !== 'string') {
-      throw new TypeError('setActiveContact expects a string ID');
-    }
-    const contactExists = this.#state.contacts.some(c => c.id === contactId);
-    if (!contactExists) {
-      throw new Error(`Contact with id "${contactId}" not found`);
-    }
-    this.#state.activeContactId = contactId;
-    this.#notify();
+  /**
+   * Notify all registered subscribers
+   */
+  notify() {
+    this.listeners.forEach((listener) => {
+      try {
+        listener(this.state);
+      } catch (error) {
+        console.error('Error in store subscription listener:', error);
+      }
+    });
   }
 
-  // Send a message – throws on invalid contact or empty text
-  sendMessage(contactId, text) {
-    if (typeof contactId !== 'string') {
-      throw new TypeError('sendMessage expects a string contactId');
-    }
-    const trimmed = text?.trim();
-    if (!trimmed) {
-      throw new Error('Message text cannot be empty');
+  /**
+   * Set active contact ID defensively (handles string ID or full contact object)
+   * @param {string|Object} contactInput 
+   */
+  setActiveContact(contactInput) {
+    const targetId = typeof contactInput === 'object' && contactInput !== null 
+      ? contactInput.id 
+      : contactInput;
+
+    if (!targetId || typeof targetId !== 'string') {
+      console.warn('setActiveContact expects a valid string ID.');
+      return;
     }
 
-    // Verify contact exists
-    const contact = this.#state.contacts.find(c => c.id === contactId);
-    if (!contact) {
-      throw new Error(`Cannot send message: contact "${contactId}" not found`);
-    }
+    this.state.activeContactId = targetId;
+    this.notify();
+  }
 
-    // Ensure messages array exists for this contact
-    if (!this.#state.messages[contactId]) {
-      this.#state.messages[contactId] = [];
+  /**
+   * Send message to current active contact
+   * @param {string} text 
+   */
+  sendMessage(text) {
+    const activeId = this.state.activeContactId;
+    const cleanText = typeof text === 'string' ? text.trim() : '';
+
+    if (!cleanText || !activeId) return;
+
+    // Ensure array exists for active contact
+    if (!Array.isArray(this.state.messages[activeId])) {
+      this.state.messages[activeId] = [];
     }
 
     const newMessage = {
-      id: generateId(),
-      senderId: this.#state.currentUser.id,
-      text: trimmed,
-      timestamp: new Date().toISOString()  // consistent ISO format
+      id: `msg_${Date.now()}`,
+      senderId: this.state.currentUser.id,
+      text: cleanText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    this.#state.messages[contactId].push(newMessage);
+    this.state.messages[activeId].push(newMessage);
 
-    // Update conversation preview
-    contact.lastMessage = trimmed;
-    contact.lastTime = newMessage.timestamp;
-
-    this.#notify();
-  }
-
-  // Add a new contact (with optional initial message)
-  addContact(contactData, initialMessage = null) {
-    // Validate required fields
-    if (!contactData.id || !contactData.name) {
-      throw new Error('Contact must have at least "id" and "name"');
-    }
-    // Check for duplicate ID
-    if (this.#state.contacts.some(c => c.id === contactData.id)) {
-      throw new Error(`Contact with id "${contactData.id}" already exists`);
+    // Update conversation preview in sidebar
+    const contact = this.state.contacts.find((c) => c.id === activeId);
+    if (contact) {
+      contact.lastMessage = cleanText;
+      contact.lastTime = newMessage.timestamp;
     }
 
-    const newContact = {
-      status: 'offline',
-      avatar: '/avatars/default.png',
-      lastMessage: '',
-      lastTime: null,
-      ...contactData
-    };
-
-    this.#state.contacts.push(newContact);
-    this.#state.messages[contactData.id] = [];
-
-    if (initialMessage) {
-      this.sendMessage(contactData.id, initialMessage);
-    } else {
-      this.#notify();
-    }
-  }
-
-  // ---------- Private ----------
-  #notify() {
-    // Pass a clone to prevent listeners from mutating state
-    const clone = safeClone(this.#state);
-    this.#listeners.forEach(fn => fn(clone));
+    this.notify();
   }
 }
 
+// Single instance export
 export const store = new Store();

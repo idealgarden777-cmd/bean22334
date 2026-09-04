@@ -24,9 +24,9 @@ export function renderComposer() {
     box-sizing: border-box;
     background-color: var(--surface-sand);
     border: 1px solid rgba(44, 37, 35, 0.08);
-    border-radius: 26px;
-    padding: 8px;
-    transition: border-radius 0.22s cubic-bezier(0.4, 0, 0.2, 1), min-height 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 9999px;
+    padding: 8px 12px;
+    transition: border-radius 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
   `;
 
   /* --------------------------------------------------------------- *
@@ -34,7 +34,7 @@ export function renderComposer() {
    * --------------------------------------------------------------- */
 
   const attachWrapper = document.createElement('div');
-  attachWrapper.style.cssText = 'position: relative; display: flex; flex-shrink: 0;';
+  attachWrapper.style.cssText = 'position: relative; display: flex; flex-shrink: 0; align-self: flex-end;';
 
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
@@ -122,7 +122,7 @@ export function renderComposer() {
     font-size: 14px;
     line-height: 20px;
     color: var(--text-espresso);
-    padding: 6px 4px;
+    padding: 6px 0;
     margin: 0;
     resize: none;
     overflow-y: hidden;
@@ -143,6 +143,7 @@ export function renderComposer() {
     align-items: center;
     gap: 2px;
     flex-shrink: 0;
+    align-self: flex-end;
   `;
 
   /* Emoji Picker Setup */
@@ -272,7 +273,7 @@ export function renderComposer() {
   composer.appendChild(rightTools);
 
   /* --------------------------------------------------------------- *
-   * Component Logic & Smooth Auto-Resize
+   * Component Logic & Smooth Morphing Transition
    * --------------------------------------------------------------- */
 
   function updateComposer() {
@@ -284,10 +285,10 @@ export function renderComposer() {
 
     input.style.height = `${targetHeight}px`;
 
-    const expanded = input.value.length > 0 && (contentHeight > 20 || input.value.includes('\n'));
+    const shouldExpand = (input.value.length > 0 && (contentHeight > 20 || input.value.includes('\n'))) || isRecording;
 
-    if (expanded || isRecording) {
-      composer.style.borderRadius = '18px'; // Smooth rounded rectangle when expanded
+    if (shouldExpand) {
+      composer.style.borderRadius = '16px';
       input.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
 
       if (contentHeight > maxHeight) {
@@ -296,7 +297,7 @@ export function renderComposer() {
         });
       }
     } else {
-      composer.style.borderRadius = '26px'; // Exact pill curve when single line
+      composer.style.borderRadius = '9999px';
       input.style.height = '20px';
       input.style.overflowY = 'hidden';
       input.scrollTop = 0;

@@ -56,7 +56,6 @@ export function renderComposer() {
   input.style.transition = 'height 0.16s ease';
 
   inputContainer.appendChild(input);
-  composer.appendChild(inputContainer);
 
   /* ---- Attachment (with dropup) ---- */
   const attachWrapper = document.createElement('div');
@@ -85,7 +84,6 @@ export function renderComposer() {
   dropup.style.zIndex = '100';
   dropup.style.padding = '6px';
 
-  // Prevent clicks inside dropup from closing it prematurely
   dropup.addEventListener('click', e => e.stopPropagation());
 
   const dropupOptions = [
@@ -121,7 +119,6 @@ export function renderComposer() {
 
   attachWrapper.appendChild(attachBtn);
   attachWrapper.appendChild(dropup);
-  composer.appendChild(attachWrapper);
 
   /* ---- Right Tools Wrapper (Emoji, Mic, Send) ---- */
   const rightTools = document.createElement('div');
@@ -158,7 +155,6 @@ export function renderComposer() {
   emojiPicker.style.gridTemplateColumns = 'repeat(5, 1fr)';
   emojiPicker.style.gap = '6px';
 
-  // Prevent clicks inside emoji picker from closing it prematurely
   emojiPicker.addEventListener('click', e => e.stopPropagation());
 
   const emojis = [
@@ -262,7 +258,6 @@ export function renderComposer() {
   rightTools.appendChild(emojiWrapper);
   rightTools.appendChild(micBtn);
   rightTools.appendChild(sendBtn);
-  composer.appendChild(rightTools);
 
   /* ----------------------------------------------------------------
    * Unified updateComposer() – handles height, radius, and overflow
@@ -271,15 +266,12 @@ export function renderComposer() {
     const maxHeight = 160;
     const previousHeight = input.offsetHeight;
 
-    // Reset to measure scrollHeight
     input.style.height = 'auto';
     const contentHeight = input.scrollHeight;
     const targetHeight = Math.min(contentHeight, maxHeight);
 
-    // Apply new height
     input.style.height = `${targetHeight}px`;
 
-    // Determine if we are in "expanded" state
     const expanded =
       (input.value.length > 0 && (contentHeight > 36 || input.value.includes('\n'))) ||
       isRecording;
@@ -288,7 +280,6 @@ export function renderComposer() {
       composer.style.borderRadius = '20px';
       input.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
 
-      // If content exceeds max, scroll to bottom
       if (contentHeight > maxHeight) {
         requestAnimationFrame(() => {
           input.scrollTop = input.scrollHeight;
@@ -301,7 +292,6 @@ export function renderComposer() {
       input.scrollTop = 0;
     }
 
-    // Stabilise height after reflow (smooths out any flicker)
     if (previousHeight !== targetHeight && contentHeight <= maxHeight) {
       requestAnimationFrame(() => {
         input.style.height = `${targetHeight}px`;
@@ -352,7 +342,6 @@ export function renderComposer() {
 
     store.sendMessage(text);
 
-    // Reset input cleanly
     input.value = '';
     input.style.height = '36px';
     input.style.overflowY = 'hidden';
@@ -362,9 +351,12 @@ export function renderComposer() {
   });
 
   /* ---- Final assembly ---- */
+  composer.appendChild(attachWrapper);
+  composer.appendChild(inputContainer);
+  composer.appendChild(rightTools);
+
   container.appendChild(composer);
 
-  // Initial sizing
   updateComposer();
 
   return container;

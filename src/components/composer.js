@@ -8,7 +8,7 @@ import { icons } from './icons.js';
 export function renderComposer() {
   const container = document.createElement('div');
   container.className = 'composer-container';
-  container.style.padding = 'var(--spacing-sm) var(--spacing-md) var(--spacing-md)';
+  container.style.padding = '12px 16px 16px';
   container.style.backgroundColor = 'var(--bg-bone)';
 
   const composer = document.createElement('form');
@@ -16,10 +16,11 @@ export function renderComposer() {
   composer.style.display = 'flex';
   composer.style.alignItems = 'center';
   composer.style.backgroundColor = 'var(--surface-sand)';
-  composer.style.borderRadius = 'var(--radius-avatar)';
+  composer.style.borderRadius = '9999px';
   composer.style.padding = '8px';
-  composer.style.gap = 'var(--spacing-xs)';
+  composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
+  composer.style.position = 'relative';
 
   const attachWrapper = document.createElement('div');
   attachWrapper.style.position = 'relative';
@@ -28,29 +29,35 @@ export function renderComposer() {
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
   attachBtn.innerHTML = icons.plus;
-  styleButton(attachBtn, 'var(--radius-button)');
+  styleButton(attachBtn, '9999px');
 
+  // Functional Dropup Menu
   const dropup = document.createElement('div');
   dropup.className = 'composer-dropup';
   dropup.style.display = 'none';
   dropup.style.position = 'absolute';
-  dropup.style.bottom = '48px';
+  dropup.style.bottom = '52px';
   dropup.style.left = '0';
-  dropup.style.width = '160px';
+  dropup.style.width = '180px';
   dropup.style.backgroundColor = 'var(--surface-sand)';
   dropup.style.border = '1px solid rgba(44, 37, 35, 0.08)';
-  dropup.style.borderRadius = '10px';
-  dropup.style.boxShadow = '0 -4px 16px rgba(44, 37, 35, 0.08)';
+  dropup.style.borderRadius = '12px';
+  dropup.style.boxShadow = '0 -4px 20px rgba(44, 37, 35, 0.08)';
   dropup.style.zIndex = '100';
   dropup.style.padding = '6px';
 
-  const options = ['Photos & Videos', 'Document', 'Audio'];
-  options.forEach(text => {
+  const dropupOptions = [
+    { label: 'Photos & Videos', action: () => simulateAttachment('photo') },
+    { label: 'Document', action: () => simulateAttachment('document') },
+    { label: 'Audio File', action: () => simulateAttachment('audio') }
+  ];
+
+  dropupOptions.forEach(opt => {
     const item = document.createElement('div');
-    item.textContent = text;
+    item.textContent = opt.label;
     item.style.padding = '8px 12px';
     item.style.fontSize = '13px';
-    item.style.borderRadius = '6px';
+    item.style.borderRadius = '8px';
     item.style.cursor = 'pointer';
     item.style.color = 'var(--text-espresso)';
     item.style.transition = 'background 0.2s ease';
@@ -65,6 +72,7 @@ export function renderComposer() {
     item.addEventListener('click', (e) => {
       e.stopPropagation();
       dropup.style.display = 'none';
+      opt.action();
     });
 
     dropup.appendChild(item);
@@ -83,28 +91,75 @@ export function renderComposer() {
   attachWrapper.appendChild(attachBtn);
   attachWrapper.appendChild(dropup);
 
+  const inputContainer = document.createElement('div');
+  inputContainer.style.flex = '1';
+  inputContainer.style.display = 'flex';
+  inputContainer.style.alignItems = 'center';
+  inputContainer.style.position = 'relative';
+
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = 'Type a message...';
-  input.style.flex = '1';
+  input.style.width = '100%';
   input.style.background = 'transparent';
   input.style.border = 'none';
   input.style.outline = 'none';
-  input.style.fontFamily = 'var(--font-family)';
-  input.style.fontSize = 'var(--font-size-body)';
+  input.style.fontFamily = 'inherit';
+  input.style.fontSize = '14px';
   input.style.color = 'var(--text-espresso)';
-  input.style.padding = '0 var(--spacing-xs)';
+  input.style.padding = '0 8px';
 
-  // Microphone Button for Voice Notes
+  inputContainer.appendChild(input);
+
+  // Functional Microphone / Voice Recording State
+  let isRecording = false;
+  let recordingTimer = null;
+  let secondsCount = 0;
+
   const micBtn = document.createElement('button');
   micBtn.type = 'button';
   micBtn.innerHTML = icons.mic;
-  styleButton(micBtn, 'var(--radius-button)');
+  styleButton(micBtn, '9999px');
   micBtn.title = 'Record Voice Note';
+
   micBtn.addEventListener('click', () => {
-    // Voice note recording action placeholder
-    console.log('Voice note recording triggered');
+    isRecording = !isRecording;
+    if (isRecording) {
+      micBtn.style.color = '#C94A4A'; // Active red recording color indicator
+      micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
+      input.value = 'Recording voice note (0:00)...';
+      input.disabled = true;
+      secondsCount = 0;
+
+      recordingTimer = setInterval(() => {
+        secondsCount++;
+        const mins = Math.floor(secondsCount / 60);
+        const secs = secondsCount % 60;
+        input.value = `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
+      }, 1000);
+    } else {
+      stopRecording();
+      store.sendMessage('[Voice Note]');
+    }
   });
+
+  function stopRecording() {
+    clearInterval(recordingTimer);
+    isRecording = false;
+    micBtn.style.color = 'var(--text-espresso)';
+    micBtn.style.backgroundColor = 'transparent';
+    input.value = '';
+    input.disabled = false;
+  }
+
+  function simulateAttachment(type) {
+    const labels = {
+      photo: '[Photo Attachment]',
+      document: '[Document Attachment]',
+      audio: '[Audio Attachment]'
+    };
+    store.sendMessage(labels[type] || '[Attachment]');
+  }
 
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
@@ -115,13 +170,19 @@ export function renderComposer() {
 
   composer.addEventListener('submit', (e) => {
     e.preventDefault();
-    if (input.value.trim() === '') return;
-    store.sendMessage(input.value);
+    if (isRecording) {
+      stopRecording();
+      store.sendMessage('[Voice Note]');
+      return;
+    }
+    const text = input.value.trim();
+    if (text === '') return;
+    store.sendMessage(text);
     input.value = '';
   });
 
   composer.appendChild(attachWrapper);
-  composer.appendChild(input);
+  composer.appendChild(inputContainer);
   composer.appendChild(micBtn);
   composer.appendChild(sendBtn);
   container.appendChild(composer);
@@ -132,6 +193,7 @@ export function renderComposer() {
 function styleButton(btn, radius) {
   btn.style.width = '36px';
   btn.style.height = '36px';
+  btn.style.minWidth = '36px';
   btn.style.borderRadius = radius;
   btn.style.border = 'none';
   btn.style.background = 'transparent';
@@ -140,15 +202,15 @@ function styleButton(btn, radius) {
   btn.style.display = 'flex';
   btn.style.alignItems = 'center';
   btn.style.justifyContent = 'center';
-  btn.style.transition = 'background 0.2s ease';
+  btn.style.transition = 'background 0.2s ease, color 0.2s ease';
 
   btn.addEventListener('mouseenter', () => {
-    if (btn.style.backgroundColor !== 'var(--accent-sage)') {
+    if (btn.style.backgroundColor !== 'var(--accent-sage)' && !btn.style.color.includes('201')) {
       btn.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
     }
   });
   btn.addEventListener('mouseleave', () => {
-    if (btn.style.backgroundColor !== 'var(--accent-sage)') {
+    if (btn.style.backgroundColor !== 'var(--accent-sage)' && !btn.style.color.includes('201')) {
       btn.style.backgroundColor = 'transparent';
     }
   });

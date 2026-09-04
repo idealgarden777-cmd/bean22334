@@ -13,92 +13,25 @@ export function renderComposer() {
 
   const composer = document.createElement('form');
   composer.className = 'composer';
+  composer.style.position = 'relative';
   composer.style.display = 'flex';
-  composer.style.alignItems = 'flex-end';
+  composer.style.flexDirection = 'column';
   composer.style.backgroundColor = 'var(--surface-sand)';
   composer.style.borderRadius = '28px';
   composer.style.padding = '8px';
-  composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
-  composer.style.position = 'relative';
-
-  const attachWrapper = document.createElement('div');
-  attachWrapper.style.position = 'relative';
-  attachWrapper.style.display = 'flex';
-  attachWrapper.style.alignItems = 'flex-end';
-
-  const attachBtn = document.createElement('button');
-  attachBtn.type = 'button';
-  attachBtn.innerHTML = icons.plus;
-  styleButton(attachBtn, '9999px');
-  attachBtn.title = 'Attach';
-
-  const dropup = document.createElement('div');
-  dropup.className = 'composer-dropup';
-  dropup.style.display = 'none';
-  dropup.style.position = 'absolute';
-  dropup.style.bottom = '52px';
-  dropup.style.left = '0';
-  dropup.style.width = '180px';
-  dropup.style.backgroundColor = 'var(--surface-sand)';
-  dropup.style.border = '1px solid rgba(44, 37, 35, 0.08)';
-  dropup.style.borderRadius = '12px';
-  dropup.style.boxShadow = '0 -4px 20px rgba(44, 37, 35, 0.08)';
-  dropup.style.zIndex = '100';
-  dropup.style.padding = '6px';
-
-  const dropupOptions = [
-    {
-      label: 'Photos & Videos',
-      action: () => store.sendMessage('[Photo Attachment]')
-    },
-    {
-      label: 'Document',
-      action: () => store.sendMessage('[Document Attachment]')
-    },
-    {
-      label: 'Audio File',
-      action: () => store.sendMessage('[Audio Attachment]')
-    }
-  ];
-
-  dropupOptions.forEach(opt => {
-    const item = document.createElement('div');
-    item.textContent = opt.label;
-    item.style.padding = '8px 12px';
-    item.style.fontSize = '13px';
-    item.style.borderRadius = '8px';
-    item.style.cursor = 'pointer';
-    item.style.color = 'var(--text-espresso)';
-    item.style.transition = 'background 0.2s ease';
-
-    item.addEventListener('mouseenter', () => {
-      item.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
-    });
-
-    item.addEventListener('mouseleave', () => {
-      item.style.backgroundColor = 'transparent';
-    });
-
-    item.addEventListener('click', e => {
-      e.stopPropagation();
-      dropup.style.display = 'none';
-      opt.action();
-    });
-
-    dropup.appendChild(item);
-  });
+  composer.style.boxSizing = 'border-box';
 
   const inputContainer = document.createElement('div');
-  inputContainer.style.flex = '1';
-  inputContainer.style.position = 'relative';
-  inputContainer.style.minWidth = '0';
   inputContainer.style.width = '100%';
+  inputContainer.style.minWidth = '0';
+  inputContainer.style.position = 'relative';
 
   const input = document.createElement('textarea');
   input.rows = 1;
   input.placeholder = 'Type a message...';
 
+  input.style.display = 'block';
   input.style.width = '100%';
   input.style.minHeight = '36px';
   input.style.maxHeight = '160px';
@@ -109,16 +42,16 @@ export function renderComposer() {
   input.style.fontSize = '14px';
   input.style.lineHeight = '20px';
   input.style.color = 'var(--text-espresso)';
-  input.style.padding = '8px 0 8px 8px';
+  input.style.padding = '8px 4px 8px 8px';
   input.style.margin = '0';
   input.style.resize = 'none';
   input.style.overflowY = 'hidden';
   input.style.overflowX = 'hidden';
-  input.style.scrollbarGutter = 'stable';
   input.style.boxSizing = 'border-box';
-  input.style.display = 'block';
+  input.style.scrollbarGutter = 'stable';
 
   inputContainer.appendChild(input);
+  composer.appendChild(inputContainer);
 
   function autoGrow() {
     const maxHeight = 160;
@@ -147,22 +80,119 @@ export function renderComposer() {
     }
   });
 
+  /* --------------------------------------------------------------- *
+   * Bottom Toolbar
+   * --------------------------------------------------------------- */
+
+  const toolbar = document.createElement('div');
+  toolbar.style.width = '100%';
+  toolbar.style.height = '36px';
+  toolbar.style.display = 'flex';
+  toolbar.style.alignItems = 'center';
+  toolbar.style.justifyContent = 'space-between';
+  toolbar.style.marginTop = '4px';
+
+  const leftTools = document.createElement('div');
+  leftTools.style.display = 'flex';
+  leftTools.style.alignItems = 'center';
+
+  const rightTools = document.createElement('div');
+  rightTools.style.display = 'flex';
+  rightTools.style.alignItems = 'center';
+  rightTools.style.gap = '2px';
+
+  /* --------------------------------------------------------------- *
+   * Attachment
+   * --------------------------------------------------------------- */
+
+  const attachWrapper = document.createElement('div');
+  attachWrapper.style.position = 'relative';
+  attachWrapper.style.display = 'flex';
+
+  const attachBtn = document.createElement('button');
+  attachBtn.type = 'button';
+  attachBtn.innerHTML = icons.plus;
+  styleButton(attachBtn);
+  attachBtn.title = 'Attach';
+
+  const dropup = document.createElement('div');
+  dropup.className = 'composer-dropup';
+  dropup.style.display = 'none';
+  dropup.style.position = 'absolute';
+  dropup.style.bottom = '44px';
+  dropup.style.left = '0';
+  dropup.style.width = '180px';
+  dropup.style.backgroundColor = 'var(--surface-sand)';
+  dropup.style.border = '1px solid rgba(44, 37, 35, 0.08)';
+  dropup.style.borderRadius = '12px';
+  dropup.style.boxShadow = '0 -4px 20px rgba(44, 37, 35, 0.08)';
+  dropup.style.zIndex = '100';
+  dropup.style.padding = '6px';
+
+  const dropupOptions = [
+    {
+      label: 'Photos & Videos',
+      action: () => store.sendMessage('[Photo Attachment]')
+    },
+    {
+      label: 'Document',
+      action: () => store.sendMessage('[Document Attachment]')
+    },
+    {
+      label: 'Audio File',
+      action: () => store.sendMessage('[Audio Attachment]')
+    }
+  ];
+
+  dropupOptions.forEach(opt => {
+    const item = document.createElement('div');
+
+    item.textContent = opt.label;
+    item.style.padding = '8px 12px';
+    item.style.fontSize = '13px';
+    item.style.borderRadius = '8px';
+    item.style.cursor = 'pointer';
+    item.style.color = 'var(--text-espresso)';
+
+    item.addEventListener('mouseenter', () => {
+      item.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
+    });
+
+    item.addEventListener('mouseleave', () => {
+      item.style.backgroundColor = 'transparent';
+    });
+
+    item.addEventListener('click', e => {
+      e.stopPropagation();
+      dropup.style.display = 'none';
+      opt.action();
+    });
+
+    dropup.appendChild(item);
+  });
+
+  attachWrapper.appendChild(attachBtn);
+  attachWrapper.appendChild(dropup);
+
+  /* --------------------------------------------------------------- *
+   * Emoji
+   * --------------------------------------------------------------- */
+
   const emojiWrapper = document.createElement('div');
   emojiWrapper.style.position = 'relative';
   emojiWrapper.style.display = 'flex';
-  emojiWrapper.style.alignItems = 'flex-end';
 
   const emojiBtn = document.createElement('button');
   emojiBtn.type = 'button';
   emojiBtn.innerHTML = icons.emoji;
-  styleButton(emojiBtn, '9999px');
+  styleButton(emojiBtn);
   emojiBtn.title = 'Add Emoji';
 
   const emojiPicker = document.createElement('div');
   emojiPicker.className = 'emoji-picker';
   emojiPicker.style.display = 'none';
   emojiPicker.style.position = 'absolute';
-  emojiPicker.style.bottom = '52px';
+  emojiPicker.style.bottom = '44px';
   emojiPicker.style.right = '0';
   emojiPicker.style.width = '220px';
   emojiPicker.style.backgroundColor = 'var(--surface-sand)';
@@ -182,6 +212,7 @@ export function renderComposer() {
 
   emojis.forEach(emo => {
     const emoItem = document.createElement('button');
+
     emoItem.type = 'button';
     emoItem.textContent = emo;
     emoItem.style.background = 'transparent';
@@ -190,7 +221,6 @@ export function renderComposer() {
     emoItem.style.cursor = 'pointer';
     emoItem.style.padding = '6px';
     emoItem.style.borderRadius = '6px';
-    emoItem.style.transition = 'background 0.2s ease';
 
     emoItem.addEventListener('mouseenter', () => {
       emoItem.style.backgroundColor = 'rgba(44, 37, 35, 0.06)';
@@ -212,13 +242,20 @@ export function renderComposer() {
         input.value.slice(end);
 
       input.selectionStart = input.selectionEnd = start + emo.length;
-      input.focus();
 
+      input.focus();
       autoGrow();
     });
 
     emojiPicker.appendChild(emoItem);
   });
+
+  emojiWrapper.appendChild(emojiBtn);
+  emojiWrapper.appendChild(emojiPicker);
+
+  /* --------------------------------------------------------------- *
+   * Mic
+   * --------------------------------------------------------------- */
 
   let isRecording = false;
   let recordingTimer = null;
@@ -227,7 +264,7 @@ export function renderComposer() {
   const micBtn = document.createElement('button');
   micBtn.type = 'button';
   micBtn.innerHTML = icons.mic;
-  styleButton(micBtn, '9999px');
+  styleButton(micBtn);
   micBtn.title = 'Record Voice Note';
 
   function stopRecording() {
@@ -275,21 +312,44 @@ export function renderComposer() {
     }
   });
 
+  /* --------------------------------------------------------------- *
+   * Send
+   * --------------------------------------------------------------- */
+
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
   sendBtn.innerHTML = icons.send;
-  styleButton(sendBtn, '9999px');
+  styleButton(sendBtn);
   sendBtn.style.backgroundColor = 'var(--accent-sage)';
   sendBtn.style.color = '#FFFFFF';
   sendBtn.title = 'Send';
+
+  /* --------------------------------------------------------------- *
+   * Toolbar Layout
+   * --------------------------------------------------------------- */
+
+  leftTools.appendChild(attachWrapper);
+
+  rightTools.appendChild(emojiWrapper);
+  rightTools.appendChild(micBtn);
+  rightTools.appendChild(sendBtn);
+
+  toolbar.appendChild(leftTools);
+  toolbar.appendChild(rightTools);
+
+  composer.appendChild(toolbar);
+
+  /* --------------------------------------------------------------- *
+   * Menus
+   * --------------------------------------------------------------- */
 
   attachBtn.addEventListener('click', e => {
     e.stopPropagation();
 
     emojiPicker.style.display = 'none';
 
-    const isVisible = dropup.style.display === 'block';
-    dropup.style.display = isVisible ? 'none' : 'block';
+    const visible = dropup.style.display === 'block';
+    dropup.style.display = visible ? 'none' : 'block';
   });
 
   emojiBtn.addEventListener('click', e => {
@@ -297,14 +357,18 @@ export function renderComposer() {
 
     dropup.style.display = 'none';
 
-    const isVisible = emojiPicker.style.display === 'grid';
-    emojiPicker.style.display = isVisible ? 'none' : 'grid';
+    const visible = emojiPicker.style.display === 'grid';
+    emojiPicker.style.display = visible ? 'none' : 'grid';
   });
 
   document.addEventListener('click', () => {
     dropup.style.display = 'none';
     emojiPicker.style.display = 'none';
   });
+
+  /* --------------------------------------------------------------- *
+   * Submit
+   * --------------------------------------------------------------- */
 
   composer.addEventListener('submit', e => {
     e.preventDefault();
@@ -334,18 +398,6 @@ export function renderComposer() {
     });
   });
 
-  composer.appendChild(attachWrapper);
-  composer.appendChild(inputContainer);
-  composer.appendChild(emojiWrapper);
-  composer.appendChild(micBtn);
-  composer.appendChild(sendBtn);
-
-  attachWrapper.appendChild(attachBtn);
-  attachWrapper.appendChild(dropup);
-
-  emojiWrapper.appendChild(emojiBtn);
-  emojiWrapper.appendChild(emojiPicker);
-
   container.appendChild(composer);
 
   autoGrow();
@@ -353,11 +405,11 @@ export function renderComposer() {
   return container;
 }
 
-function styleButton(btn, radius) {
+function styleButton(btn) {
   btn.style.width = '36px';
   btn.style.height = '36px';
   btn.style.minWidth = '36px';
-  btn.style.borderRadius = radius;
+  btn.style.borderRadius = '9999px';
   btn.style.border = 'none';
   btn.style.background = 'transparent';
   btn.style.color = 'var(--text-espresso)';
@@ -365,6 +417,8 @@ function styleButton(btn, radius) {
   btn.style.display = 'flex';
   btn.style.alignItems = 'center';
   btn.style.justifyContent = 'center';
+  btn.style.padding = '0';
+  btn.style.flexShrink = '0';
   btn.style.transition = 'background 0.2s ease, color 0.2s ease';
 
   btn.addEventListener('mouseenter', () => {

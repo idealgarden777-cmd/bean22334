@@ -13,8 +13,9 @@ export function renderChatView(state) {
   chatView.style.flex = '1';
   chatView.style.display = 'flex';
   chatView.style.flexDirection = 'column';
-  chatView.style.backgroundColor = 'var(--bg-bone)';
+  chatView.style.backgroundColor = 'var(--bg-bone)'; // Warm Off-White / Bone background[cite: 1]
   chatView.style.height = '100%';
+  chatView.style.overflow = 'hidden';
 
   const activeContact = state.contacts.find(c => c.id === state.activeContactId);
   const messages = state.messages[state.activeContactId] || [];

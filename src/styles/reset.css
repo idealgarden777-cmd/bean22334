@@ -1,6 +1,6 @@
-/* ================================================================= *
- * Reset CSS - src/styles/reset.css                                  *
- * ================================================================= */
+/* =================================================================
+   Modern CSS Reset
+   ================================================================ */
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -8,34 +8,33 @@
   padding: 0;
 }
 
-body, h1, h2, h3, h4, p, figure, blockquote, dl, dd {
-  margin: 0;
+html, body {
+  height: 100%;
+  font-family: var(--font-family, 'Sora', sans-serif);
+  background-color: var(--color-bg, #FBF9F5);
+  color: var(--color-text-primary, #2C2523);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+button {
+  cursor: pointer;
 }
 
 ul, ol {
   list-style: none;
 }
 
-html:focus-within {
-  scroll-behavior: smooth;
-}
-
-body {
-  min-height: 100vh;
-  text-rendering: optimizeSpeed;
-  line-height: 1.5;
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-button, input, textarea, select {
-  font: inherit;
-}
-
-img, picture, svg {
-  max-width: 100%;
+img, svg {
   display: block;
+  max-width: 100%;
 }

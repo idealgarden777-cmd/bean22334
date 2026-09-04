@@ -14,10 +14,10 @@ export function renderComposer() {
   const composer = document.createElement('form');
   composer.className = 'composer';
   composer.style.display = 'flex';
-  composer.style.alignItems = 'center';
+  composer.style.alignItems = 'flex-end'; // Align action buttons nicely as the text grows
   composer.style.backgroundColor = 'var(--surface-sand)';
-  composer.style.borderRadius = '9999px';
-  composer.style.padding = '8px';
+  composer.style.borderRadius = '20px';
+  composer.style.padding = '8px 12px';
   composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
   composer.style.position = 'relative';
@@ -25,6 +25,8 @@ export function renderComposer() {
   const attachWrapper = document.createElement('div');
   attachWrapper.style.position = 'relative';
   attachWrapper.style.display = 'flex';
+  attachWrapper.style.alignItems = 'center';
+  attachWrapper.style.height = '36px';
 
   const attachBtn = document.createElement('button');
   attachBtn.type = 'button';
@@ -93,28 +95,51 @@ export function renderComposer() {
   inputContainer.style.alignItems = 'center';
   inputContainer.style.position = 'relative';
 
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = 'Type a message...';
-  input.style.width = '100%';
-  input.style.background = 'transparent';
-  input.style.border = 'none';
-  input.style.outline = 'none';
-  input.style.fontFamily = 'inherit';
-  input.style.fontSize = '14px';
-  input.style.color = 'var(--text-espresso)';
-  input.style.padding = '0 8px';
+  // Replaced input with an auto-growing textarea for multi-line support
+  const textarea = document.createElement('textarea');
+  textarea.placeholder = 'Type a message...';
+  textarea.rows = 1;
+  textarea.style.width = '100%';
+  textarea.style.background = 'transparent';
+  textarea.style.border = 'none';
+  textarea.style.outline = 'none';
+  textarea.style.fontFamily = 'inherit';
+  textarea.style.fontSize = '14px';
+  textarea.style.lineHeight = '20px';
+  textarea.style.color = 'var(--text-espresso)';
+  textarea.style.padding = '8px 4px';
+  textarea.style.resize = 'none';
+  textarea.style.overflowY = 'hidden';
+  textarea.style.maxHeight = '120px';
 
-  inputContainer.appendChild(input);
+  textarea.addEventListener('input', () => {
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+    if (textarea.scrollHeight > 120) {
+      textarea.style.overflowY = 'auto';
+    } else {
+      textarea.style.overflowY = 'hidden';
+    }
+  });
 
-  // Premium Emoji Icon Wrapper & Button
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      composer.requestSubmit();
+    }
+  });
+
+  inputContainer.appendChild(textarea);
+
   const emojiWrapper = document.createElement('div');
   emojiWrapper.style.position = 'relative';
   emojiWrapper.style.display = 'flex';
+  emojiWrapper.style.alignItems = 'center';
+  emojiWrapper.style.height = '36px';
 
   const emojiBtn = document.createElement('button');
   emojiBtn.type = 'button';
-  emojiBtn.innerHTML = icons.emoji; // High-end minimalist outline SVG icon
+  emojiBtn.innerHTML = icons.emoji;
   styleButton(emojiBtn, '9999px');
   emojiBtn.title = 'Add Emoji';
 
@@ -157,8 +182,10 @@ export function renderComposer() {
 
     emoItem.addEventListener('click', (e) => {
       e.stopPropagation();
-      input.value += emo;
-      input.focus();
+      textarea.value += emo;
+      textarea.focus();
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
     });
 
     emojiPicker.appendChild(emoItem);
@@ -183,6 +210,11 @@ export function renderComposer() {
   let recordingTimer = null;
   let secondsCount = 0;
 
+  const micWrapper = document.createElement('div');
+  micWrapper.style.display = 'flex';
+  micWrapper.style.alignItems = 'center';
+  micWrapper.style.height = '36px';
+
   const micBtn = document.createElement('button');
   micBtn.type = 'button';
   micBtn.innerHTML = icons.mic;
@@ -194,15 +226,15 @@ export function renderComposer() {
     if (isRecording) {
       micBtn.style.color = '#C94A4A';
       micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
-      input.value = 'Recording voice note (0:00)...';
-      input.disabled = true;
+      textarea.value = 'Recording voice note (0:00)...';
+      textarea.disabled = true;
       secondsCount = 0;
 
       recordingTimer = setInterval(() => {
         secondsCount++;
         const mins = Math.floor(secondsCount / 60);
         const secs = secondsCount % 60;
-        input.value = `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
+        textarea.value = `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
       }, 1000);
     } else {
       stopRecording();
@@ -215,9 +247,17 @@ export function renderComposer() {
     isRecording = false;
     micBtn.style.color = 'var(--text-espresso)';
     micBtn.style.backgroundColor = 'transparent';
-    input.value = '';
-    input.disabled = false;
+    textarea.value = '';
+    textarea.disabled = false;
+    textarea.style.height = 'auto';
   }
+
+  micWrapper.appendChild(micBtn);
+
+  const sendWrapper = document.createElement('div');
+  sendWrapper.style.display = 'flex';
+  sendWrapper.style.alignItems = 'center';
+  sendWrapper.style.height = '36px';
 
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';
@@ -226,6 +266,8 @@ export function renderComposer() {
   sendBtn.style.backgroundColor = 'var(--accent-sage)';
   sendBtn.style.color = '#FFFFFF';
 
+  sendWrapper.appendChild(sendBtn);
+
   composer.addEventListener('submit', (e) => {
     e.preventDefault();
     if (isRecording) {
@@ -233,17 +275,19 @@ export function renderComposer() {
       store.sendMessage('[Voice Note]');
       return;
     }
-    const text = input.value.trim();
+    const text = textarea.value.trim();
     if (text === '') return;
     store.sendMessage(text);
-    input.value = '';
+    textarea.value = '';
+    textarea.style.height = 'auto';
+    textarea.style.overflowY = 'hidden';
   });
 
   composer.appendChild(attachWrapper);
   composer.appendChild(inputContainer);
   composer.appendChild(emojiWrapper);
-  composer.appendChild(micBtn);
-  composer.appendChild(sendBtn);
+  composer.appendChild(micWrapper);
+  composer.appendChild(sendWrapper);
   container.appendChild(composer);
 
   return container;

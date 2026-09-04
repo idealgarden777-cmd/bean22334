@@ -1,63 +1,136 @@
-/* ================================================================= *
- * Contact Panel Component - src/components/contact-panel.js         *
- * ================================================================= */
+/* =================================================================
+   Contact Panel Component - Side panel for profile and media info
+   ================================================================ */
 
 import { store } from '../core/store.js';
 
-export function renderContactPanel() {
-  const panel = document.createElement('div');
-  panel.className = 'contact-panel';
-  panel.style.cssText = `
-    width: 320px;
-    height: 100%;
-    background-color: var(--bg-bone);
-    border-left: 1px solid rgba(44, 37, 35, 0.08);
+export function renderContactPanel(container) {
+  const state = store.getState();
+  const activeContact = state.contacts.find(c => c.id === state.activeContactId) || state.contacts[0];
+
+  container.innerHTML = `
+    <div class="contact-panel-container">
+      <div class="panel-header">
+        <h3>Contact Info</h3>
+        <button class="close-panel-btn" id="closePanelBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="panel-profile-content">
+        <img src="${activeContact.avatar}" alt="${activeContact.name}" class="panel-avatar" />
+        <h4 class="panel-name">${activeContact.name}</h4>
+        <p class="panel-status">${activeContact.status}</p>
+      </div>
+      <div class="panel-section">
+        <span class="section-title">Shared Media & Files</span>
+        <div class="media-grid">
+          <div class="media-thumb">Hardscape.pdf</div>
+          <div class="media-thumb">Layout.png</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const closeBtn = container.querySelector('#closePanelBtn');
+  closeBtn.addEventListener('click', () => {
+    store.toggleContactPanel();
+  });
+}
+
+const contactPanelStyles = document.createElement('style');
+contactPanelStyles.textContent = `
+  .contact-panel-container {
     display: flex;
     flex-direction: column;
-    box-sizing: border-box;
-    padding: 24px 16px;
-    align-items: center;
-    text-align: center;
-  `;
-
-  const state = store.getState();
-  const activeContact = state.activeContact;
-
-  if (!activeContact) {
-    return panel;
+    height: 100%;
+    padding: var(--space-2);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
   }
 
-  const avatar = document.createElement('img');
-  avatar.src = activeContact.avatar;
-  avatar.alt = activeContact.name;
-  avatar.style.cssText = `
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .panel-header h3 {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .close-panel-btn {
+    color: var(--color-muted);
+    padding: 4px;
+    border-radius: var(--radius-button);
+    transition: var(--transition-smooth);
+  }
+
+  .close-panel-btn:hover {
+    color: var(--color-text-primary);
+    background-color: rgba(44, 37, 35, 0.05);
+  }
+
+  .panel-profile-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .panel-avatar {
     width: 80px;
     height: 80px;
-    border-radius: 9999px;
+    border-radius: var(--radius-avatar);
     object-fit: cover;
-    margin-bottom: 16px;
-  `;
+    margin-bottom: var(--space-1);
+  }
 
-  const name = document.createElement('h3');
-  name.textContent = activeContact.name;
-  name.style.cssText = `
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-espresso);
-    margin: 0 0 4px 0;
-  `;
+  .panel-name {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: 2px;
+  }
 
-  const status = document.createElement('p');
-  status.textContent = activeContact.status || 'Online';
-  status.style.cssText = `
-    font-size: 13px;
-    color: rgba(44, 37, 35, 0.6);
-    margin: 0 0 24px 0;
-  `;
+  .panel-status {
+    font-size: var(--font-size-xs);
+    color: var(--color-muted);
+  }
 
-  panel.appendChild(avatar);
-  panel.appendChild(name);
-  panel.appendChild(status);
+  .panel-section {
+    margin-top: var(--space-2);
+  }
 
-  return panel;
-}
+  .section-title {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .media-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: var(--space-1);
+  }
+
+  .media-thumb {
+    background-color: var(--color-bg);
+    padding: 12px;
+    border-radius: var(--radius-button);
+    font-size: var(--font-size-xs);
+    text-align: center;
+    border: 1px solid var(--color-border);
+    color: var(--color-muted);
+  }
+`;
+document.head.appendChild(contactPanelStyles);

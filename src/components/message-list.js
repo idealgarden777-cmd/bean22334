@@ -7,7 +7,7 @@ export function renderMessageList(messages, currentUser) {
   container.className = 'message-list';
   container.style.flex = '1';
   container.style.overflowY = 'auto';
-  container.style.padding = '16px'; //[cite: 1]
+  container.style.padding = '16px';
   container.style.display = 'flex';
   container.style.flexDirection = 'column';
   container.style.gap = '4px';
@@ -18,7 +18,7 @@ export function renderMessageList(messages, currentUser) {
     emptyState.style.textAlign = 'center';
     emptyState.style.color = 'rgba(44, 37, 35, 0.5)';
     emptyState.style.marginTop = '40px';
-    emptyState.style.fontSize = '14px'; //[cite: 1]
+    emptyState.style.fontSize = '14px';
     container.appendChild(emptyState);
     return container;
   }
@@ -35,15 +35,14 @@ export function renderMessageList(messages, currentUser) {
     const bubble = document.createElement('div');
     bubble.className = `message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`;
     bubble.style.maxWidth = '60%';
-    // Reduced vertical padding for a sleek, compact modern height
     bubble.style.padding = '6px 12px';
-    bubble.style.fontSize = '14px'; //[cite: 1]
+    bubble.style.fontSize = '14px';
     bubble.style.lineHeight = '1.35';
     bubble.style.position = 'relative';
     bubble.style.wordBreak = 'break-word';
 
     if (isOutgoing) {
-      bubble.style.backgroundColor = 'var(--accent-sage)'; //[cite: 1]
+      bubble.style.backgroundColor = 'var(--accent-sage)';
       bubble.style.color = '#FFFFFF';
       bubble.style.alignSelf = 'flex-end';
 
@@ -59,8 +58,8 @@ export function renderMessageList(messages, currentUser) {
       }
       bubble.style.borderRadius = `${tl} ${tr} ${br} ${bl}`;
     } else {
-      bubble.style.backgroundColor = 'var(--surface-sand)'; //[cite: 1]
-      bubble.style.color = 'var(--text-espresso)'; //[cite: 1]
+      bubble.style.backgroundColor = 'var(--surface-sand)';
+      bubble.style.color = 'var(--text-espresso)';
       bubble.style.alignSelf = 'flex-start';
 
       let tl = '18px', tr = '18px', br = '18px', bl = '18px';
@@ -81,16 +80,21 @@ export function renderMessageList(messages, currentUser) {
     bubble.appendChild(text);
 
     const timestamp = document.createElement('span');
-    timestamp.textContent = `${msg.timestamp} ${isOutgoing ? '✓✓' : ''}`; //[cite: 1]
+    timestamp.textContent = `${msg.timestamp} ${isOutgoing ? '✓✓' : ''}`;
     timestamp.style.fontSize = '11px';
     timestamp.style.display = 'block';
     timestamp.style.textAlign = 'right';
-    timestamp.style.marginTop = '2px'; // Tighter spacing for compact layout
+    timestamp.style.marginTop = '2px';
     timestamp.style.color = isOutgoing ? 'rgba(255, 255, 255, 0.8)' : 'rgba(44, 37, 35, 0.6)';
     bubble.appendChild(timestamp);
 
     container.appendChild(bubble);
   });
+
+  // Automatically scroll to the bottom when rendered or updated
+  setTimeout(() => {
+    container.scrollTop = container.scrollHeight;
+  }, 0);
 
   return container;
 }

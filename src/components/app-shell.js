@@ -6,39 +6,32 @@ import { store } from '../core/store.js';
 import { renderSidebar } from './sidebar.js';
 import { renderChatView } from './chat-view.js';
 
-export function createAppShell() {
+export function renderAppShell() {
   const shell = document.createElement('div');
   shell.className = 'app-shell';
+  shell.style.cssText = `
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--bg-bone);
+    font-family: var(--font-family, sans-serif);
+    box-sizing: border-box;
+  `;
 
-  const update = () => {
+  function updateShell() {
     shell.innerHTML = '';
-    const state = store.getState();
 
-    // Handle responsive state class for mobile slide transition
-    if (state.activeContactId && window.innerWidth <= 768) {
-      shell.classList.add('mobile-chat-open');
-    } else {
-      shell.classList.remove('mobile-chat-open');
-    }
-
-    const sidebar = renderSidebar(state);
-    const chatView = renderChatView(state);
+    const sidebar = renderSidebar();
+    const chatView = renderChatView();
 
     shell.appendChild(sidebar);
     shell.appendChild(chatView);
-  };
+  }
 
-  store.subscribe(update);
+  updateShell();
+  shell.updateShell = updateShell;
 
-  window.addEventListener('resize', () => {
-    const state = store.getState();
-    if (window.innerWidth > 768) {
-      shell.classList.remove('mobile-chat-open');
-    } else if (state.activeContactId) {
-      shell.classList.add('mobile-chat-open');
-    }
-  });
-
-  update();
   return shell;
 }
+```[cite: 2]

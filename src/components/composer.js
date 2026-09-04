@@ -17,7 +17,7 @@ export function renderComposer() {
   composer.style.display = 'flex';
   composer.style.alignItems = 'flex-end';
   composer.style.backgroundColor = 'var(--surface-sand)';
-  composer.style.borderRadius = '9999px';
+  composer.style.borderRadius = '28px';
   composer.style.padding = '8px';
   composer.style.gap = '8px';
   composer.style.border = '1px solid rgba(44, 37, 35, 0.08)';
@@ -33,7 +33,6 @@ export function renderComposer() {
   attachBtn.type = 'button';
   attachBtn.innerHTML = icons.plus;
   styleButton(attachBtn, '9999px');
-  attachBtn.title = 'Attach';
 
   const dropup = document.createElement('div');
   dropup.className = 'composer-dropup';
@@ -64,7 +63,7 @@ export function renderComposer() {
     }
   ];
 
-  dropupOptions.forEach((opt) => {
+  dropupOptions.forEach(opt => {
     const item = document.createElement('div');
     item.textContent = opt.label;
     item.style.padding = '8px 12px';
@@ -82,7 +81,7 @@ export function renderComposer() {
       item.style.backgroundColor = 'transparent';
     });
 
-    item.addEventListener('click', (e) => {
+    item.addEventListener('click', e => {
       e.stopPropagation();
       dropup.style.display = 'none';
       opt.action();
@@ -91,23 +90,12 @@ export function renderComposer() {
     dropup.appendChild(item);
   });
 
-  attachBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    emojiPicker.style.display = 'none';
-
-    const isVisible = dropup.style.display === 'block';
-    dropup.style.display = isVisible ? 'none' : 'block';
-  });
-
-  attachWrapper.appendChild(attachBtn);
-  attachWrapper.appendChild(dropup);
-
   const inputContainer = document.createElement('div');
   inputContainer.style.flex = '1';
   inputContainer.style.display = 'flex';
   inputContainer.style.alignItems = 'flex-end';
-  inputContainer.style.position = 'relative';
   inputContainer.style.minWidth = '0';
+  inputContainer.style.position = 'relative';
 
   const input = document.createElement('textarea');
   input.rows = 1;
@@ -115,6 +103,7 @@ export function renderComposer() {
   input.style.width = '100%';
   input.style.minHeight = '36px';
   input.style.maxHeight = '160px';
+  input.style.height = '36px';
   input.style.background = 'transparent';
   input.style.border = 'none';
   input.style.outline = 'none';
@@ -137,13 +126,12 @@ export function renderComposer() {
     input.style.height = `${newHeight}px`;
     input.style.overflowY = input.scrollHeight > maxHeight ? 'auto' : 'hidden';
 
-    const multiline = newHeight > 36;
-    composer.style.borderRadius = multiline ? '24px' : '9999px';
+    composer.style.borderRadius = newHeight > 40 ? '20px' : '28px';
   }
 
   input.addEventListener('input', autoGrow);
 
-  input.addEventListener('keydown', (e) => {
+  input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       composer.requestSubmit();
@@ -176,7 +164,6 @@ export function renderComposer() {
   emojiPicker.style.boxShadow = '0 -4px 20px rgba(44, 37, 35, 0.08)';
   emojiPicker.style.zIndex = '100';
   emojiPicker.style.padding = '10px';
-  emojiPicker.style.displayGrid = 'grid';
   emojiPicker.style.gridTemplateColumns = 'repeat(5, 1fr)';
   emojiPicker.style.gap = '6px';
 
@@ -186,7 +173,7 @@ export function renderComposer() {
     '🎉', '💡', '☕', '🌿', '💬'
   ];
 
-  emojis.forEach((emo) => {
+  emojis.forEach(emo => {
     const emoItem = document.createElement('button');
     emoItem.type = 'button';
     emoItem.textContent = emo;
@@ -206,27 +193,51 @@ export function renderComposer() {
       emoItem.style.backgroundColor = 'transparent';
     });
 
-    emoItem.addEventListener('click', (e) => {
+    emoItem.addEventListener('click', e => {
       e.stopPropagation();
 
       const start = input.selectionStart;
       const end = input.selectionEnd;
-      const text = input.value;
+      const value = input.value;
 
-      input.value = text.slice(0, start) + emo + text.slice(end);
-
-      const cursorPosition = start + emo.length;
-      input.selectionStart = cursorPosition;
-      input.selectionEnd = cursorPosition;
+      input.value = value.slice(0, start) + emo + value.slice(end);
+      input.focus();
+      input.selectionStart = input.selectionEnd = start + emo.length;
 
       autoGrow();
-      input.focus();
     });
 
     emojiPicker.appendChild(emoItem);
   });
 
-  emojiBtn.addEventListener('click', (e) => {
+  const micBtn = document.createElement('button');
+  micBtn.type = 'button';
+  micBtn.innerHTML = icons.mic;
+  styleButton(micBtn, '9999px');
+  micBtn.title = 'Record Voice Note';
+  micBtn.style.alignSelf = 'flex-end';
+
+  const sendBtn = document.createElement('button');
+  sendBtn.type = 'submit';
+  sendBtn.innerHTML = icons.send;
+  styleButton(sendBtn, '9999px');
+  sendBtn.style.backgroundColor = 'var(--accent-sage)';
+  sendBtn.style.color = '#FFFFFF';
+  sendBtn.style.alignSelf = 'flex-end';
+
+  let isRecording = false;
+  let recordingTimer = null;
+  let secondsCount = 0;
+
+  attachBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    emojiPicker.style.display = 'none';
+
+    const isVisible = dropup.style.display === 'block';
+    dropup.style.display = isVisible ? 'none' : 'block';
+  });
+
+  emojiBtn.addEventListener('click', e => {
     e.stopPropagation();
     dropup.style.display = 'none';
 
@@ -234,53 +245,33 @@ export function renderComposer() {
     emojiPicker.style.display = isVisible ? 'none' : 'grid';
   });
 
-  emojiWrapper.appendChild(emojiBtn);
-  emojiWrapper.appendChild(emojiPicker);
-
-  document.addEventListener('click', () => {
-    dropup.style.display = 'none';
-    emojiPicker.style.display = 'none';
-  });
-
-  let isRecording = false;
-  let recordingTimer = null;
-  let secondsCount = 0;
-
-  const micBtn = document.createElement('button');
-  micBtn.type = 'button';
-  micBtn.innerHTML = icons.mic;
-  styleButton(micBtn, '9999px');
-  micBtn.title = 'Record Voice Note';
-
   micBtn.addEventListener('click', () => {
-    isRecording = !isRecording;
-
     if (isRecording) {
-      dropup.style.display = 'none';
-      emojiPicker.style.display = 'none';
-
-      micBtn.style.color = '#C94A4A';
-      micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
-
-      input.value = 'Recording voice note (0:00)...';
-      input.disabled = true;
-      input.style.overflowY = 'hidden';
-      secondsCount = 0;
-      autoGrow();
-
-      recordingTimer = setInterval(() => {
-        secondsCount++;
-
-        const mins = Math.floor(secondsCount / 60);
-        const secs = secondsCount % 60;
-
-        input.value =
-          `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
-      }, 1000);
-    } else {
       stopRecording();
       store.sendMessage('[Voice Note]');
+      return;
     }
+
+    isRecording = true;
+    secondsCount = 0;
+
+    micBtn.style.color = '#C94A4A';
+    micBtn.style.backgroundColor = 'rgba(201, 74, 74, 0.08)';
+    input.value = 'Recording voice note (0:00)...';
+    input.disabled = true;
+    autoGrow();
+
+    recordingTimer = setInterval(() => {
+      secondsCount++;
+
+      const mins = Math.floor(secondsCount / 60);
+      const secs = secondsCount % 60;
+
+      input.value =
+        `Recording voice note (${mins}:${secs < 10 ? '0' : ''}${secs})...`;
+
+      autoGrow();
+    }, 1000);
   });
 
   function stopRecording() {
@@ -293,21 +284,12 @@ export function renderComposer() {
 
     input.value = '';
     input.disabled = false;
-    input.style.height = '36px';
-    input.style.overflowY = 'hidden';
 
-    composer.style.borderRadius = '9999px';
+    autoGrow();
+    input.focus();
   }
 
-  const sendBtn = document.createElement('button');
-  sendBtn.type = 'submit';
-  sendBtn.innerHTML = icons.send;
-  styleButton(sendBtn, '9999px');
-  sendBtn.style.backgroundColor = 'var(--accent-sage)';
-  sendBtn.style.color = '#FFFFFF';
-  sendBtn.title = 'Send';
-
-  composer.addEventListener('submit', (e) => {
+  composer.addEventListener('submit', e => {
     e.preventDefault();
 
     if (isRecording) {
@@ -318,16 +300,22 @@ export function renderComposer() {
 
     const text = input.value.trim();
 
-    if (text === '') return;
+    if (!text) return;
 
     store.sendMessage(text);
 
     input.value = '';
-    input.style.height = '36px';
-    input.style.overflowY = 'hidden';
-    composer.style.borderRadius = '9999px';
-
+    autoGrow();
     input.focus();
+  });
+
+  document.addEventListener('click', () => {
+    dropup.style.display = 'none';
+    emojiPicker.style.display = 'none';
+  });
+
+  composer.addEventListener('click', e => {
+    e.stopPropagation();
   });
 
   composer.appendChild(attachWrapper);
@@ -335,6 +323,12 @@ export function renderComposer() {
   composer.appendChild(emojiWrapper);
   composer.appendChild(micBtn);
   composer.appendChild(sendBtn);
+
+  attachWrapper.appendChild(attachBtn);
+  attachWrapper.appendChild(dropup);
+
+  emojiWrapper.appendChild(emojiBtn);
+  emojiWrapper.appendChild(emojiPicker);
 
   container.appendChild(composer);
 
@@ -353,6 +347,7 @@ function styleButton(btn, radius) {
   btn.style.display = 'flex';
   btn.style.alignItems = 'center';
   btn.style.justifyContent = 'center';
+  btn.style.flexShrink = '0';
   btn.style.transition = 'background 0.2s ease, color 0.2s ease';
 
   btn.addEventListener('mouseenter', () => {

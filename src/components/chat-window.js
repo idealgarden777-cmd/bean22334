@@ -40,20 +40,28 @@ export function renderChatWindow() {
   messagesList.style.flexDirection = 'column';
   messagesList.style.gap = '12px';
 
-  // Original welcome/chat message layout
-  const sampleMsg = document.createElement('div');
-  sampleMsg.style.alignSelf = 'flex-start';
-  sampleMsg.style.background = '#1e293b';
-  sampleMsg.style.padding = '10px 14px';
-  sampleMsg.style.borderRadius = '10px';
-  sampleMsg.style.maxWidth = '75%';
-  sampleMsg.style.fontSize = '0.9rem';
-  sampleMsg.style.border = '1px solid #334155';
-  sampleMsg.innerHTML = `
-    <div style="color: #94a3b8; font-size: 0.75rem; margin-bottom: 2px;">Bean System</div>
-    <div>Welcome back! Your chat architecture is fully restored and running smoothly.</div>
-  `;
-  messagesList.appendChild(sampleMsg);
+  // Helper function to append a message bubble
+  const appendMessage = (text, sender = 'You') => {
+    const msgBubble = document.createElement('div');
+    msgBubble.style.alignSelf = sender === 'You' ? 'flex-end' : 'flex-start';
+    msgBubble.style.background = sender === 'You' ? '#3b82f6' : '#1e293b';
+    msgBubble.style.color = '#fff';
+    msgBubble.style.padding = '10px 14px';
+    msgBubble.style.borderRadius = '10px';
+    msgBubble.style.maxWidth = '75%';
+    msgBubble.style.fontSize = '0.9rem';
+    msgBubble.style.border = sender === 'You' ? 'none' : '1px solid #334155';
+    
+    msgBubble.innerHTML = `
+      <div style="font-size: 0.7rem; opacity: 0.8; margin-bottom: 2px;">${sender}</div>
+      <div>${text}</div>
+    `;
+    messagesList.appendChild(msgBubble);
+    messagesList.scrollTop = messagesList.scrollHeight;
+  };
+
+  // Initial welcome message
+  appendMessage('Welcome back! Your chat architecture is fully restored and running smoothly.', 'Bean System');
   container.appendChild(messagesList);
 
   // Message Input Form Area
@@ -84,6 +92,25 @@ export function renderChatWindow() {
   sendBtn.style.color = '#fff';
   sendBtn.style.fontWeight = '600';
   sendBtn.style.cursor = 'pointer';
+
+  // Handle send action
+  const handleSend = () => {
+    const text = inputField.value.trim();
+    if (!text) return;
+    
+    appendMessage(text, 'You');
+    inputField.value = '';
+
+    // If store has message dispatch, invoke it safely
+    if (typeof store.sendMessage === 'function') {
+      store.sendMessage(text);
+    }
+  };
+
+  sendBtn.addEventListener('click', handleSend);
+  inputField.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleSend();
+  });
 
   inputArea.appendChild(inputField);
   inputArea.appendChild(sendBtn);

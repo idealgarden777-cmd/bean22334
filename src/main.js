@@ -1,13 +1,12 @@
-/* ================================================================= *
- * Main Entry Point - src/main.js                                    *
- * ================================================================= */
-
-import { createAppShell } from './components/app-shell.js';
+// src/main.js
+import { mountAppShell } from './components/app-shell.js';
+import { store } from './core/store.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const appElement = document.getElementById('app');
-  if (appElement) {
-    const shell = createAppShell();
-    appElement.appendChild(shell);
+  const root = document.getElementById('app');
+  if (root) {
+    mountAppShell(root, store);
+  } else {
+    console.error("Root element #app not found!");
   }
 });

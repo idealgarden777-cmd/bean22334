@@ -1,10 +1,6 @@
-/* =================================================================
-   Chat View Component - Assembles header, message list, and composer
-   ================================================================ */
-
-import { renderChatHeader } from './chat-header.js';
-import { renderMessageList } from './message-list.js';
-import { renderComposer } from './composer.js';
+import { renderChatHeader } from "./chat-header.js";
+import { renderMessageList } from "./message-list.js";
+import { renderComposer } from "./composer.js";
 
 export function renderChatView(container) {
   container.innerHTML = `
@@ -15,19 +11,11 @@ export function renderChatView(container) {
     </div>
   `;
 
-  renderChatHeader(container.querySelector('.chat-header-slot'));
-  renderMessageList(container.querySelector('.message-list-slot'));
-  renderComposer(container.querySelector('.composer-slot'));
-}
+  const headerSlot = container.querySelector(".chat-header-slot");
+  const messageSlot = container.querySelector(".message-list-slot");
+  const composerSlot = container.querySelector(".composer-slot");
 
-const chatViewStyles = document.createElement('style');
-chatViewStyles.textContent = `
-  .chat-view-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-    background-color: var(--color-bg);
-  }
-`;
-document.head.appendChild(chatViewStyles);
+  renderChatHeader(headerSlot);
+  renderMessageList(messageSlot);
+  renderComposer(composerSlot);
+}

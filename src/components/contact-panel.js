@@ -1,61 +1,77 @@
-// src/components/contact-panel.js
-import { store } from '../core/store.js';
+import { store } from "../core/store.js";
 
-export function renderContactPanel() {
-  const panel = document.createElement('div');
-  panel.className = 'contact-panel';
-  panel.style.width = '280px';
-  panel.style.borderLeft = '1px solid #334155';
-  panel.style.background = '#1e293b';
-  panel.style.display = 'flex';
-  panel.style.flexDirection = 'column';
-  panel.style.height = '100%';
+export function renderContactPanel(container) {
+  const state = store.getState();
 
-  // Header
-  const header = document.createElement('div');
-  header.style.padding = '20px';
-  header.style.borderBottom = '1px solid #334155';
-  header.style.fontWeight = '600';
-  header.style.fontSize = '1.05rem';
-  header.textContent = 'Contact Info';
-  panel.appendChild(header);
+  const contact =
+    state.contacts.find(
+      (item) => item.id === state.activeContactId
+    ) || state.contacts[0];
 
-  // Content Body
-  const content = document.createElement('div');
-  content.style.padding = '20px';
-  content.style.display = 'flex';
-  content.style.flexDirection = 'column';
-  content.style.alignItems = 'center';
-  content.style.textAlign = 'center';
+  container.innerHTML = `
+    <aside class="contact-panel">
+      <div class="contact-panel-header">
+        <span>Contact Info</span>
+      </div>
 
-  // Avatar placeholder
-  const avatar = document.createElement('div');
-  avatar.style.width = '80px';
-  avatar.style.height = '80px';
-  avatar.style.borderRadius = '50%';
-  avatar.style.background = '#3b82f6';
-  avatar.style.display = 'flex';
-  avatar.style.alignItems = 'center';
-  avatar.style.justifyNames = 'center';
-  avatar.style.fontSize = '2rem';
-  avatar.style.color = '#fff';
-  avatar.style.marginBottom = '15px';
-  avatar.textContent = '👤';
-  content.appendChild(avatar);
+      <div class="contact-panel-content">
+        <img
+          src="${contact.avatar}"
+          alt="${contact.name}"
+          class="contact-panel-avatar"
+        />
 
-  const name = document.createElement('div');
-  name.style.fontSize = '1.1rem';
-  name.style.fontWeight = '600';
-  name.style.marginBottom = '5px';
-  name.textContent = 'General Channel';
-  content.appendChild(name);
+        <h3>${contact.name}</h3>
+        <p>${contact.status}</p>
+      </div>
+    </aside>
+  `;
 
-  const status = document.createElement('div');
-  status.style.fontSize = '0.85rem';
-  status.style.color = '#94a3b8';
-  status.textContent = 'Active & Secure Connection';
-  content.appendChild(status);
+  if (!document.getElementById("contact-panel-styles")) {
+    const style = document.createElement("style");
+    style.id = "contact-panel-styles";
 
-  panel.appendChild(content);
-  return panel;
+    style.textContent = `
+      .contact-panel-header {
+        height: 72px;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--color-border);
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .contact-panel-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 32px 20px;
+        text-align: center;
+      }
+
+      .contact-panel-avatar {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 9999px;
+        margin-bottom: 16px;
+      }
+
+      .contact-panel-content h3 {
+        margin: 0;
+        color: var(--color-text);
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .contact-panel-content p {
+        margin: 6px 0 0;
+        color: var(--color-muted);
+        font-size: 12px;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
 }

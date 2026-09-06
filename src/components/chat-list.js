@@ -1,22 +1,22 @@
 import { store } from "../core/store.js";
 
-export function renderChatList() {
+export function renderChatList(container) {
   const state = store.getState();
 
-  return state.contacts
+  container.innerHTML = state.contacts
     .map((contact) => {
       const active = contact.id === state.activeContactId;
 
       return `
         <button
+          type="button"
           class="chat-item ${active ? "active" : ""}"
           data-contact-id="${contact.id}"
-          type="button"
         >
           <img
-            class="chat-avatar"
             src="${contact.avatar}"
             alt="${contact.name}"
+            class="chat-avatar"
           />
 
           <span class="chat-info">
@@ -30,9 +30,7 @@ export function renderChatList() {
 }
 
 export function initChatList(container) {
-  const render = () => {
-    container.innerHTML = renderChatList();
-  };
+  const render = () => renderChatList(container);
 
   container.addEventListener("click", (event) => {
     const item = event.target.closest("[data-contact-id]");

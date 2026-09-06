@@ -1,28 +1,22 @@
-import { store } from "../core/store.js";
 import { renderSidebar } from "./sidebar.js";
 import { renderChatView } from "./chat-view.js";
 
-export function AppShell() {
+export function mountAppShell(root) {
+  root.innerHTML = "";
+
   const shell = document.createElement("div");
   shell.className = "app-shell";
 
-  const sidebar = document.createElement("div");
+  const sidebar = document.createElement("aside");
   sidebar.className = "app-sidebar";
 
-  const chat = document.createElement("div");
+  const chat = document.createElement("main");
   chat.className = "app-chat";
-
-  renderSidebar(sidebar);
-  chat.appendChild(renderChatView());
 
   shell.appendChild(sidebar);
   shell.appendChild(chat);
+  root.appendChild(shell);
 
-  store.subscribe(() => {
-    renderSidebar(sidebar);
-    chat.innerHTML = "";
-    chat.appendChild(renderChatView());
-  });
-
-  return shell;
+  renderSidebar(sidebar);
+  renderChatView(chat);
 }

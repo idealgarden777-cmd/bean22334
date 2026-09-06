@@ -1,29 +1,60 @@
+/* ================================================================= *
+ * App Shell Component - src/components/app-shell.js                 *
+ * ================================================================= */
+
+import { store } from "../core/store.js";
 import { renderSidebar } from "./sidebar.js";
 import { renderChatView } from "./chat-view.js";
-import { renderContactPanel } from "./contact-panel.js";
 
-export function mountAppShell(root) {
-  root.innerHTML = "";
-
+export function createAppShell() {
   const shell = document.createElement("div");
   shell.className = "app-shell";
 
-  const sidebar = document.createElement("aside");
-  sidebar.className = "app-sidebar";
+  const update = () => {
+    shell.innerHTML = "";
 
-  const chat = document.createElement("main");
-  chat.className = "app-chat";
+    const state = store.getState();
 
-  const contactPanel = document.createElement("aside");
-  contactPanel.className = "app-contact-panel";
+    // Handle responsive mobile chat transition
+    if (state.activeContactId && window.innerWidth <= 768) {
+      shell.classList.add("mobile-chat-open");
+    } else {
+      shell.classList.remove("mobile-chat-open");
+    }
 
-  shell.appendChild(sidebar);
-  shell.appendChild(chat);
-  shell.appendChild(contactPanel);
+    const sidebar = renderSidebar(state);
+    const chatView = renderChatView(state);
 
+    shell.appendChild(sidebar);
+    shell.appendChild(chatView);
+  };
+
+  store.subscribe(update);
+
+  window.addEventListener("resize", () => {
+    const state = store.getState();
+
+    if (window.innerWidth > 768) {
+      shell.classList.remove("mobile-chat-open");
+    } else if (state.activeContactId) {
+      shell.classList.add("mobile-chat-open");
+    }
+  });
+
+  update();
+
+  return shell;
+}
+
+/*
+ * Compatibility wrapper for current main.js
+ * Keeps the original shell implementation unchanged.
+ */
+export function mountAppShell(root) {
+  if (!root) return;
+
+  root.innerHTML = "";
+
+  const shell = createAppShell();
   root.appendChild(shell);
-
-  renderSidebar(sidebar);
-  renderChatView(chat);
-  renderContactPanel(contactPanel);
 }

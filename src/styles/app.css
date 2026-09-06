@@ -118,3 +118,27 @@ body {
     transform: translateX(0);
   }
 }
+.app-contact-panel {
+  flex: 0 0 320px;
+  width: 320px;
+  height: 100%;
+  overflow-y: auto;
+  border-left: 1px solid var(--border-color, #e2d9cc);
+  background: var(--panel-bg, #f2ece1);
+  z-index: 10;
+}
+
+@media (max-width: 1024px) {
+  .app-contact-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+
+  .app-contact-panel.open {
+    transform: translateX(0);
+  }
+}

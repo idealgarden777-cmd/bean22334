@@ -1,37 +1,32 @@
-import { store } from '../core/store.js';
-import { renderChatList } from './chat-list.js';
+import { store } from "../core/store.js";
+import { renderChatList, initChatList } from "./chat-list.js";
 
-export function renderSidebar(container, state) {
-  if (!container) return;
+export function renderSidebar(container) {
+  const state = store.getState();
 
   container.innerHTML = `
-    <div class="sidebar">
+    <aside class="sidebar">
       <div class="sidebar-header">
-        <h2>Messages</h2>
+        <h2>Chats</h2>
       </div>
-      <div class="sidebar-search">
-        <input 
-          type="text" 
-          id="search-input" 
-          placeholder="Search chats..." 
-          value="${state.searchQuery || ''}"
-        />
-      </div>
-      <div id="chat-list-slot"></div>
-    </div>
+
+      <div class="chat-list"></div>
+    </aside>
   `;
 
-  const searchInput = container.querySelector('#search-input');
-  if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      store.setSearchQuery(e.target.value);
-    });
-  }
+  const chatList = container.querySelector(".chat-list");
 
-  const chatListSlot = container.querySelector('#chat-list-slot');
-  if (chatListSlot) {
-    renderChatList(chatListSlot, state);
-  }
+  initChatList(chatList);
+  chatList.innerHTML = renderChatList();
 }
 
-export default renderSidebar;
+export function initSidebar(container) {
+  renderSidebar(container);
+
+  store.subscribe(() => {
+    const chatList = container.querySelector(".chat-list");
+    if (chatList) {
+      chatList.innerHTML = renderChatList();
+    }
+  });
+}

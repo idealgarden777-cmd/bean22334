@@ -89,6 +89,7 @@ export const store = {
 
   sendMessage(text) {
     const cleanText = text.trim();
+
     if (!cleanText) return;
 
     const contactId = this.state.activeContactId;

@@ -1,61 +1,96 @@
-/* Reset & Base Layout Shell */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body {
+html,
+body,
+#app {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Main App Shell Container - Flex Row Layout */
+body {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  background: var(--bg-primary, #ffffff);
+  color: var(--text-primary, #2c2523);
+}
+
 .app-shell {
   display: flex;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
   position: relative;
-  background-color: var(--bg-primary, #ffffff);
+  background: var(--bg-primary, #ffffff);
 }
 
-/* Sidebar Component */
+.app-sidebar,
 .sidebar {
   flex: 0 0 280px;
+  width: 280px;
   height: 100%;
   overflow-y: auto;
   border-right: 1px solid var(--border-color, #e0e0e0);
-  background-color: var(--sidebar-bg, #f8f9fa);
+  background: var(--sidebar-bg, #f8f9fa);
   z-index: 10;
 }
 
-/* Chat View / Main Content Area */
+.app-chat,
 .chat-view {
   flex: 1;
-  min-width: 0; /* Prevents flex items from overflowing */
+  min-width: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background-color: var(--chat-bg, #ffffff);
+  background: var(--chat-bg, #ffffff);
 }
 
-/* Contact Panel / Right Sidebar */
 .contact-panel {
   flex: 0 0 320px;
+  width: 320px;
   height: 100%;
   overflow-y: auto;
   border-left: 1px solid var(--border-color, #e0e0e0);
-  background-color: var(--panel-bg, #f8f9fa);
+  background: var(--panel-bg, #f8f9fa);
   z-index: 10;
 }
 
-/* Responsive adjustments */
+.chat-view-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.chat-header-slot {
+  flex: 0 0 auto;
+}
+
+.message-list-slot {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.composer-slot {
+  flex: 0 0 auto;
+}
+
 @media (max-width: 1024px) {
+  .app-sidebar,
   .sidebar {
     position: absolute;
     left: 0;
@@ -64,7 +99,8 @@ html, body {
     transform: translateX(-100%);
     transition: transform 0.3s ease;
   }
-  
+
+  .app-sidebar.open,
   .sidebar.open {
     transform: translateX(0);
   }

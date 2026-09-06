@@ -1,105 +1,140 @@
-/* =================================================================
-   Composer Component - Pill-shaped input with attachment and arrow send button[cite: 1]
-   ================================================================ */
-
-import { store } from '../core/store.js';
+import { store } from "../core/store.js";
 
 export function renderComposer(container) {
   container.innerHTML = `
     <form class="composer-form" id="composerForm">
       <div class="composer-pill-container">
-        <button type="button" class="composer-action-btn" id="attachBtn" title="Attach File">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button
+          type="button"
+          class="composer-action-btn"
+          id="attachBtn"
+          title="Attach File"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
           </svg>
         </button>
-        <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" />
-        <button type="submit" class="composer-send-btn" title="Send Message">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+
+        <input
+          type="text"
+          id="messageInput"
+          placeholder="Type a message..."
+          autocomplete="off"
+        />
+
+        <button
+          type="submit"
+          class="composer-send-btn"
+          title="Send Message"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
         </button>
       </div>
     </form>
   `;
 
-  const form = container.querySelector('#composerForm');
-  const input = container.querySelector('#messageInput');
+  const form = container.querySelector("#composerForm");
+  const input = container.querySelector("#messageInput");
 
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const text = input.value;
-    if (text.trim()) {
-      store.sendMessage(text);
-      input.value = '';
-    }
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const text = input.value.trim();
+    if (!text) return;
+
+    store.sendMessage(text);
+    input.value = "";
+    input.focus();
   });
 }
 
-const composerStyles = document.createElement('style');
-composerStyles.textContent = `
-  .composer-form {
-    padding: var(--space-2) var(--space-3);
-    background-color: var(--color-bg);
-    border-top: 1px solid var(--color-border);
-  }
+if (!document.getElementById("composer-styles")) {
+  const style = document.createElement("style");
+  style.id = "composer-styles";
 
-  .composer-pill-container {
-    display: flex;
-    align-items: center;
-    background-color: var(--color-surface); /* Soft Sand surface[cite: 1] */
-    border-radius: var(--radius-pill);
-    padding: 6px 8px 6px 12px;
-    border: 1px solid transparent;
-    transition: var(--transition-smooth);
-    box-shadow: var(--shadow-subtle);
-  }
+  style.textContent = `
+    .composer-form {
+      padding: 8px 12px;
+      background: var(--color-bg, #fbf9f5);
+      border-top: 1px solid var(--color-border, #e7e1d8);
+    }
 
-  .composer-pill-container:focus-within {
-    border-color: var(--color-border-focus);
-  }
+    .composer-pill-container {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      background: var(--color-surface, #f2ece1);
+      border: 1px solid var(--color-border, #e7e1d8);
+      border-radius: 9999px;
+      padding: 6px 8px 6px 12px;
+      box-shadow: 0 2px 8px rgba(44, 37, 35, 0.06);
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
 
-  .composer-action-btn {
-    color: var(--color-muted);
-    padding: 8px;
-    border-radius: var(--radius-avatar);
-    transition: var(--transition-smooth);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+    .composer-pill-container:focus-within {
+      border-color: var(--color-accent, #5a6b5c);
+      box-shadow: 0 4px 14px rgba(44, 37, 35, 0.08);
+    }
 
-  .composer-action-btn:hover {
-    color: var(--color-accent);
-    background-color: rgba(90, 107, 92, 0.1);
-  }
+    .composer-action-btn {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border-radius: 9999px;
+      color: var(--color-text-secondary, #8a817b);
+      cursor: pointer;
+      transition: background 160ms ease, color 160ms ease;
+    }
 
-  #messageInput {
-    flex: 1;
-    border: none;
-    background: transparent;
-    padding: 8px 12px;
-    font-size: var(--font-size-sm); /* 14px body text[cite: 1] */
-    color: var(--color-text-primary); /* Deep Espresso Brown[cite: 1] */
-    outline: none;
-  }
+    .composer-action-btn:hover {
+      color: var(--color-accent, #5a6b5c);
+      background: rgba(90, 107, 92, 0.10);
+    }
 
-  .composer-send-btn {
-    background-color: var(--color-accent); /* Muted Sage Green / Terracotta[cite: 1] */
-    color: var(--color-white);
-    width: 38px;
-    height: 38px;
-    border-radius: var(--radius-button); /* 10px-12px or rounded button[cite: 1] */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition-smooth);
-    box-shadow: var(--shadow-subtle);
-  }
+    #messageInput {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      padding: 8px 12px;
+      color: var(--color-text, #2c2523);
+      font-size: 14px;
+    }
 
-  .composer-send-btn:hover {
-    opacity: 0.9;
-    transform: scale(1.02);
-  }
-`;
-document.head.appendChild(composerStyles);
+    #messageInput::placeholder {
+      color: var(--color-text-secondary, #8a817b);
+    }
+
+    .composer-send-btn {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border-radius: 12px;
+      background: var(--color-accent, #5a6b5c);
+      color: #ffffff;
+      cursor: pointer;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .composer-send-btn:hover {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+  `;
+
+  document.head.appendChild(style);
+}

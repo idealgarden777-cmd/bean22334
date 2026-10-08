@@ -20,11 +20,18 @@ create table if not exists public.bean_conversations (
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+-- (old Bean tables may already exist with fewer columns: add whatever is missing)
 alter table public.bean_conversations add column if not exists type text not null default 'dm';
+alter table public.bean_conversations add column if not exists dm_key text;
 alter table public.bean_conversations add column if not exists title text;
 alter table public.bean_conversations add column if not exists created_by uuid references public.bean_users(id) on delete set null;
+alter table public.bean_conversations add column if not exists last_message text;
+alter table public.bean_conversations add column if not exists last_sender_id uuid references public.bean_users(id) on delete set null;
 alter table public.bean_conversations add column if not exists last_message_id uuid;
+alter table public.bean_conversations add column if not exists created_at timestamptz not null default now();
+alter table public.bean_conversations add column if not exists updated_at timestamptz not null default now();
 alter table public.bean_conversations alter column dm_key drop not null;
+create unique index if not exists bean_conversations_dm_key_idx on public.bean_conversations (dm_key);
 
 create table if not exists public.bean_conversation_members (
   conversation_id uuid not null references public.bean_conversations(id) on delete cascade,
@@ -36,6 +43,7 @@ create table if not exists public.bean_conversation_members (
   primary key (conversation_id, user_id)
 );
 alter table public.bean_conversation_members add column if not exists role text not null default 'member';
+alter table public.bean_conversation_members add column if not exists joined_at timestamptz not null default now();
 alter table public.bean_conversation_members add column if not exists last_read_at timestamptz not null default now();
 alter table public.bean_conversation_members add column if not exists muted boolean not null default false;
 
@@ -53,7 +61,10 @@ create table if not exists public.bean_messages (
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+alter table public.bean_messages add column if not exists sender_id uuid references public.bean_users(id) on delete set null;
 alter table public.bean_messages add column if not exists kind text not null default 'text';
+alter table public.bean_messages add column if not exists body text;
+alter table public.bean_messages add column if not exists created_at timestamptz not null default now();
 alter table public.bean_messages add column if not exists attachment jsonb;
 alter table public.bean_messages add column if not exists reply_to uuid references public.bean_messages(id) on delete set null;
 alter table public.bean_messages add column if not exists edited_at timestamptz;
@@ -80,6 +91,12 @@ create table if not exists public.bean_settings (
   updated_at    timestamptz not null default now()
 );
 
+alter table public.bean_reactions add column if not exists emoji text;
+alter table public.bean_reactions add column if not exists created_at timestamptz not null default now();
+alter table public.bean_settings add column if not exists message_timer integer not null default 0;
+alter table public.bean_settings add column if not exists wallpaper text not null default 'none';
+alter table public.bean_settings add column if not exists updated_at timestamptz not null default now();
+
 -- ---------- presence + typing ----------
 create table if not exists public.bean_presence (
   user_id      uuid primary key references public.bean_users(id) on delete cascade,
@@ -87,6 +104,10 @@ create table if not exists public.bean_presence (
   typing_in    uuid,
   typing_at    timestamptz
 );
+
+alter table public.bean_presence add column if not exists last_seen_at timestamptz not null default now();
+alter table public.bean_presence add column if not exists typing_in uuid;
+alter table public.bean_presence add column if not exists typing_at timestamptz;
 
 -- ---------- calls (WebRTC signalling) ----------
 create table if not exists public.bean_calls (

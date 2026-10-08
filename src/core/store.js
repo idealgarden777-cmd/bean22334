@@ -1,57 +1,25 @@
+import { api } from "./api.js";
+import { loadDemo, saveDemo } from "./demo.js";
+
+const POLL_MS = 3000;
+
 export const store = {
   state: {
-    currentUser: {
-      id: "user_1",
-      name: "You",
-    },
-
-    activeContactId: "contact_1",
-
-    contacts: [
-      {
-        id: "contact_1",
-        name: "Ayesha Khan",
-        status: "Online",
-        avatar:
-          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop",
-      },
-      {
-        id: "contact_2",
-        name: "Zain Ahmed",
-        status: "Last seen recently",
-        avatar:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-      },
-    ],
-
-    messages: {
-      contact_1: [
-        {
-          id: "m1",
-          senderId: "contact_1",
-          text: "Hi",
-          timestamp: "04:34 PM",
-        },
-        {
-          id: "m2",
-          senderId: "user_1",
-          text: "Hello! How are you doing?",
-          timestamp: "04:35 PM",
-        },
-      ],
-
-      contact_2: [
-        {
-          id: "m3",
-          senderId: "contact_2",
-          text: "Hey, are we still meeting?",
-          timestamp: "02:10 PM",
-        },
-      ],
-    },
+    status: "loading", // loading | signedOut | ready | error
+    mode: "live", // live | demo
+    me: null,
+    conversations: [],
+    messages: {},
+    activeId: null,
+    search: "",
+    contactPanelOpen: false,
+    newChatOpen: false,
+    error: null,
   },
 
   listeners: new Set(),
+  pollTimer: null,
+  pollTick: 0,
 
   getState() {
     return this.state;
@@ -62,52 +30,226 @@ export const store = {
     return () => this.listeners.delete(listener);
   },
 
-  notify() {
-    this.listeners.forEach((listener) => listener(this.state));
+  set(patch) {
+    this.state = { ...this.state, ...patch };
+    this.listeners.forEach((l) => l(this.state));
   },
 
-  setActiveContact(contactId) {
-    const exists = this.state.contacts.some(
-      (contact) => contact.id === contactId
-    );
+  /* ---------- boot ---------- */
 
-    if (!exists) return;
-
-    this.state.activeContactId = contactId;
-    this.notify();
+  async init() {
+    try {
+      const res = await api.me();
+      if (!res.authenticated) return this.set({ status: "signedOut" });
+      this.set({ me: res.user, mode: "live" });
+      await this.refreshConversations();
+      this.set({ status: "ready" });
+      this.startPolling();
+    } catch (err) {
+      if (err.code === "NO_API") return this.startDemo();
+      this.set({ status: "error", error: err.message });
+    }
   },
 
-  getActiveContact() {
-    return this.state.contacts.find(
-      (contact) => contact.id === this.state.activeContactId
-    );
+  startDemo() {
+    const demo = loadDemo();
+    this.set({
+      status: "ready",
+      mode: "demo",
+      me: demo.me,
+      conversations: demo.conversations,
+      messages: demo.messages,
+    });
+  },
+
+  persistDemo() {
+    if (this.state.mode !== "demo") return;
+    const { me, conversations, messages } = this.state;
+    saveDemo({ me, conversations, messages });
+  },
+
+  /* ---------- selectors ---------- */
+
+  getActiveConversation() {
+    return this.state.conversations.find((c) => c.id === this.state.activeId) || null;
   },
 
   getActiveMessages() {
-    return this.state.messages[this.state.activeContactId] || [];
+    return this.state.messages[this.state.activeId] || [];
   },
 
-  sendMessage(text) {
-    const cleanText = text.trim();
+  getFilteredConversations() {
+    const q = this.state.search.trim().toLowerCase();
+    if (!q) return this.state.conversations;
+    return this.state.conversations.filter(
+      (c) =>
+        c.contact.displayName.toLowerCase().includes(q) ||
+        c.contact.username.toLowerCase().includes(q)
+    );
+  },
 
-    if (!cleanText) return;
+  /* ---------- actions ---------- */
 
-    const contactId = this.state.activeContactId;
+  setSearch(search) {
+    this.set({ search });
+  },
 
-    if (!this.state.messages[contactId]) {
-      this.state.messages[contactId] = [];
+  toggleContactPanel(open = !this.state.contactPanelOpen) {
+    this.set({ contactPanelOpen: open });
+  },
+
+  toggleNewChat(open = !this.state.newChatOpen) {
+    this.set({ newChatOpen: open });
+  },
+
+  closeChat() {
+    this.set({ activeId: null, contactPanelOpen: false });
+  },
+
+  async selectConversation(id) {
+    this.set({ activeId: id });
+    if (this.state.mode === "live" && !this.state.messages[id]) {
+      await this.fetchMessages(id);
+    }
+  },
+
+  async refreshConversations() {
+    if (this.state.mode !== "live") return;
+    const { conversations } = await api.conversations();
+    this.set({ conversations });
+  },
+
+  async fetchMessages(id, { incremental = false } = {}) {
+    const existing = this.state.messages[id] || [];
+    const confirmed = existing.filter((m) => !m.pending && !m.failed);
+    const after = incremental && confirmed.length ? confirmed[confirmed.length - 1].createdAt : null;
+
+    const { messages } = await api.messages(id, after);
+    if (incremental && !messages.length) return;
+
+    const known = new Set(existing.map((m) => m.id));
+    const merged = incremental ? [...existing, ...messages.filter((m) => !known.has(m.id))] : messages;
+    this.set({ messages: { ...this.state.messages, [id]: merged } });
+  },
+
+  async startConversation(username) {
+    if (this.state.mode === "demo") {
+      const clean = username.replace(/@bean$/, "").toLowerCase();
+      let conv = this.state.conversations.find((c) => c.contact.username === clean);
+      if (!conv) {
+        conv = {
+          id: `c_${Date.now()}`,
+          updatedAt: new Date().toISOString(),
+          lastMessage: "",
+          lastSenderId: null,
+          contact: { id: `u_${clean}`, username: clean, displayName: clean, beanId: `${clean}@bean` },
+        };
+        this.set({
+          conversations: [conv, ...this.state.conversations],
+          messages: { ...this.state.messages, [conv.id]: [] },
+        });
+        this.persistDemo();
+      }
+      this.set({ activeId: conv.id, newChatOpen: false });
+      return conv;
     }
 
-    this.state.messages[contactId].push({
-      id: `m_${Date.now()}`,
-      senderId: this.state.currentUser.id,
-      text: cleanText,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    });
+    const { conversation } = await api.openConversation(username);
+    const others = this.state.conversations.filter((c) => c.id !== conversation.id);
+    this.set({ conversations: [conversation, ...others], newChatOpen: false });
+    await this.selectConversation(conversation.id);
+    return conversation;
+  },
 
-    this.notify();
+  async searchUsers(q) {
+    if (this.state.mode === "demo") return [];
+    const { users } = await api.searchUsers(q);
+    return users;
+  },
+
+  async sendMessage(text) {
+    const clean = text.trim();
+    const id = this.state.activeId;
+    if (!clean || !id) return;
+
+    const temp = {
+      id: `tmp_${Date.now()}`,
+      senderId: this.state.me.id,
+      text: clean,
+      createdAt: new Date().toISOString(),
+      pending: this.state.mode === "live",
+    };
+
+    this.appendMessage(id, temp);
+
+    if (this.state.mode === "demo") {
+      this.persistDemo();
+      return;
+    }
+
+    try {
+      const { message } = await api.sendMessage(id, clean);
+      this.replaceMessage(id, temp.id, message);
+    } catch {
+      this.replaceMessage(id, temp.id, { ...temp, pending: false, failed: true });
+    }
+  },
+
+  retryMessage(messageId) {
+    const id = this.state.activeId;
+    const msg = (this.state.messages[id] || []).find((m) => m.id === messageId);
+    if (!msg) return;
+    this.set({
+      messages: { ...this.state.messages, [id]: this.state.messages[id].filter((m) => m.id !== messageId) },
+    });
+    this.sendMessage(msg.text);
+  },
+
+  appendMessage(convId, message) {
+    const list = [...(this.state.messages[convId] || []), message];
+    const conversations = this.state.conversations
+      .map((c) =>
+        c.id === convId
+          ? { ...c, lastMessage: message.text, lastSenderId: message.senderId, updatedAt: message.createdAt }
+          : c
+      )
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    this.set({ messages: { ...this.state.messages, [convId]: list }, conversations });
+  },
+
+  replaceMessage(convId, tempId, message) {
+    const list = (this.state.messages[convId] || []).map((m) => (m.id === tempId ? message : m));
+    this.set({ messages: { ...this.state.messages, [convId]: list } });
+  },
+
+  async logout() {
+    if (this.state.mode === "live") {
+      try {
+        await api.logout();
+      } catch {}
+    }
+    this.stopPolling();
+    this.set({ status: "signedOut", me: null, conversations: [], messages: {}, activeId: null });
+  },
+
+  /* ---------- polling (near real-time) ---------- */
+
+  startPolling() {
+    this.stopPolling();
+    this.pollTimer = setInterval(async () => {
+      if (document.hidden || this.state.mode !== "live") return;
+      this.pollTick += 1;
+      try {
+        if (this.state.activeId) await this.fetchMessages(this.state.activeId, { incremental: true });
+        if (this.pollTick % 3 === 0) await this.refreshConversations();
+      } catch (err) {
+        if (err.status === 401) this.set({ status: "signedOut" });
+      }
+    }, POLL_MS);
+  },
+
+  stopPolling() {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    this.pollTimer = null;
   },
 };

@@ -1,77 +1,41 @@
 import { store } from "../core/store.js";
+import { icons } from "./icons.js";
+import { avatar, escapeHtml } from "../core/utils.js";
 
-export function renderContactPanel(container) {
-  const state = store.getState();
+export function mountContactPanel(container) {
+  let lastKey = "";
 
-  const contact =
-    state.contacts.find(
-      (item) => item.id === state.activeContactId
-    ) || state.contacts[0];
+  const render = (state) => {
+    const conv = store.getActiveConversation();
+    const key = `${conv?.id}|${state.contactPanelOpen}|${(state.messages[conv?.id] || []).length}`;
+    if (key === lastKey) return;
+    lastKey = key;
 
-  container.innerHTML = `
-    <aside class="contact-panel">
+    if (!conv) {
+      container.innerHTML = "";
+      return;
+    }
+    const { contact } = conv;
+    const count = (state.messages[conv.id] || []).length;
+
+    container.innerHTML = `
       <div class="contact-panel-header">
-        <span>Contact Info</span>
+        <span>Contact info</span>
+        <button type="button" class="icon-btn" data-action="close" aria-label="Close">${icons.close}</button>
       </div>
-
       <div class="contact-panel-content">
-        <img
-          src="${contact.avatar}"
-          alt="${contact.name}"
-          class="contact-panel-avatar"
-        />
+        ${avatar(contact, "lg")}
+        <h3>${escapeHtml(contact.displayName)}</h3>
+        <p>${escapeHtml(contact.beanId)}</p>
+        <dl class="contact-facts">
+          <div><dt>Bean ID</dt><dd>${escapeHtml(contact.beanId)}</dd></div>
+          <div><dt>Messages</dt><dd>${count}</dd></div>
+        </dl>
+      </div>`;
 
-        <h3>${contact.name}</h3>
-        <p>${contact.status}</p>
-      </div>
-    </aside>
-  `;
+    container.querySelector("[data-action=close]").onclick = () => store.toggleContactPanel(false);
+  };
 
-  if (!document.getElementById("contact-panel-styles")) {
-    const style = document.createElement("style");
-    style.id = "contact-panel-styles";
-
-    style.textContent = `
-      .contact-panel-header {
-        height: 72px;
-        display: flex;
-        align-items: center;
-        padding: 0 20px;
-        border-bottom: 1px solid var(--color-border);
-        font-size: 16px;
-        font-weight: 600;
-      }
-
-      .contact-panel-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 32px 20px;
-        text-align: center;
-      }
-
-      .contact-panel-avatar {
-        width: 80px;
-        height: 80px;
-        object-fit: cover;
-        border-radius: 9999px;
-        margin-bottom: 16px;
-      }
-
-      .contact-panel-content h3 {
-        margin: 0;
-        color: var(--color-text);
-        font-size: 16px;
-        font-weight: 600;
-      }
-
-      .contact-panel-content p {
-        margin: 6px 0 0;
-        color: var(--color-muted);
-        font-size: 12px;
-      }
-    `;
-
-    document.head.appendChild(style);
-  }
+  store.subscribe(render);
+  render(store.getState());
 }

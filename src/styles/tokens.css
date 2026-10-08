@@ -1,54 +1,120 @@
+/* =========================================================
+ * BEAN — DESIGN TOKENS (Neyo design language)
+ * Minimal · premium · rounded · neutral
+ * ========================================================= */
+
 :root {
-  --bg-primary: #fbf9f5;
-  --sidebar-bg: #f2ece1;
-  --chat-bg: #fbf9f5;
-  --panel-bg: #f2ece1;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-soft: #f5f5f5;
+  --surface-hover: #f1f1f1;
+  --sidebar-bg: #f9f9f9;
 
-  --color-surface: #f2ece1;
-  --color-surface-soft: #eee7db;
+  --text: #171717;
+  --text-secondary: #737373;
+  --text-muted: #9b9b9b;
 
-  --color-text-primary: #2c2523;
-  --color-text: #2c2523;
-  --color-muted: #8a817b;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --hover: rgba(0, 0, 0, 0.045);
+  --active: rgba(0, 0, 0, 0.065);
 
-  --color-accent: #5a6b5c;
-  --color-accent-soft: #e8eee8;
+  --accent: #171717;
+  --accent-text: #ffffff;
+  --accent-soft: rgba(23, 23, 23, 0.08);
+  --danger: #d4483b;
 
-  --border-color: #e2d9cc;
-  --color-border: #e2d9cc;
-  --color-border-focus: #5a6b5c;
+  --bubble-own: #171717;
+  --bubble-own-text: #ffffff;
+  --bubble-other: #f4f4f4;
+  --bubble-other-text: #171717;
 
-  --color-white: #ffffff;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
 
-  --shadow-subtle: 0 2px 8px rgba(44, 37, 35, 0.06);
-  --shadow-soft: 0 6px 20px rgba(44, 37, 35, 0.08);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 10px 32px rgba(0, 0, 0, 0.08);
+  --shadow-input: 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 14px rgba(0, 0, 0, 0.035);
+  --shadow-popup: 0 1px 2px rgba(0, 0, 0, 0.03), 0 12px 32px rgba(0, 0, 0, 0.10);
 
-  --radius-button: 12px;
-  --radius-avatar: 9999px;
-  --radius-pill: 9999px;
+  --font-display: "Sora", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-text: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family: var(--font-text);
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --fast: 150ms ease;
+  --medium: 220ms var(--ease);
 
-  --font-size-xs: 12px;
-  --font-size-sm: 14px;
-  --font-size-base: 16px;
-  --font-size-lg: 18px;
+  --topbar-height: 58px;
+  --sidebar-width: 304px;
+  --panel-width: 320px;
+  --content-width: 760px;
 
-  --font-weight-regular: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
+  --avatar-tone-1: #171717;
+}
 
-  --transition-smooth:
-    background 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+/* Dark: follows the system, or forced with <html data-theme="dark"> */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171717;
+    --surface: #171717;
+    --surface-soft: #252525;
+    --surface-hover: #2b2b2b;
+    --sidebar-bg: #111111;
+    --text: #f5f5f5;
+    --text-secondary: #b5b5b5;
+    --text-muted: #8f8f8f;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.15);
+    --hover: rgba(255, 255, 255, 0.065);
+    --active: rgba(255, 255, 255, 0.085);
+    --accent: #f5f5f5;
+    --accent-text: #171717;
+    --accent-soft: rgba(255, 255, 255, 0.10);
+    --bubble-own: #f5f5f5;
+    --bubble-own-text: #171717;
+    --bubble-other: #262626;
+    --bubble-other-text: #f5f5f5;
+    --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.26);
+    --shadow-md: 0 14px 38px rgba(0, 0, 0, 0.38);
+    --shadow-input: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --shadow-popup: 0 1px 2px rgba(0, 0, 0, 0.24), 0 14px 36px rgba(0, 0, 0, 0.38);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171717;
+  --surface: #171717;
+  --surface-soft: #252525;
+  --surface-hover: #2b2b2b;
+  --sidebar-bg: #111111;
+  --text: #f5f5f5;
+  --text-secondary: #b5b5b5;
+  --text-muted: #8f8f8f;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --hover: rgba(255, 255, 255, 0.065);
+  --active: rgba(255, 255, 255, 0.085);
+  --accent: #f5f5f5;
+  --accent-text: #171717;
+  --accent-soft: rgba(255, 255, 255, 0.10);
+  --bubble-own: #f5f5f5;
+  --bubble-own-text: #171717;
+  --bubble-other: #262626;
+  --bubble-other-text: #f5f5f5;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.26);
+  --shadow-md: 0 14px 38px rgba(0, 0, 0, 0.38);
+  --shadow-input: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-popup: 0 1px 2px rgba(0, 0, 0, 0.24), 0 14px 36px rgba(0, 0, 0, 0.38);
+  color-scheme: dark;
+}
+
+::selection { background: var(--accent-soft); }
+:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }

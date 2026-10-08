@@ -1,62 +1,31 @@
 import { store } from "../core/store.js";
+import { icons } from "./icons.js";
+import { avatar, escapeHtml } from "../core/utils.js";
 
 export function renderChatHeader(container) {
-  const state = store.getState();
-
-  const contact =
-    state.contacts.find(
-      (item) => item.id === state.activeContactId
-    ) || state.contacts[0];
+  const conv = store.getActiveConversation();
+  if (!conv) return;
+  const { contact } = conv;
 
   container.innerHTML = `
     <header class="chat-header-container">
-      <div class="chat-header-participant">
-        <img
-          src="${contact.avatar}"
-          alt="${contact.name}"
-          class="contact-avatar"
-        />
-
-        <div class="participant-info">
-          <span class="participant-name">${contact.name}</span>
-          <span class="participant-status">${contact.status}</span>
-        </div>
-      </div>
-
+      <button type="button" class="icon-btn back-btn" data-action="back" aria-label="Back to chats">${icons.arrowLeft}</button>
+      <button type="button" class="chat-header-participant" data-action="info">
+        ${avatar(contact)}
+        <span class="participant-info">
+          <span class="participant-name">${escapeHtml(contact.displayName)}</span>
+          <span class="participant-status">${escapeHtml(contact.beanId)}</span>
+        </span>
+      </button>
       <div class="chat-header-actions">
-        <button class="header-action-btn" type="button" aria-label="Voice call">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2
-            19.79 19.79 0 0 1-8.63-3.07
-            19.5 19.5 0 0 1-6-6
-            19.79 19.79 0 0 1-3.07-8.67
-            A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2
-            1.72c.12.94.36 1.86.7 2.76
-            a2 2 0 0 1-.45 2.11L8.09 9.91
-            a16 16 0 0 0 6 6l1.27-1.27
-            a2 2 0 0 1 2.11-.45
-            c.9.34 1.82.58 2.76.7A2 2 0 0 1 22 16.92z"/>
-          </svg>
-        </button>
-
-        <button class="header-action-btn" type="button" aria-label="Video call">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2">
-            <polygon points="23 7 16 12 23 17 23 7"/>
-            <rect x="1" y="5" width="15" height="14" rx="2"/>
-          </svg>
-        </button>
-
-        <button class="header-action-btn" type="button" aria-label="More options">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="5" r="1"/>
-            <circle cx="12" cy="12" r="1"/>
-            <circle cx="12" cy="19" r="1"/>
-          </svg>
-        </button>
+        <button type="button" class="icon-btn" disabled title="Voice calls coming soon" aria-label="Voice call">${icons.phone}</button>
+        <button type="button" class="icon-btn" disabled title="Video calls coming soon" aria-label="Video call">${icons.video}</button>
+        <button type="button" class="icon-btn" data-action="info" title="Contact info" aria-label="Contact info">${icons.info}</button>
       </div>
-    </header>
-  `;
+    </header>`;
+
+  container.querySelector("[data-action=back]").onclick = () => store.closeChat();
+  container.querySelectorAll("[data-action=info]").forEach((btn) => {
+    btn.onclick = () => store.toggleContactPanel();
+  });
 }

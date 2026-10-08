@@ -1,45 +1,45 @@
 import { store } from "../core/store.js";
+import { avatar, escapeHtml, formatListTime } from "../core/utils.js";
 
-export function renderChatList(container) {
-  const state = store.getState();
+export function mountChatList(container) {
+  let lastKey = "";
 
-  container.innerHTML = state.contacts
-    .map((contact) => {
-      const active = contact.id === state.activeContactId;
+  const render = (state) => {
+    const items = store.getFilteredConversations();
+    const key = JSON.stringify([state.activeId, state.search, items.map((c) => [c.id, c.updatedAt, c.lastMessage])]);
+    if (key === lastKey) return;
+    lastKey = key;
 
-      return `
-        <button
-          type="button"
-          class="chat-item ${active ? "active" : ""}"
-          data-contact-id="${contact.id}"
-        >
-          <img
-            src="${contact.avatar}"
-            alt="${contact.name}"
-            class="chat-avatar"
-          />
+    if (!items.length) {
+      container.innerHTML = `<p class="chat-list-empty">${
+        state.search ? "No chats match your search." : "No chats yet. Tap + to message a Bean ID."
+      }</p>`;
+      return;
+    }
 
-          <span class="chat-info">
-            <strong>${contact.name}</strong>
-            <small>${contact.status}</small>
-          </span>
-        </button>
-      `;
-    })
-    .join("");
-}
+    container.innerHTML = items
+      .map((c) => {
+        const mine = c.lastSenderId === state.me.id;
+        return `
+          <button type="button" class="chat-item ${c.id === state.activeId ? "active" : ""}" data-id="${escapeHtml(c.id)}">
+            ${avatar(c.contact)}
+            <span class="chat-info">
+              <span class="chat-info-top">
+                <strong>${escapeHtml(c.contact.displayName)}</strong>
+                <time>${formatListTime(c.updatedAt)}</time>
+              </span>
+              <small>${mine ? "You: " : ""}${escapeHtml(c.lastMessage || c.contact.beanId)}</small>
+            </span>
+          </button>`;
+      })
+      .join("");
+  };
 
-export function initChatList(container) {
-  const render = () => renderChatList(container);
-
-  container.addEventListener("click", (event) => {
-    const item = event.target.closest("[data-contact-id]");
-    if (!item) return;
-
-    store.setActiveContact(item.dataset.contactId);
+  container.addEventListener("click", (e) => {
+    const item = e.target.closest("[data-id]");
+    if (item) store.selectConversation(item.dataset.id);
   });
 
   store.subscribe(render);
-
-  render();
+  render(store.getState());
 }

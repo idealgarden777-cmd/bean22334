@@ -113,7 +113,7 @@ function render(root) {
       await (register ? api.register(username, password) : api.login(username, password));
       location.replace(nextUrl());
     } catch (err) {
-      showError(err.status >= 500 || !err.status ? "Can't reach Bean right now. Try again." : err.message);
+      showError(!err.status ? "Can't reach Bean right now. Check your internet and try again." : err.message);
       submit.disabled = false;
       submit.textContent = register ? "Create Bean ID" : "Enter Workspace";
       pass.select();

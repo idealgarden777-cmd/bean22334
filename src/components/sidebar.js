@@ -58,7 +58,8 @@ export function mountSidebar(container) {
     </div>
 
     <div class="notif-slot"></div>
-    <nav class="chat-list" aria-label="Chats"></nav>`;
+    <nav class="chat-list" aria-label="Chats"></nav>
+    <div class="people-results" hidden></div>`;
 
   const list = container.querySelector(".chat-list");
   const notifSlot = container.querySelector(".notif-slot");
@@ -69,7 +70,60 @@ export function mountSidebar(container) {
   container.querySelectorAll("[data-action=settings]").forEach((b) => (b.onclick = () => store.openModal("settings")));
   tabs.forEach((t) => (t.onclick = () => store.setView(t.dataset.view)));
   container.querySelector("[data-action=logout]").onclick = () => store.logout();
-  container.querySelector(".search-pill input").addEventListener("input", (e) => store.setSearch(e.target.value));
+  const searchInput = container.querySelector(".search-pill input");
+  const people = container.querySelector(".people-results");
+
+  // Search box also finds Bean IDs (people you have no chat with yet)
+  let peopleSeq = 0;
+  let peopleTimer;
+  const findPeople = (raw) => {
+    clearTimeout(peopleTimer);
+    const q = raw.trim();
+    if (q.replace(/^@/, "").replace(/@bean$/i, "").length < 2) {
+      people.hidden = true;
+      people.innerHTML = "";
+      return;
+    }
+    const seq = ++peopleSeq;
+    peopleTimer = setTimeout(async () => {
+      let users = [];
+      try {
+        users = await store.searchUsers(q);
+      } catch {}
+      if (seq !== peopleSeq) return;
+      people.hidden = false;
+      people.innerHTML = `<p class="people-title">People</p>${
+        users.length
+          ? users
+              .map(
+                (u) => `<button type="button" class="chat-item" data-username="${escapeHtml(u.username)}">
+                  ${avatar(u, "md", { online: u.online })}
+                  <span class="chat-info"><strong>${escapeHtml(u.displayName)}</strong><small>${escapeHtml(u.beanId)}</small></span>
+                </button>`
+              )
+              .join("")
+          : `<p class="muted-note">No Bean ID found for “${escapeHtml(q)}”.</p>`
+      }`;
+    }, 220);
+  };
+  people.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-username]");
+    if (!b) return;
+    b.disabled = true;
+    try {
+      await store.openDm(b.dataset.username);
+      searchInput.value = "";
+      store.setSearch("");
+      findPeople("");
+    } catch (err) {
+      b.disabled = false;
+      store.toast(err.message || "Could not open chat");
+    }
+  });
+  searchInput.addEventListener("input", (e) => {
+    store.setSearch(e.target.value);
+    findPeople(e.target.value);
+  });
   list.addEventListener("click", (e) => {
     const item = e.target.closest("[data-id]");
     if (item) store.selectConversation(item.dataset.id);
@@ -108,7 +162,7 @@ export function mountSidebar(container) {
     if (!items.length) {
       list.innerHTML = `<div class="chat-list-empty">${
         s.search
-          ? `<p>No chats match your search.</p><button type="button" class="btn-primary btn-sm" data-empty-new>Find a Bean ID</button>`
+          ? `<p>No chats match your search.</p>`
           : s.view === "beanbox"
           ? "<p>Beanbox is clear. New messages you haven't read show up here.</p>"
           : `<p>No chats yet.</p><button type="button" class="btn-primary btn-sm" data-empty-new>Start a chat</button>`

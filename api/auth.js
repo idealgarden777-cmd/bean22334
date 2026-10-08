@@ -66,7 +66,13 @@ export default async function handler(req, res) {
           .eq("user_id", user.id)
           .maybeSingle();
         if (error) throw error;
-        if (!cred || !(await argon2.verify(cred.password_hash, password))) return send(res, 401, { error: BAD_LOGIN });
+        let ok = false;
+        try {
+          ok = !!cred?.password_hash && (await argon2.verify(cred.password_hash, password));
+        } catch (e) {
+          console.error("Bean auth: password hash not verifiable (non-argon2?)", user.id, e.message);
+        }
+        if (!ok) return send(res, 401, { error: BAD_LOGIN });
 
         await startSession(req, res, user);
         const avatars = await getAvatars([user.id]);

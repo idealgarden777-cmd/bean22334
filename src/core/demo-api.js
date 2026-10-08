@@ -32,6 +32,11 @@ function seed() {
 }
 
 let db = load();
+if (db.me) Object.assign(ME, db.me);
+const saveMe = () => {
+  db.me = { username: ME.username, beanId: ME.beanId, displayName: ME.displayName };
+  save();
+};
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY));
@@ -45,6 +50,7 @@ function save() {
   } catch {}
 }
 
+const alive = (m) => !m.expiresAt || m.expiresAt > new Date().toISOString();
 const userById = (id) => {
   const u = id === "me" ? ME : PEOPLE.find((p) => p.id === id);
   return u ? { ...u, online: id === "u1", lastSeenAt: id === "u1" ? new Date().toISOString() : ago(42) } : null;
@@ -60,7 +66,7 @@ function preview(m) {
 }
 
 function shapeConv(c) {
-  const msgs = db.messages.filter((m) => m.conversationId === c.id);
+  const msgs = db.messages.filter((m) => m.conversationId === c.id && alive(m));
   const last = msgs[msgs.length - 1];
   const members = c.memberIds.map((id) => ({ ...userById(id), role: c.admins.includes(id) ? "admin" : "member", lastReadAt: c.readAt[id] }));
   const peer = c.type === "dm" ? members.find((m) => m.id !== "me") : null;
@@ -121,9 +127,34 @@ function fakeReply(conversationId) {
 }
 let typingUntil = null;
 
+const SKEY = "bean_demo_session";
+const settings = () => ({ messageTimer: 0, wallpaper: "none", ...(db.settings || {}) });
+const signedIn = () => localStorage.getItem(SKEY) === "1";
+
 export const demoApi = {
-  me: () => delay({ authenticated: true, user: { ...ME, online: true } }),
-  logout: () => delay({ success: true }),
+  me: () => delay(signedIn() ? { authenticated: true, user: { ...ME, online: true }, settings: settings() } : { authenticated: false }),
+  logout: () => {
+    localStorage.removeItem(SKEY);
+    return delay({ success: true });
+  },
+  login: (username, password) => {
+    if (!username || !password) return Promise.reject(new Error("Invalid Bean ID or password"));
+    ME.username = String(username).toLowerCase().replace(/@bean$/, "");
+    ME.beanId = `${ME.username}@bean`;
+    if (ME.displayName === "You") ME.displayName = ME.username;
+    saveMe();
+    localStorage.setItem(SKEY, "1");
+    return delay({ success: true, user: ME });
+  },
+  register: (username, password) => demoApi.login(username, password),
+  checkUsername: (username) => delay({ available: !PEOPLE.some((p) => p.username === String(username).toLowerCase()) }),
+  updateMe: (changes) => {
+    if (changes.displayName) ME.displayName = changes.displayName.trim();
+    saveMe();
+    db.settings = { ...settings(), ...(changes.messageTimer !== undefined ? { messageTimer: Number(changes.messageTimer) } : {}), ...(changes.wallpaper ? { wallpaper: changes.wallpaper } : {}) };
+    save();
+    return delay({ success: true, user: { ...ME, online: true }, settings: settings() });
+  },
   searchUsers: (q) => {
     const s = q.toLowerCase().replace(/@bean$/, "");
     return delay({ users: PEOPLE.filter((p) => p.username.startsWith(s) || p.displayName.toLowerCase().includes(s)).map((p) => userById(p.id)) });
@@ -177,7 +208,7 @@ export const demoApi = {
 
   async messages(conversationId) {
     conv(conversationId);
-    return delay({ messages: db.messages.filter((m) => m.conversationId === conversationId).map(shapeMsg), hasMore: false });
+    return delay({ messages: db.messages.filter((m) => m.conversationId === conversationId && alive(m)).map(shapeMsg), hasMore: false });
   },
 
   async messageAction(action, p) {
@@ -193,6 +224,7 @@ export const demoApi = {
         text: p.text || "",
         attachment: a ? { url: a.path, name: a.name, size: a.size, mime: a.mime, duration: a.duration || null } : null,
         replyTo: p.replyTo || null,
+        expiresAt: settings().messageTimer ? new Date(Date.now() + settings().messageTimer * 1000).toISOString() : null,
       });
       c.readAt.me = now;
       save();
@@ -228,7 +260,7 @@ export const demoApi = {
         }
         out.active = {
           conversationId: active,
-          messages: db.messages.filter((m) => m.conversationId === active && (!since || m.updatedAt >= since)).map(shapeMsg),
+          messages: db.messages.filter((m) => m.conversationId === active && alive(m) && (!since || m.updatedAt >= since)).map(shapeMsg),
           typing: typingUntil && typingUntil.conversationId === active && typingUntil.until > Date.now() ? [typingUntil.userId] : [],
           reads: { ...c.readAt },
         };

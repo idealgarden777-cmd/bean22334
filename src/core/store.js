@@ -21,12 +21,15 @@ export const store = {
     status: "loading", // loading | signedOut | ready | error
     error: null,
     me: null,
+    settings: { messageTimer: 0, wallpaper: "none" },
+    view: "home", // home | beanbox (unread)
     conversations: [],
     threads: {}, // convId -> { items, hasMore, loaded, loading }
     activeId: null,
     search: "",
     panelOpen: false,
-    modal: null, // null | "new"
+    modal: null, // null | "new" | "settings"
+    unsending: {}, // messageId -> true while the Undo toast is up
     replyTo: null,
     editing: null,
     typing: {}, // convId -> [userId]
@@ -34,7 +37,7 @@ export const store = {
     uploads: [], // { id, conversationId, name, progress }
     call: null,
     incomingCall: null,
-    toast: null,
+    toast: null, // string | { text, action, onAction }
     notifPermission: notificationPermission(),
   },
 
@@ -73,8 +76,12 @@ export const store = {
   },
   filteredConversations() {
     const q = this.state.search.trim().toLowerCase();
-    if (!q) return this.state.conversations;
-    return this.state.conversations.filter(
+    const base =
+      this.state.view === "beanbox"
+        ? this.state.conversations.filter((c) => c.unread > 0 && c.id !== this.state.activeId)
+        : this.state.conversations;
+    if (!q) return base;
+    return base.filter(
       (c) =>
         c.title.toLowerCase().includes(q) ||
         c.members.some((m) => m.username.toLowerCase().includes(q) || m.displayName.toLowerCase().includes(q))
@@ -84,16 +91,16 @@ export const store = {
   /* ---------------- boot ---------------- */
 
   async init() {
+    let res;
     try {
-      const res = await api.me();
-      if (!res.authenticated) return this.set({ status: "signedOut" });
-      this.set({ me: res.user });
+      res = await api.me();
     } catch (err) {
       if (err.code !== "NO_API") return this.set({ status: "error", error: err.message });
       api.enableDemo();
-      const res = await api.me();
-      this.set({ me: res.user });
+      res = await api.me();
     }
+    if (!res.authenticated) return this.set({ status: "signedOut" });
+    this.set({ me: res.user, settings: { ...this.state.settings, ...(res.settings || {}) } });
 
     try {
       const { conversations } = await api.conversations();
@@ -110,6 +117,7 @@ export const store = {
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) this.syncNow();
     });
+    window.addEventListener("pagehide", () => this.pendingUnsend?.commit());
     window.addEventListener("hashchange", () => {
       const id = location.hash.slice(1);
       if (id !== (this.state.activeId || "")) id ? this.selectConversation(id) : this.closeChat();
@@ -307,10 +315,25 @@ export const store = {
     this.set({ modal: null });
   },
 
-  toast(message) {
+  toast(message, ms = 3200) {
     clearTimeout(this.toastTimer);
     this.set({ toast: message });
-    this.toastTimer = setTimeout(() => this.set({ toast: null }), 3200);
+    this.toastTimer = setTimeout(() => this.set({ toast: null }), ms);
+  },
+
+  setView(view) {
+    this.set({ view });
+  },
+
+  /* ---------------- settings ("Update Identity") ---------------- */
+
+  async updateSettings(changes) {
+    const res = await api.updateMe(changes);
+    this.set({
+      me: res.user ? { ...this.state.me, ...res.user } : this.state.me,
+      settings: { ...this.state.settings, ...(res.settings || {}) },
+    });
+    return res;
   },
 
   async enableNotifications() {
@@ -370,6 +393,7 @@ export const store = {
       attachment: file ? { url: localUrl, name: file.name, size: file.size, mime: file.type, duration } : null,
       replyTo: replyTo ? { id: replyTo.id, senderId: replyTo.senderId, kind: replyTo.kind, text: replyTo.text || "Attachment" } : null,
       reactions: [],
+      expiresAt: this.state.settings.messageTimer ? new Date(Date.now() + this.state.settings.messageTimer * 1000).toISOString() : null,
       createdAt: now,
       updatedAt: now,
       pending: true,
@@ -459,6 +483,30 @@ export const store = {
 
   deleteMessage(id) {
     return this.messageAction("delete", { messageId: id });
+  },
+
+  /* Unsend: hide at once, show "Message unsent · Undo" for 5s, then delete for everyone. */
+  unsend(id) {
+    const UNDO_MS = 5000;
+    if (this.pendingUnsend) this.pendingUnsend.commit();
+    let done = false;
+    const finish = (commit) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      this.pendingUnsend = null;
+      const unsending = { ...this.state.unsending };
+      delete unsending[id];
+      this.set({ unsending });
+      if (commit) this.deleteMessage(id);
+    };
+    const timer = setTimeout(() => finish(true), UNDO_MS);
+    this.pendingUnsend = { commit: () => finish(true) };
+    this.set({ unsending: { ...this.state.unsending, [id]: true } });
+    this.toast({ text: "Message unsent", action: "Undo", onAction: () => {
+      finish(false);
+      this.set({ toast: null });
+    } }, UNDO_MS);
   },
 
   react(id, emoji) {
@@ -650,11 +698,12 @@ export const store = {
   /* ---------------- account ---------------- */
 
   async logout() {
+    this.pendingUnsend?.commit();
+    clearTimeout(this.timer);
+    this.session?.hangup();
     try {
       await api.logout();
     } catch {}
-    clearTimeout(this.timer);
-    this.session?.hangup();
-    this.set({ status: "signedOut", me: null, conversations: [], threads: {}, activeId: null });
+    location.replace("/");
   },
 };

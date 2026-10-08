@@ -59,6 +59,7 @@ alter table public.bean_messages add column if not exists reply_to uuid referenc
 alter table public.bean_messages add column if not exists edited_at timestamptz;
 alter table public.bean_messages add column if not exists deleted_at timestamptz;
 alter table public.bean_messages add column if not exists updated_at timestamptz not null default now();
+alter table public.bean_messages add column if not exists expires_at timestamptz;
 alter table public.bean_messages alter column body drop not null;
 alter table public.bean_messages alter column sender_id drop not null;
 alter table public.bean_messages drop constraint if exists bean_messages_body_check;
@@ -69,6 +70,14 @@ create table if not exists public.bean_reactions (
   emoji      text not null check (char_length(emoji) <= 16),
   created_at timestamptz not null default now(),
   primary key (message_id, user_id)
+);
+
+-- ---------- per-user settings (message timer, wallpaper) ----------
+create table if not exists public.bean_settings (
+  user_id       uuid primary key references public.bean_users(id) on delete cascade,
+  message_timer integer not null default 0 check (message_timer in (0, 86400, 604800, 2592000)),
+  wallpaper     text not null default 'none',
+  updated_at    timestamptz not null default now()
 );
 
 -- ---------- presence + typing ----------
@@ -122,6 +131,7 @@ language sql stable as $$
    and msg.sender_id <> p_user
    and msg.deleted_at is null
    and msg.kind <> 'system'
+   and (msg.expires_at is null or msg.expires_at > now())
   where m.user_id = p_user
   group by m.conversation_id;
 $$;
@@ -139,3 +149,7 @@ alter table public.bean_reactions            enable row level security;
 alter table public.bean_presence             enable row level security;
 alter table public.bean_calls                enable row level security;
 alter table public.bean_call_signals         enable row level security;
+alter table public.bean_settings             enable row level security;
+
+-- ---------- clean up expired (disappearing) messages, optional: run daily with pg_cron ----------
+-- delete from public.bean_messages where expires_at is not null and expires_at < now();

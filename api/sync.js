@@ -1,5 +1,5 @@
 import { supabase, send, withUser, readBody, getMembership } from "./_lib/session.js";
-import { hydrateMessages, loadConversations, loadUsers } from "./_lib/chat.js";
+import { hydrateMessages, loadConversations, loadUsers, notExpired } from "./_lib/chat.js";
 
 const TYPING_WINDOW_MS = 6000;
 const RING_WINDOW_MS = 45000;
@@ -43,12 +43,9 @@ export default withUser(
               .eq("user_id", me.id);
           }
 
-          let q = supabase
-            .from("bean_messages")
-            .select("*")
-            .eq("conversation_id", active)
-            .order("updated_at", { ascending: true })
-            .limit(100);
+          let q = notExpired(
+            supabase.from("bean_messages").select("*").eq("conversation_id", active).order("updated_at", { ascending: true }).limit(100)
+          );
           if (since) q = q.gte("updated_at", String(since));
           else q = q.gte("updated_at", new Date(now - 60000).toISOString());
 

@@ -1,8 +1,6 @@
 import { store } from "../core/store.js";
 import { icons } from "./icons.js";
-import { logoMark } from "./logo.js";
 import { avatar, escapeHtml, formatListTime } from "../core/utils.js";
-import { isDark, toggleTheme } from "../core/theme.js";
 import { notificationsSupported } from "../core/notify.js";
 
 function chatRow(c, state) {
@@ -33,52 +31,43 @@ function chatRow(c, state) {
 }
 
 export function mountSidebar(container) {
-  const { me } = store.getState();
-
   container.innerHTML = `
     <div class="sidebar-header">
-      <a class="brand" href="/" title="Bean portal">${logoMark}<span class="brand-name">Bean</span></a>
+      <button type="button" class="me-row" data-action="settings" title="Settings">
+        <span class="me-avatar"></span>
+        <span class="profile-text">
+          <strong class="me-name"></strong>
+          <small class="me-id"></small>
+        </span>
+      </button>
       ${store.isDemo() ? `<span class="demo-badge" title="Local demo, no backend">Demo</span>` : ""}
-      <button type="button" class="icon-btn header-new" data-action="new" title="New chat" aria-label="New chat">${icons.compose}</button>
+      <button type="button" class="icon-btn" data-action="settings" title="Settings" aria-label="Settings">${icons.settings}</button>
+      <button type="button" class="icon-btn icon-danger" data-action="logout" title="Sign out" aria-label="Sign out">${icons.power}</button>
     </div>
 
     <div class="sidebar-nav">
       <label class="search-pill">
         ${icons.search}
-        <input type="search" placeholder="Search" aria-label="Search chats" />
+        <input type="search" placeholder="Search users..." aria-label="Search chats" />
       </label>
+      <button type="button" class="new-message-btn" data-action="new">${icons.compose}<span>New Message</span></button>
+      <div class="view-tabs" role="tablist">
+        <button type="button" role="tab" data-view="home">Home</button>
+        <button type="button" role="tab" data-view="beanbox">Beanbox <span class="tab-count"></span></button>
+      </div>
     </div>
 
     <div class="notif-slot"></div>
-    <nav class="chat-list" aria-label="Chats"></nav>
-
-    <div class="sidebar-footer">
-      <a class="profile-row" href="https://accounts.signaturesi.com" target="_blank" rel="noopener" title="Manage Bean ID">
-        ${avatar(me, "sm")}
-        <span class="profile-text">
-          <strong>${escapeHtml(me.displayName)}</strong>
-          <small>${escapeHtml(me.beanId)}</small>
-        </span>
-      </a>
-      <button type="button" class="icon-btn" data-action="theme" aria-label="Toggle theme"></button>
-      <button type="button" class="icon-btn" data-action="logout" title="Sign out" aria-label="Sign out">${icons.logout}</button>
-    </div>`;
+    <nav class="chat-list" aria-label="Chats"></nav>`;
 
   const list = container.querySelector(".chat-list");
   const notifSlot = container.querySelector(".notif-slot");
-  const themeBtn = container.querySelector("[data-action=theme]");
-
-  const paintTheme = () => {
-    themeBtn.innerHTML = isDark() ? icons.sun : icons.moon;
-    themeBtn.title = isDark() ? "Light mode" : "Dark mode";
-  };
-  paintTheme();
-  themeBtn.onclick = () => {
-    toggleTheme();
-    paintTheme();
-  };
+  const tabs = container.querySelectorAll("[data-view]");
+  const tabCount = container.querySelector(".tab-count");
 
   container.querySelector("[data-action=new]").onclick = () => store.openModal("new");
+  container.querySelectorAll("[data-action=settings]").forEach((b) => (b.onclick = () => store.openModal("settings")));
+  tabs.forEach((t) => (t.onclick = () => store.setView(t.dataset.view)));
   container.querySelector("[data-action=logout]").onclick = () => store.logout();
   container.querySelector(".search-pill input").addEventListener("input", (e) => store.setSearch(e.target.value));
   list.addEventListener("click", (e) => {
@@ -87,10 +76,22 @@ export function mountSidebar(container) {
   });
 
   let lastKey = "";
+  let lastMe = "";
   const render = (s) => {
     const items = store.filteredConversations();
+    const meKey = [s.me.displayName, s.me.avatarUrl].join("|");
+    if (meKey !== lastMe) {
+      lastMe = meKey;
+      container.querySelector(".me-avatar").innerHTML = avatar(s.me, "sm");
+      container.querySelector(".me-name").textContent = s.me.displayName;
+      container.querySelector(".me-id").textContent = s.me.beanId;
+    }
+    const unreadChats = s.conversations.filter((c) => c.unread > 0 && c.id !== s.activeId).length;
+    tabCount.textContent = unreadChats ? String(unreadChats) : "";
+    tabs.forEach((t) => t.classList.toggle("active", t.dataset.view === s.view));
+
     const key = JSON.stringify([
-      s.activeId, s.search, s.notifPermission,
+      s.activeId, s.search, s.notifPermission, s.view,
       items.map((c) => [c.id, c.updatedAt, c.lastMessage, c.unread, c.muted, c.title, c.peer?.online]),
       s.activeId ? s.typing[s.activeId] : null,
     ]);
@@ -107,7 +108,9 @@ export function mountSidebar(container) {
     if (!items.length) {
       list.innerHTML = `<div class="chat-list-empty">${
         s.search
-          ? "No chats match your search."
+          ? `<p>No chats match your search.</p><button type="button" class="btn-primary btn-sm" data-empty-new>Find a Bean ID</button>`
+          : s.view === "beanbox"
+          ? "<p>Beanbox is clear. New messages you haven't read show up here.</p>"
           : `<p>No chats yet.</p><button type="button" class="btn-primary btn-sm" data-empty-new>Start a chat</button>`
       }</div>`;
       const btn = list.querySelector("[data-empty-new]");

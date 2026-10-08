@@ -34,6 +34,15 @@ export function getCookie(req, name) {
   return null;
 }
 
+/* Cookie on .signaturesi.com when served there (shared Bean ID login),
+ * host-only elsewhere (e.g. *.vercel.app previews) so testing still works. */
+export function sessionCookie(req, value, maxAge) {
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(":")[0].toLowerCase();
+  const domain = host === "signaturesi.com" || host.endsWith(".signaturesi.com") ? "; Domain=.signaturesi.com" : "";
+  const secure = host === "localhost" || host === "127.0.0.1" ? "" : "; Secure";
+  return `${COOKIE_NAME}=${value}; Path=/${domain}; HttpOnly${secure}; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
 export const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
 
 export function send(res, status, body) {
@@ -53,13 +62,14 @@ export function readBody(req) {
   return req.body;
 }
 
-export function publicUser(user, presence) {
+export function publicUser(user, presence, avatarUrl = null) {
   const lastSeenAt = presence?.last_seen_at || null;
   return {
     id: user.id,
     username: user.username,
     displayName: user.display_name || user.username,
     beanId: `${user.username}@bean`,
+    avatarUrl: avatarUrl || null,
     lastSeenAt,
     online: lastSeenAt ? Date.now() - new Date(lastSeenAt).getTime() < ONLINE_WINDOW_MS : false,
   };
@@ -94,7 +104,27 @@ export async function getSessionUser(req) {
   if (userError) throw userError;
   if (!user || user.status !== "active") return null;
 
-  return publicUser(user, { last_seen_at: new Date().toISOString() });
+  return publicUser(user, { last_seen_at: new Date().toISOString() }, await getAvatars([user.id]).then((m) => m.get(user.id)));
+}
+
+/* Profile photos live in bean_profiles (accounts.signaturesi). Optional: never breaks a request. */
+export async function getAvatars(ids) {
+  const out = new Map();
+  if (!ids?.length) return out;
+  try {
+    const { data, error } = await supabase.from("bean_profiles").select("user_id, avatar_url").in("user_id", ids);
+    if (!error) for (const p of data || []) if (p.avatar_url) out.set(p.user_id, p.avatar_url);
+  } catch {}
+  return out;
+}
+
+/* Per-user Bean settings (message timer, wallpaper). Optional table. */
+export async function getSettings(userId) {
+  try {
+    const { data, error } = await supabase.from("bean_settings").select("message_timer, wallpaper").eq("user_id", userId).maybeSingle();
+    if (!error && data) return { messageTimer: Number(data.message_timer) || 0, wallpaper: data.wallpaper || "none" };
+  } catch {}
+  return { messageTimer: 0, wallpaper: "none" };
 }
 
 /* Wraps a handler: method check, session check, error handling. */

@@ -1,8 +1,8 @@
-import { supabase, send, withUser, readBody, fail, getMembership } from "./_lib/session.js";
-import { hydrateMessages, insertMessage } from "./_lib/chat.js";
+import { supabase, send, withUser, readBody, fail, getMembership, getSettings } from "./_lib/session.js";
+import { hydrateMessages, insertMessage, notExpired } from "./_lib/chat.js";
 
 const PAGE = 50;
-const MAX_TEXT = 4000;
+const MAX_TEXT = 2000;
 const EMOJI_OK = /^[\p{Extended_Pictographic}\u200d\ufe0f\u{1F3FB}-\u{1F3FF}]{1,8}$/u;
 
 function kindForMime(mime) {
@@ -35,12 +35,12 @@ export default withUser(
       const conversationId = String(req.query.conversationId || "");
       await getMembership(conversationId, me.id);
 
-      let query = supabase
+      let query = notExpired(supabase
         .from("bean_messages")
         .select("*")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: false })
-        .limit(PAGE + 1);
+        .limit(PAGE + 1));
       if (req.query.before) query = query.lt("created_at", String(req.query.before));
 
       const { data, error } = await query;
@@ -77,7 +77,9 @@ export default withUser(
           if (!parent || parent.conversation_id !== conversationId) fail(400, "Can't reply to that message");
         }
 
+        const { messageTimer } = await getSettings(me.id);
         const row = await insertMessage({
+          expiresAt: messageTimer ? new Date(Date.now() + messageTimer * 1000).toISOString() : null,
           conversationId,
           senderId: me.id,
           kind: attachment ? kindForMime(attachment.mime) : "text",

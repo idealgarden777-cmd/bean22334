@@ -1,5 +1,4 @@
 import { store } from "../core/store.js";
-import { logoMark } from "./logo.js";
 import { mountChatHeader } from "./chat-header.js";
 import { mountMessageList } from "./message-list.js";
 import { mountComposer } from "./composer.js";
@@ -17,10 +16,10 @@ export function mountChatView(container) {
     if (!currentId) {
       container.innerHTML = `
         <div class="chat-empty">
-          <span class="chat-empty-mark">${logoMark}</span>
-          <h2>Bean Messenger</h2>
-          <p>Message anyone with a Bean ID. Chats, groups, voice notes and calls in one place.</p>
-          <button type="button" class="btn-primary" data-action="new">New chat</button>
+          <img class="chat-empty-icon" src="/bean-icon.png" alt="" width="64" height="64">
+          <h2>Bean</h2>
+          <p>Select a contact to start, or message anyone with a Bean ID.</p>
+          <button type="button" class="btn-primary" data-action="new">New Message</button>
         </div>`;
       container.querySelector("[data-action=new]").onclick = () => store.openModal("new");
       return;

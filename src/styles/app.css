@@ -717,3 +717,152 @@ a { color: inherit; text-decoration: none; }
   .jump-bottom { right: 12px; }
   .toast { bottom: 84px; }
 }
+
+/* =========================================================
+ * Original-Bean features (v1.2): header, tabs, settings,
+ * emoji picker, counter, disappearing banner, undo, wallpapers
+ * ========================================================= */
+
+.avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+
+/* sidebar header: me + settings + power */
+.me-row { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 6px 6px 6px 0; border-radius: var(--radius-sm); text-align: left; }
+.me-row:hover .me-name { text-decoration: underline; text-underline-offset: 3px; }
+.me-avatar { display: inline-flex; }
+.me-avatar .avatar-sm { width: 36px; height: 36px; font-size: 13px; }
+.icon-danger:hover { background: rgba(212, 72, 59, 0.1); color: var(--danger); }
+
+.new-message-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; height: 42px; margin-top: 8px;
+  border-radius: var(--radius-md);
+  background: var(--accent); color: var(--accent-text);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  transition: transform var(--fast), box-shadow var(--fast);
+}
+.new-message-btn svg { width: 15px; height: 15px; }
+.new-message-btn:hover { box-shadow: var(--shadow-md); }
+.new-message-btn:active { transform: scale(0.98); }
+
+.view-tabs { display: flex; gap: 4px; margin-top: 10px; padding: 3px; border-radius: var(--radius-pill); background: var(--hover); }
+.view-tabs button {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  transition: background-color var(--fast), color var(--fast);
+}
+.view-tabs button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.tab-count:empty { display: none; }
+.tab-count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill); background: var(--accent); color: var(--accent-text); font-size: 10px; font-weight: 700; display: inline-grid; place-items: center; }
+
+.chat-empty-icon { width: 64px; height: 64px; border-radius: 18px; margin-bottom: 6px; box-shadow: var(--shadow-md); }
+
+/* settings */
+.modal-title { margin: 0 0 0 6px; font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+.modal.settings { max-width: 420px; max-height: 86vh; overflow-y: auto; scrollbar-width: thin; }
+.settings-body { display: flex; flex-direction: column; gap: 18px; padding: 4px 8px 10px; }
+.settings-me { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.settings-me .avatar { margin-bottom: 8px; }
+.settings-me strong { font-family: var(--font-display); font-size: 18px; font-weight: 600; }
+.settings-me small { color: var(--text-muted); }
+.settings-form { display: flex; flex-direction: column; gap: 6px; }
+.set-label { display: block; margin: 4px 0 2px; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+.set-input {
+  height: 46px; padding: 0 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface-soft); color: var(--text);
+  font: inherit; font-weight: 500; text-align: center; outline: 0;
+  transition: border-color var(--fast), background-color var(--fast);
+}
+.set-input:focus { border-color: var(--text); background: var(--surface); }
+.settings-form .btn-primary { margin-top: 6px; border-radius: var(--radius-md); height: 46px; }
+.set-section { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--border); }
+.set-note { color: var(--text-muted); font-size: 12px; text-align: center; }
+.timer-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 3px; border-radius: var(--radius-pill); background: var(--hover); }
+.timer-options button { height: 34px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.timer-options button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.wallpaper-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.wp {
+  position: relative; height: 64px;
+  border-radius: var(--radius-md); border: 2px solid transparent;
+  background-color: var(--surface-soft);
+  box-shadow: inset 0 0 0 1px var(--border);
+  overflow: hidden;
+}
+.wp span { position: absolute; left: 8px; bottom: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.wp.on { border-color: var(--text); }
+.set-rows { display: flex; flex-direction: column; padding-top: 10px; border-top: 1px solid var(--border); }
+.set-row { display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 10px; border-radius: var(--radius-sm); text-align: left; font-weight: 500; }
+.set-row:hover { background: var(--hover); }
+.set-row > span:first-child { display: inline-flex; color: var(--text-secondary); }
+.set-row > span:nth-child(2) { flex: 1; }
+.set-row small { color: var(--text-muted); font-size: 12px; }
+.set-row.danger, .set-row.danger > span:first-child { color: var(--danger); }
+.switch { position: relative; width: 38px; height: 22px; border-radius: 99px; background: var(--border-strong); transition: background-color var(--fast); }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform var(--medium); }
+.switch.on { background: var(--accent); }
+.switch.on::after { transform: translateX(16px); background: var(--accent-text); }
+
+/* wallpapers (chat background + settings swatches) */
+.wp-dots, .message-scroll[data-wallpaper="dots"] { background-image: radial-gradient(var(--border-strong) 1px, transparent 1.2px); background-size: 18px 18px; }
+.wp-grid, .message-scroll[data-wallpaper="grid"] { background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 24px 24px; }
+.wp-sand, .message-scroll[data-wallpaper="sand"] { background-image: linear-gradient(160deg, #fdf3e7 0%, #f6e6d6 100%); }
+.wp-mist, .message-scroll[data-wallpaper="mist"] { background-image: linear-gradient(135deg, #fde4dc 0%, #eadcf8 50%, #d6f3f1 100%); }
+.wp-night, .message-scroll[data-wallpaper="night"] { background-image: linear-gradient(160deg, #1f2430 0%, #121418 100%); }
+.wp-night span { color: #d0d0d0; }
+.message-scroll[data-wallpaper="night"] .system-row, .message-scroll[data-wallpaper="night"] .day-divider { color: #c9c9c9; }
+:root[data-theme="dark"] .message-scroll[data-wallpaper="sand"],
+:root[data-theme="dark"] .message-scroll[data-wallpaper="mist"] { filter: none; background-blend-mode: multiply; background-color: #222; }
+
+/* composer: emoji, counter, disappearing banner */
+.composer-inner { position: relative; }
+.emoji-btn { width: 38px; height: 38px; flex-basis: 38px; border-radius: 50%; }
+.emoji-btn svg { width: 19px; height: 19px; }
+.emoji-btn.on { background: var(--active); color: var(--text); }
+.emoji-picker {
+  position: absolute; left: 8px; bottom: calc(100% + 8px); z-index: 30;
+  width: min(340px, calc(100vw - 32px));
+  padding: 10px; border-radius: var(--radius-lg);
+  border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-popup);
+  animation: pop 160ms var(--ease);
+}
+.emoji-search { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; margin-bottom: 8px; border-radius: var(--radius-pill); background: var(--hover); color: var(--text-muted); }
+.emoji-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 14px; }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; max-height: 232px; overflow-y: auto; scrollbar-width: thin; }
+.emoji-grid button { height: 36px; border-radius: 10px; font-size: 21px; line-height: 1; transition: background-color var(--fast), transform var(--fast); }
+.emoji-grid button:hover { background: var(--hover); transform: scale(1.12); }
+.emoji-empty { grid-column: 1 / -1; margin: 18px 0; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+.composer-pill-container { position: relative; }
+.char-counter {
+  position: absolute; top: -13px; left: 50%; z-index: 2;
+  transform: translate(-50%, -4px) scale(0.95);
+  padding: 3px 12px; border-radius: var(--radius-pill);
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+  font-size: 11px; font-weight: 700; color: var(--text-secondary); font-variant-numeric: tabular-nums;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--fast), transform var(--medium);
+}
+.char-counter.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.char-counter.full { color: var(--danger); }
+
+.timer-banner {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin: 0 auto 8px; width: fit-content; max-width: 100%;
+  padding: 5px 12px; border-radius: var(--radius-pill);
+  background: var(--accent-soft); color: var(--text-secondary);
+  font-size: 12px; font-weight: 500;
+}
+.timer-banner[hidden] { display: none; }
+.meta-timer { display: inline-flex; opacity: 0.75; }
+.meta-timer svg { width: 11px; height: 11px; }
+
+/* toast with Undo */
+.toast.has-action { display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 18px; }
+.toast-action { height: 30px; padding: 0 12px; border-radius: var(--radius-pill); background: rgba(255,255,255,.16); color: inherit; font-size: 13px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+:root[data-theme="dark"] .toast-action { background: rgba(0,0,0,.08); }
+
+@media (max-width: 767px) {
+  .emoji-picker { left: 0; right: 0; width: auto; }
+  .emoji-grid { grid-template-columns: repeat(7, 1fr); }
+}

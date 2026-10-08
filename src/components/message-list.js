@@ -148,7 +148,7 @@ function messageHtml(m, ctx) {
         <div class="bubble-wrap">
           <div class="message-bubble">
             ${reply}${body}
-            <span class="bubble-meta">${m.editedAt && !deleted ? "<span>edited</span>" : ""}<time>${formatTime(m.createdAt)}</time>${statusHtml(m, state, conv, m.id === lastOwnId)}</span>
+            <span class="bubble-meta">${m.expiresAt && !deleted ? `<span class="meta-timer" title="Disappears ${escapeHtml(new Date(m.expiresAt).toLocaleString())}">${icons.timer}</span>` : ""}${m.editedAt && !deleted ? "<span>edited</span>" : ""}<time>${formatTime(m.createdAt)}</time>${statusHtml(m, state, conv, m.id === lastOwnId)}</span>
           </div>
           ${
             !deleted && !m.pending && !m.failed
@@ -185,8 +185,8 @@ function openMenu(anchor, message, mode) {
             <button type="button" data-item="reply">${icons.reply}<span>Reply</span></button>
             ${message.text ? `<button type="button" data-item="copy">${icons.copy}<span>Copy text</span></button>` : ""}
             ${message.attachment?.url ? `<a href="${escapeHtml(message.attachment.url)}" target="_blank" rel="noopener" download data-item="download">${icons.download}<span>Download</span></a>` : ""}
-            ${own && message.kind === "text" ? `<button type="button" data-item="edit">${icons.edit}<span>Edit</span></button>` : ""}
-            ${own ? `<button type="button" data-item="delete" class="danger">${icons.trash}<span>Delete</span></button>` : ""}
+            ${own && message.kind === "text" ? `<button type="button" data-item="edit">${icons.edit}<span>Edit Message</span></button>` : ""}
+            ${own ? `<button type="button" data-item="delete" class="danger">${icons.trash}<span>Unsend Message</span></button>` : ""}
           </div>`
         : ""
     }`;
@@ -209,7 +209,7 @@ function openMenu(anchor, message, mode) {
     if (item === "reply") store.setReply(message);
     if (item === "edit") store.setEditing(message);
     if (item === "copy") navigator.clipboard?.writeText(message.text).then(() => store.toast("Copied"));
-    if (item === "delete" && confirm("Delete this message for everyone?")) store.deleteMessage(message.id);
+    if (item === "delete") store.unsend(message.id);
     if (emoji || item) closeMenu();
   });
   setTimeout(() => {
@@ -252,8 +252,10 @@ export function mountMessageList(container) {
       conv.id, thread.loaded, thread.hasMore, thread.loading,
       thread.items.map((m) => [m.id, m.updatedAt, m.pending, m.failed, m.reactions?.length]),
       state.uploads.map((u) => [u.id, Math.round(u.progress * 20)]),
-      typing, reads, conv.members.length,
+      typing, reads, conv.members.length, Object.keys(state.unsending),
+      thread.items.filter((m) => m.expiresAt && m.expiresAt <= new Date().toISOString()).length,
     ]);
+    scroller.dataset.wallpaper = state.settings.wallpaper || "none";
     if (key === lastKey) return;
     lastKey = key;
 
@@ -267,7 +269,8 @@ export function mountMessageList(container) {
       return;
     }
 
-    const items = thread.items;
+    const now = new Date().toISOString();
+    const items = thread.items.filter((m) => !state.unsending[m.id] && !(m.expiresAt && m.expiresAt <= now));
     const lastOwn = [...items].reverse().find((m) => m.senderId === state.me.id && !m.pending && !m.deletedAt && !["system", "call"].includes(m.kind));
     let html = thread.hasMore ? `<div class="load-older">${thread.loading ? `<div class="spinner"></div>` : `<button type="button" data-older>Load earlier messages</button>`}</div>` : "";
     if (!items.length) {

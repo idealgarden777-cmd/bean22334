@@ -1,6 +1,10 @@
 import { store } from "../core/store.js";
 import { icons } from "./icons.js";
 import { escapeHtml, formatDuration } from "../core/utils.js";
+import { timerLabel } from "./settings-modal.js";
+import { EMOJIS } from "../core/emoji.js";
+
+const MAX_CHARS = 2000;
 
 const drafts = new Map();
 
@@ -15,11 +19,18 @@ export function mountComposer(container) {
   container.innerHTML = `
     <form class="composer-form" autocomplete="off">
       <div class="composer-inner">
+        <div class="timer-banner" hidden></div>
         <div class="compose-banner" hidden></div>
+        <div class="emoji-picker" hidden>
+          <label class="emoji-search">${icons.search}<input type="search" placeholder="Search emoji" aria-label="Search emoji"></label>
+          <div class="emoji-grid"></div>
+        </div>
         <div class="composer-pill-container">
+          <span class="char-counter" aria-live="polite"></span>
           <button type="button" class="icon-btn attach-btn" title="Photo or file" aria-label="Attach">${icons.plus}</button>
           <input type="file" class="file-input" multiple hidden />
-          <textarea rows="1" placeholder="Message" aria-label="Message" maxlength="4000"></textarea>
+          <button type="button" class="icon-btn emoji-btn" title="Emoji" aria-label="Emoji">${icons.smile}</button>
+          <textarea rows="1" placeholder="Message" aria-label="Message" maxlength="${MAX_CHARS}"></textarea>
           <div class="recording" hidden>
             <button type="button" class="icon-btn rec-cancel" aria-label="Cancel recording">${icons.trash}</button>
             <span class="rec-dot"></span><span class="rec-time">0:00</span>
@@ -40,6 +51,12 @@ export function mountComposer(container) {
   const banner = container.querySelector(".compose-banner");
   const recBox = container.querySelector(".recording");
   const recTime = container.querySelector(".rec-time");
+  const counter = container.querySelector(".char-counter");
+  const emojiBtn = container.querySelector(".emoji-btn");
+  const picker = container.querySelector(".emoji-picker");
+  const emojiGrid = container.querySelector(".emoji-grid");
+  const emojiSearch = container.querySelector(".emoji-search input");
+  const timerBanner = container.querySelector(".timer-banner");
 
   let recorder = null;
   let recStart = 0;
@@ -59,13 +76,55 @@ export function mountComposer(container) {
     input.hidden = recording;
     recBox.hidden = !recording;
     attachBtn.hidden = recording;
+    emojiBtn.hidden = recording;
+    const n = input.value.length;
+    counter.textContent = `${n}/${MAX_CHARS}`;
+    counter.classList.toggle("show", n >= MAX_CHARS * 0.75);
+    counter.classList.toggle("full", n >= MAX_CHARS);
   };
+
+  /* ----- emoji picker (with search) ----- */
+  const paintEmoji = (q = "") => {
+    const term = q.trim().toLowerCase();
+    const list = term ? EMOJIS.filter(([, name]) => name.includes(term)) : EMOJIS;
+    emojiGrid.innerHTML = list.length
+      ? list.map(([e, name]) => `<button type="button" data-emoji="${e}" title="${name}">${e}</button>`).join("")
+      : `<p class="emoji-empty">No emoji found</p>`;
+  };
+  const togglePicker = (open = picker.hidden) => {
+    picker.hidden = !open;
+    emojiBtn.classList.toggle("on", open);
+    if (open) {
+      emojiSearch.value = "";
+      paintEmoji();
+      if (window.innerWidth > 767) emojiSearch.focus();
+    }
+  };
+  emojiBtn.addEventListener("click", () => togglePicker());
+  emojiSearch.addEventListener("input", () => paintEmoji(emojiSearch.value));
+  emojiGrid.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-emoji]");
+    if (!b) return;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    const next = input.value.slice(0, start) + b.dataset.emoji + input.value.slice(end);
+    if (next.length > MAX_CHARS) return;
+    input.value = next;
+    input.selectionStart = input.selectionEnd = start + b.dataset.emoji.length;
+    drafts.set(convId, input.value);
+    paint();
+  });
+  const outside = (e) => {
+    if (!picker.hidden && !picker.contains(e.target) && !emojiBtn.contains(e.target)) togglePicker(false);
+  };
+  document.addEventListener("pointerdown", outside, true);
 
   const submit = () => {
     if (recorder) return stopRecording(true);
     const text = input.value;
     if (!text.trim()) return;
     store.sendText(text);
+    togglePicker(false);
     input.value = "";
     drafts.delete(convId);
     paint();
@@ -191,13 +250,29 @@ export function mountComposer(container) {
     input.focus();
   };
 
-  const unsub = store.subscribe(renderBanner);
+  /* ----- disappearing messages banner ----- */
+  let lastTimer = null;
+  const renderTimer = (s) => {
+    if (s.settings.messageTimer === lastTimer) return;
+    lastTimer = s.settings.messageTimer;
+    timerBanner.hidden = !lastTimer;
+    timerBanner.innerHTML = lastTimer
+      ? `${icons.timer}<span>Disappearing messages are active · ${escapeHtml(timerLabel(lastTimer))}</span>`
+      : "";
+  };
+
+  const unsub = store.subscribe((s) => {
+    renderBanner(s);
+    renderTimer(s);
+  });
   renderBanner(store.getState());
+  renderTimer(store.getState());
   paint();
   if (window.innerWidth > 767) input.focus();
 
   return () => {
     unsub();
+    document.removeEventListener("pointerdown", outside, true);
     if (recorder) stopRecording(false);
   };
 }

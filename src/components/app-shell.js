@@ -1,12 +1,12 @@
 /* App shell: gate (loading / sign in) or the full messenger. */
 import { store } from "../core/store.js";
-import { ACCOUNTS_URL } from "../core/api.js";
 import { escapeHtml } from "../core/utils.js";
 import { logoMark } from "./logo.js";
 import { mountSidebar } from "./sidebar.js";
 import { mountChatView } from "./chat-view.js";
 import { mountInfoPanel } from "./info-panel.js";
 import { mountNewChat } from "./new-chat-modal.js";
+import { mountSettings } from "./settings-modal.js";
 import { mountCallOverlay } from "./call-overlay.js";
 import { mountToast } from "./toast.js";
 import { mountLightbox } from "./lightbox.js";
@@ -26,13 +26,9 @@ function renderGate(root, state) {
     root.querySelector("[data-action=reload]").onclick = () => location.reload();
     return;
   }
-  root.innerHTML = `
-    <div class="gate"><div class="gate-card">
-      ${logoMark}<h1 class="gate-title">Bean</h1>
-      <p>Sign in with your Bean ID to start chatting.</p>
-      <a class="btn-primary" href="${ACCOUNTS_URL}/?redirect=${encodeURIComponent(location.href)}">Sign in with Bean ID</a>
-      <a class="gate-link" href="/">Back to Bean</a>
-    </div></div>`;
+  // signed out: back to the Bean login screen
+  root.innerHTML = `<div class="gate"><div class="spinner"></div></div>`;
+  location.replace(`/?next=${encodeURIComponent(location.pathname + location.hash)}`);
 }
 
 function mountApp(root) {
@@ -42,6 +38,7 @@ function mountApp(root) {
       <main class="chat-view"></main>
       <aside class="info-panel"></aside>
       <div class="modal-slot"></div>
+      <div class="settings-slot"></div>
       <div class="call-slot"></div>
       <div class="lightbox-slot"></div>
       <div class="toast-slot"></div>
@@ -52,6 +49,7 @@ function mountApp(root) {
   mountChatView(shell.querySelector(".chat-view"));
   mountInfoPanel(shell.querySelector(".info-panel"));
   mountNewChat(shell.querySelector(".modal-slot"));
+  mountSettings(shell.querySelector(".settings-slot"));
   mountCallOverlay(shell.querySelector(".call-slot"));
   mountLightbox(shell.querySelector(".lightbox-slot"));
   mountToast(shell.querySelector(".toast-slot"));

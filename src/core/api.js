@@ -15,8 +15,11 @@ async function request(path, { method = "GET", body } = {}) {
   });
   const type = res.headers.get("content-type") || "";
   if (!type.includes("application/json")) {
-    const err = new Error("API not available");
-    err.code = "NO_API";
+    // Demo backend only for local preview; on the real site show the problem.
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+    const err = new Error(local ? "API not available" : "Bean server is not responding. Please try again in a minute.");
+    if (local) err.code = "NO_API";
+    else err.status = res.status;
     throw err;
   }
   const data = await res.json();

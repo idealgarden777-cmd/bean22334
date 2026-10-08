@@ -6,11 +6,6 @@
 import { createClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
 
-export const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { persistSession: false, autoRefreshToken: false } }
-);
 
 export const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "bean_session";
 export const MEDIA_BUCKET = "bean-media";
@@ -25,6 +20,20 @@ export class HttpError extends Error {
 export const fail = (status, message) => {
   throw new HttpError(status, message);
 };
+
+export const MISSING_ENV = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].filter((k) => !process.env[k]);
+
+// Missing env vars must not crash the function at import: every call then
+// answers with a clear JSON error instead of FUNCTION_INVOCATION_FAILED.
+export const supabase = MISSING_ENV.length
+  ? new Proxy({}, {
+      get() {
+        throw new HttpError(500, `Server setup incomplete: add ${MISSING_ENV.join(", ")} in Vercel → Settings → Environment Variables, then Redeploy.`);
+      },
+    })
+  : createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
 export function getCookie(req, name) {
   for (const part of String(req.headers.cookie || "").split(";")) {

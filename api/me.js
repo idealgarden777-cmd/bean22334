@@ -1,6 +1,6 @@
 import argon2 from "argon2";
 import {
-  getSessionUser, send, readBody, supabase, getCookie, hashToken, COOKIE_NAME, sessionCookie, getSettings,
+  getSessionUser, send, readBody, supabase, getCookie, hashToken, COOKIE_NAME, sessionCookie, getSettings, HttpError,
 } from "./_lib/session.js";
 
 const TIMERS = [0, 86400, 604800, 2592000]; // off, 24h, 7d, 30d (seconds)
@@ -66,6 +66,7 @@ export default async function handler(req, res) {
 
     return send(res, 400, { error: "Unknown action" });
   } catch (err) {
+    if (err instanceof HttpError) return send(res, err.status, { error: err.message });
     console.error("me error:", err);
     return send(res, 500, { error: "Something went wrong" });
   }

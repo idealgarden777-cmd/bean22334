@@ -8,7 +8,7 @@
  * ========================================================= */
 import crypto from "node:crypto";
 import argon2 from "argon2";
-import { supabase, send, readBody, hashToken, sessionCookie, cleanUsername, publicUser, getAvatars } from "./_lib/session.js";
+import { supabase, send, readBody, hashToken, sessionCookie, cleanUsername, publicUser, getAvatars, HttpError } from "./_lib/session.js";
 
 const SESSION_DAYS = 7;
 const USERNAME_OK = /^[a-z0-9_]{3,20}$/;
@@ -100,6 +100,7 @@ export default async function handler(req, res) {
         return send(res, 400, { error: "Unknown action" });
     }
   } catch (err) {
+    if (err instanceof HttpError) return send(res, err.status, { error: err.message });
     console.error("Bean auth error:", err);
     return send(res, 500, { error: "Something went wrong. Please try again." });
   }

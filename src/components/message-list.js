@@ -1,59 +1,399 @@
 import { store } from "../core/store.js";
-import { escapeHtml, formatTime, formatDay } from "../core/utils.js";
+import { icons } from "./icons.js";
+import {
+  avatar, escapeHtml, richText, isEmojiOnly, formatTime, formatDay, formatBytes, formatDuration,
+} from "../core/utils.js";
+import { openLightbox } from "./lightbox.js";
+
+export const QUICK_REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🔥"];
+const GROUP_GAP_MS = 5 * 60 * 1000;
+
+/* ---------- voice note player (one at a time) ---------- */
+const player = { id: null, audio: null };
+
+function bindPlayer(root) {
+  if (!player.id) return;
+  const el = root.querySelector(`[data-voice="${CSS.escape(player.id)}"]`);
+  if (!el) return;
+  const a = player.audio;
+  el.classList.toggle("playing", !a.paused);
+  el.querySelector(".voice-btn").innerHTML = a.paused ? icons.play : icons.pause;
+  const pct = a.duration ? (a.currentTime / a.duration) * 100 : 0;
+  el.querySelector(".voice-progress").style.width = `${pct}%`;
+  el.querySelector(".voice-time").textContent = formatDuration(a.paused && !a.currentTime ? el.dataset.duration : a.currentTime);
+}
+
+function toggleVoice(root, id, url) {
+  if (player.id === id) {
+    player.audio.paused ? player.audio.play() : player.audio.pause();
+    return;
+  }
+  player.audio?.pause();
+  const audio = new Audio(url);
+  player.id = id;
+  player.audio = audio;
+  const update = () => bindPlayer(document);
+  audio.addEventListener("timeupdate", update);
+  audio.addEventListener("play", update);
+  audio.addEventListener("pause", update);
+  audio.addEventListener("ended", () => {
+    audio.currentTime = 0;
+    update();
+  });
+  audio.play().catch(() => store.toast("Couldn't play this voice note"));
+}
+
+/* ---------- pieces ---------- */
+
+const BARS = [4, 9, 14, 8, 12, 18, 10, 6, 13, 17, 9, 5, 11, 15, 8, 12, 6, 10, 14, 7, 4, 9, 12, 6];
+
+function attachmentHtml(m, upload) {
+  const a = m.attachment;
+  if (!a) return "";
+  const progress = upload
+    ? `<span class="upload-progress"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" pathLength="100" style="stroke-dashoffset:${100 - Math.round(upload.progress * 100)}"/></svg></span>`
+    : "";
+
+  if (m.kind === "image") {
+    return `<button type="button" class="bubble-image" data-image="${escapeHtml(a.url || "")}" ${a.url ? "" : "disabled"}>
+      ${a.url ? `<img src="${escapeHtml(a.url)}" alt="${escapeHtml(a.name || "Photo")}" loading="lazy" />` : `<span class="image-missing">${icons.image}</span>`}
+      ${progress}
+    </button>`;
+  }
+  if (m.kind === "audio") {
+    return `<div class="voice-note" data-voice="${escapeHtml(m.id)}" data-url="${escapeHtml(a.url || "")}" data-duration="${a.duration || 0}">
+      <button type="button" class="voice-btn" aria-label="Play voice message" ${a.url && !m.pending ? "" : "disabled"}>${icons.play}</button>
+      <span class="voice-wave">${BARS.map((h) => `<i style="height:${h}px"></i>`).join("")}<span class="voice-progress"></span></span>
+      <span class="voice-time">${formatDuration(a.duration)}</span>
+      ${progress}
+    </div>`;
+  }
+  return `<a class="file-card" ${a.url && !m.pending ? `href="${escapeHtml(a.url)}" target="_blank" rel="noopener" download="${escapeHtml(a.name)}"` : ""}>
+    <span class="file-icon">${icons.file}</span>
+    <span class="file-meta"><strong>${escapeHtml(a.name || "File")}</strong><small>${formatBytes(a.size)}</small></span>
+    ${progress || `<span class="file-dl">${icons.download}</span>`}
+  </a>`;
+}
+
+function statusHtml(m, state, conv, isLastOwn) {
+  if (m.failed) return `<button type="button" class="message-retry" data-retry="${escapeHtml(m.id)}">Not sent · Retry</button>`;
+  if (m.senderId !== state.me.id) return "";
+  if (m.pending) return `<span class="msg-status">${icons.clock}</span>`;
+  const reads = state.reads[conv.id] || {};
+  const readers = conv.members.filter((u) => u.id !== state.me.id && reads[u.id] && reads[u.id] >= m.createdAt);
+  const seen = conv.type === "dm" ? readers.length > 0 : readers.length > 0;
+  return `<span class="msg-status ${seen ? "seen" : ""}" title="${seen ? "Seen" : "Delivered"}">${icons.checks}</span>${
+    isLastOwn && seen ? `<span class="seen-label">${conv.type === "dm" ? "Seen" : `Seen by ${readers.length}`}</span>` : ""
+  }`;
+}
+
+function messageHtml(m, ctx) {
+  const { state, conv, prev, next, lastOwnId } = ctx;
+  const own = m.senderId === state.me.id;
+  const group = conv.type === "group";
+
+  if (m.kind === "system") {
+    return `<div class="system-row" data-mid="${escapeHtml(m.id)}"><span>${escapeHtml(m.text)}</span></div>`;
+  }
+  if (m.kind === "call") {
+    const missed = /missed|declined/i.test(m.text);
+    return `<div class="system-row call-row ${missed ? "missed" : ""}" data-mid="${escapeHtml(m.id)}">
+      <span>${m.text.toLowerCase().includes("video") ? icons.video : icons.phone} ${escapeHtml(m.text)} · ${formatTime(m.createdAt)}</span>
+    </div>`;
+  }
+
+  const chained = (a, b) =>
+    a && b && a.senderId === b.senderId && !["system", "call"].includes(a.kind) && Math.abs(new Date(b.createdAt) - new Date(a.createdAt)) < GROUP_GAP_MS && formatDay(a.createdAt) === formatDay(b.createdAt);
+  const first = !chained(prev, m);
+  const last = !chained(m, next);
+
+  const deleted = Boolean(m.deletedAt);
+  const emojiOnly = !deleted && m.kind === "text" && isEmojiOnly(m.text) && !m.replyTo;
+  const upload = state.uploads.find((u) => u.id === m.id);
+
+  const sender = group && !own && first ? `<span class="sender-name" style="color:var(--text-secondary)">${escapeHtml(store.userName(m.senderId, conv))}</span>` : "";
+  const reply = m.replyTo
+    ? `<button type="button" class="reply-quote" data-jump="${escapeHtml(m.replyTo.id)}">
+        <strong>${escapeHtml(store.userName(m.replyTo.senderId, conv))}</strong>
+        <span>${escapeHtml(m.replyTo.text || "Attachment")}</span>
+      </button>`
+    : "";
+  const body = deleted
+    ? `<span class="deleted-text">${own ? "You deleted this message" : "This message was deleted"}</span>`
+    : `${attachmentHtml(m, upload)}${m.text ? `<span class="bubble-text">${richText(m.text)}</span>` : ""}`;
+
+  const reactions = m.reactions?.length
+    ? `<div class="reactions">${m.reactions
+        .map(
+          (r) =>
+            `<button type="button" class="reaction-chip ${r.userIds.includes(state.me.id) ? "mine" : ""}" data-react="${escapeHtml(r.emoji)}" title="${escapeHtml(
+              r.userIds.map((u) => store.userName(u, conv)).join(", ")
+            )}">${r.emoji}${r.userIds.length > 1 ? `<span>${r.userIds.length}</span>` : ""}</button>`
+        )
+        .join("")}</div>`
+    : "";
+
+  const media = !deleted && (m.kind === "image") && !m.text;
+  const classes = [
+    "message-row", own ? "own" : "other", first ? "first" : "", last ? "last" : "",
+    m.pending ? "pending" : "", m.failed ? "failed" : "", emojiOnly ? "emoji-only" : "",
+    deleted ? "deleted" : "", media ? "media-only" : "", `kind-${m.kind}`,
+  ].join(" ");
+
+  return `
+    <div class="${classes}" data-mid="${escapeHtml(m.id)}">
+      ${group && !own ? `<span class="row-avatar">${last ? avatar(conv.members.find((u) => u.id === m.senderId) || { displayName: "?" }, "sm") : ""}</span>` : ""}
+      <div class="message-content">
+        ${sender}
+        <div class="bubble-wrap">
+          <div class="message-bubble">
+            ${reply}${body}
+            <span class="bubble-meta">${m.editedAt && !deleted ? "<span>edited</span>" : ""}<time>${formatTime(m.createdAt)}</time>${statusHtml(m, state, conv, m.id === lastOwnId)}</span>
+          </div>
+          ${
+            !deleted && !m.pending && !m.failed
+              ? `<div class="msg-actions">
+                  <button type="button" class="icon-btn" data-act="react" aria-label="React">${icons.smile}</button>
+                  <button type="button" class="icon-btn" data-act="reply" aria-label="Reply">${icons.reply}</button>
+                  <button type="button" class="icon-btn" data-act="more" aria-label="More">${icons.more}</button>
+                </div>`
+              : ""
+          }
+        </div>
+        ${reactions}
+      </div>
+    </div>`;
+}
+
+/* ---------- popup menu ---------- */
+
+function closeMenu() {
+  document.querySelector(".msg-menu")?.remove();
+}
+
+function openMenu(anchor, message, mode) {
+  closeMenu();
+  const state = store.getState();
+  const own = message.senderId === state.me.id;
+  const menu = document.createElement("div");
+  menu.className = "msg-menu";
+  menu.innerHTML = `
+    <div class="menu-reactions">${QUICK_REACTIONS.map((e) => `<button type="button" data-emoji="${e}">${e}</button>`).join("")}</div>
+    ${
+      mode === "more"
+        ? `<div class="menu-items">
+            <button type="button" data-item="reply">${icons.reply}<span>Reply</span></button>
+            ${message.text ? `<button type="button" data-item="copy">${icons.copy}<span>Copy text</span></button>` : ""}
+            ${message.attachment?.url ? `<a href="${escapeHtml(message.attachment.url)}" target="_blank" rel="noopener" download data-item="download">${icons.download}<span>Download</span></a>` : ""}
+            ${own && message.kind === "text" ? `<button type="button" data-item="edit">${icons.edit}<span>Edit</span></button>` : ""}
+            ${own ? `<button type="button" data-item="delete" class="danger">${icons.trash}<span>Delete</span></button>` : ""}
+          </div>`
+        : ""
+    }`;
+  document.body.appendChild(menu);
+
+  const r = anchor.getBoundingClientRect();
+  const mw = menu.offsetWidth;
+  const mh = menu.offsetHeight;
+  let left = own ? r.right - mw : r.left;
+  left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+  let top = r.top - mh - 6;
+  if (top < 8) top = r.bottom + 6;
+  menu.style.left = `${left}px`;
+  menu.style.top = `${Math.min(top, window.innerHeight - mh - 8)}px`;
+
+  menu.addEventListener("click", async (e) => {
+    const emoji = e.target.closest("[data-emoji]")?.dataset.emoji;
+    const item = e.target.closest("[data-item]")?.dataset.item;
+    if (emoji) store.react(message.id, emoji);
+    if (item === "reply") store.setReply(message);
+    if (item === "edit") store.setEditing(message);
+    if (item === "copy") navigator.clipboard?.writeText(message.text).then(() => store.toast("Copied"));
+    if (item === "delete" && confirm("Delete this message for everyone?")) store.deleteMessage(message.id);
+    if (emoji || item) closeMenu();
+  });
+  setTimeout(() => {
+    const away = (e) => {
+      if (!menu.contains(e.target)) {
+        closeMenu();
+        document.removeEventListener("pointerdown", away, true);
+      }
+    };
+    document.addEventListener("pointerdown", away, true);
+  });
+}
+
+/* ---------- mount ---------- */
 
 export function mountMessageList(container) {
-  container.innerHTML = `<div class="message-scroll"><div class="message-list" role="log" aria-live="polite"></div></div>`;
+  container.innerHTML = `
+    <div class="message-scroll">
+      <div class="message-list" role="log" aria-live="polite"></div>
+    </div>
+    <button type="button" class="jump-bottom" hidden aria-label="Scroll to latest">${icons.arrowDown}<span class="jump-count"></span></button>`;
   const scroller = container.querySelector(".message-scroll");
   const list = container.querySelector(".message-list");
+  const jump = container.querySelector(".jump-bottom");
   let lastKey = "";
+  let lastCount = 0;
+  let unseenBelow = 0;
+  let firstPaint = true;
+
+  const nearBottom = () => scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 140;
+  const toBottom = (smooth = false) => scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth ? "smooth" : "auto" });
 
   const render = (state) => {
-    const messages = store.getActiveMessages();
-    const key = JSON.stringify(messages.map((m) => [m.id, m.pending, m.failed]));
+    const conv = store.conversation();
+    if (!conv) return;
+    const thread = store.thread();
+    const typing = state.typing[conv.id] || [];
+    const reads = state.reads[conv.id] || {};
+    const key = JSON.stringify([
+      conv.id, thread.loaded, thread.hasMore, thread.loading,
+      thread.items.map((m) => [m.id, m.updatedAt, m.pending, m.failed, m.reactions?.length]),
+      state.uploads.map((u) => [u.id, Math.round(u.progress * 20)]),
+      typing, reads, conv.members.length,
+    ]);
     if (key === lastKey) return;
     lastKey = key;
 
-    const nearBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 120;
+    const wasNear = nearBottom();
+    const prevHeight = scroller.scrollHeight;
+    const prevTop = scroller.scrollTop;
+    const prepended = thread.items.length > lastCount && lastCount > 0 && thread.items[0]?.id !== list.querySelector("[data-mid]")?.dataset.mid && !wasNear;
 
-    if (!messages.length) {
-      list.innerHTML = `<p class="message-empty">No messages yet. Say hi.</p>`;
+    if (!thread.loaded) {
+      list.innerHTML = `<div class="list-loading"><div class="spinner"></div></div>`;
       return;
     }
 
-    let lastDay = "";
-    list.innerHTML = messages
-      .map((m) => {
-        const own = m.senderId === state.me.id;
-        const day = formatDay(m.createdAt);
-        const divider = day !== lastDay ? `<div class="day-divider"><span>${day}</span></div>` : "";
-        lastDay = day;
-        const status = m.failed
-          ? `<button type="button" class="message-retry" data-retry="${escapeHtml(m.id)}">Failed · Retry</button>`
-          : own
-          ? `<span class="message-checks">${m.pending ? "◷" : "✓✓"}</span>`
-          : "";
-        return `${divider}
-          <div class="message-row ${own ? "own" : "other"} ${m.pending ? "pending" : ""}">
-            <div class="message-content">
-              <div class="message-bubble">${escapeHtml(m.text)}</div>
-              <div class="message-meta"><span>${formatTime(m.createdAt)}</span>${status}</div>
-            </div>
-          </div>`;
-      })
-      .join("");
-
-    if (nearBottom || messages[messages.length - 1]?.senderId === state.me.id) {
-      requestAnimationFrame(() => (scroller.scrollTop = scroller.scrollHeight));
+    const items = thread.items;
+    const lastOwn = [...items].reverse().find((m) => m.senderId === state.me.id && !m.pending && !m.deletedAt && !["system", "call"].includes(m.kind));
+    let html = thread.hasMore ? `<div class="load-older">${thread.loading ? `<div class="spinner"></div>` : `<button type="button" data-older>Load earlier messages</button>`}</div>` : "";
+    if (!items.length) {
+      html += `<div class="message-empty">
+        ${avatar(conv.type === "dm" ? conv.peer : conv, "lg")}
+        <strong>${escapeHtml(conv.title)}</strong>
+        <span>${conv.type === "dm" ? escapeHtml(conv.peer?.beanId || "") : `${conv.members.length} members`}</span>
+        <p>No messages yet. Say hi 👋</p>
+      </div>`;
     }
+    let lastDay = "";
+    items.forEach((m, i) => {
+      const day = formatDay(m.createdAt);
+      if (day !== lastDay) html += `<div class="day-divider"><span>${day}</span></div>`;
+      lastDay = day;
+      html += messageHtml(m, { state, conv, prev: items[i - 1], next: items[i + 1], lastOwnId: lastOwn?.id });
+    });
+    if (typing.length) {
+      html += `<div class="message-row other first last typing-row">
+        ${conv.type === "group" ? `<span class="row-avatar"></span>` : ""}
+        <div class="message-content"><div class="message-bubble typing-bubble"><i></i><i></i><i></i></div></div>
+      </div>`;
+    }
+    list.innerHTML = html;
+    bindPlayer(list);
+
+    const newCount = items.length;
+    const lastMsg = items[items.length - 1];
+    const grew = newCount > lastCount;
+    if (firstPaint) {
+      toBottom();
+      firstPaint = false;
+    } else if (prepended) {
+      scroller.scrollTop = prevTop + (scroller.scrollHeight - prevHeight);
+    } else if (wasNear || (grew && lastMsg?.senderId === state.me.id)) {
+      toBottom(true);
+      unseenBelow = 0;
+    } else if (grew) {
+      unseenBelow += newCount - lastCount;
+    }
+    lastCount = newCount;
+    paintJump();
   };
 
-  list.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-retry]");
-    if (btn) store.retryMessage(btn.dataset.retry);
+  const paintJump = () => {
+    const show = !nearBottom();
+    jump.hidden = !show;
+    jump.querySelector(".jump-count").textContent = unseenBelow > 0 ? unseenBelow : "";
+    if (!show) unseenBelow = 0;
+  };
+
+  scroller.addEventListener("scroll", () => {
+    paintJump();
+    if (scroller.scrollTop < 80) store.loadOlder();
+  });
+  jump.addEventListener("click", () => {
+    unseenBelow = 0;
+    toBottom(true);
   });
 
-  const unsubscribe = store.subscribe(render);
+  list.addEventListener("click", (e) => {
+    const target = e.target;
+    if (target.closest("[data-older]")) return store.loadOlder();
+
+    const retry = target.closest("[data-retry]");
+    if (retry) return store.retry(retry.dataset.retry);
+
+    const row = target.closest("[data-mid]");
+    if (!row) return;
+    const msg = store.thread().items.find((m) => m.id === row.dataset.mid);
+    if (!msg) return;
+
+    const jumpTo = target.closest("[data-jump]");
+    if (jumpTo) {
+      const el = list.querySelector(`[data-mid="${CSS.escape(jumpTo.dataset.jump)}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("flash");
+        setTimeout(() => el.classList.remove("flash"), 1200);
+      } else store.toast("That message is further up");
+      return;
+    }
+    const img = target.closest("[data-image]");
+    if (img && img.dataset.image) return openLightbox(img.dataset.image, msg.attachment?.name);
+
+    const voice = target.closest(".voice-btn");
+    if (voice) {
+      const box = voice.closest("[data-voice]");
+      return toggleVoice(list, box.dataset.voice, box.dataset.url);
+    }
+    const chip = target.closest("[data-react]");
+    if (chip) return store.react(msg.id, chip.dataset.react);
+
+    const act = target.closest("[data-act]")?.dataset.act;
+    if (act === "reply") return store.setReply(msg);
+    if (act === "react" || act === "more") return openMenu(target.closest("[data-act]"), msg, act);
+  });
+
+  // double-click / double-tap a bubble to ❤️
+  list.addEventListener("dblclick", (e) => {
+    const row = e.target.closest(".message-row[data-mid]");
+    if (!row || e.target.closest("a, button, .voice-note")) return;
+    const msg = store.thread().items.find((m) => m.id === row.dataset.mid);
+    if (msg && !msg.deletedAt && !msg.pending) store.react(msg.id, "❤️");
+  });
+
+  // long-press on touch opens the menu
+  let pressTimer;
+  list.addEventListener("touchstart", (e) => {
+    const bubble = e.target.closest(".message-bubble");
+    const row = e.target.closest(".message-row[data-mid]");
+    if (!bubble || !row) return;
+    pressTimer = setTimeout(() => {
+      const msg = store.thread().items.find((m) => m.id === row.dataset.mid);
+      if (msg && !msg.deletedAt && !msg.pending) {
+        navigator.vibrate?.(10);
+        openMenu(bubble, msg, "more");
+      }
+    }, 450);
+  }, { passive: true });
+  ["touchend", "touchmove", "touchcancel"].forEach((ev) => list.addEventListener(ev, () => clearTimeout(pressTimer), { passive: true }));
+
+  const unsub = store.subscribe(render);
   render(store.getState());
-  requestAnimationFrame(() => (scroller.scrollTop = scroller.scrollHeight));
-  return unsubscribe;
+  return () => {
+    unsub();
+    closeMenu();
+  };
 }

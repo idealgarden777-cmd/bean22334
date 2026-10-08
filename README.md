@@ -1,52 +1,61 @@
 # Bean
 
-Warm, minimal 1:1 chat for the Signaturesi ecosystem. Users sign in with the same **Bean ID** used by Neyo (`accounts.signaturesi.com`).
+The Signaturesi communication app. One **Bean ID** (same as Neyo, from `accounts.signaturesi.com`) for chats, groups, voice notes and calls.
 
 ## Pages
 
 | URL | What |
 |---|---|
-| `/` | **Bean Portal**: Bean ID greeting, sign in / create Bean ID, app cards (Messenger, Beanbox, Neyo, Bean ID) |
-| `/chat` | **Bean Messenger** |
+| `/` | Bean Portal: sign in, apps (Messenger, Beanbox, Neyo, Bean ID) |
+| `/chat` | Bean Messenger |
 
-Built as a Vite multi-page app (`index.html`, `chat/index.html`, see `vite.config.js`).
+## Features
+
+- **Direct chats + groups** (create, rename, add/remove members, admins, leave)
+- **Messages**: text with links, emoji-only big emoji, reply, edit, delete for everyone, copy
+- **Reactions** ❤️ 😂 😮 😢 👍 🔥 (double-click a bubble for ❤️, long-press on phones)
+- **Media**: photos (lightbox), files up to 25 MB, drag & drop, paste images, **voice notes**
+- **Live status**: typing…, delivered ✓✓ / seen (blue), unread badges, online / last seen
+- **Notifications**: sound, browser notifications, `(3) Bean` tab badge, mute per chat
+- **Voice & video calls** (1:1, WebRTC): ringing, accept/decline, mute, camera, call log in chat
+- Search chats, deep links (`/chat#<conversationId>`), load older messages, dark mode, mobile layout
 
 ## How login works
 
-1. User signs in at `accounts.signaturesi.com`.
-2. That sets the `bean_session` cookie on `.signaturesi.com`.
-3. Bean (on `bean.signaturesi.com`) reads that cookie in its own `/api` functions and checks it against `bean_sessions` / `bean_users` in the same Supabase project.
+1. User signs in at `accounts.signaturesi.com` → `bean_session` cookie on `.signaturesi.com`.
+2. Bean's `/api/*` functions read that cookie and check `bean_sessions` / `bean_users` in the same Supabase project.
 
-## Setup
+## Setup (once)
 
-1. Supabase → SQL editor → run `supabase/bean_chat.sql` (creates `bean_conversations`, `bean_conversation_members`, `bean_messages`).
-2. Vercel → import this repo → add env vars from `.env.example` (same values as accounts.signaturesi).
-3. Add the domain `bean.signaturesi.com` to the Vercel project. It must be a `signaturesi.com` subdomain or the cookie won't be sent.
+1. **Supabase** (same project as accounts/Neyo) → SQL Editor → run `supabase/bean_chat.sql`.
+   Creates the chat tables, the `bean_unread_counts` function and the private `bean-media` storage bucket.
+2. **Vercel** → import this repo → Environment Variables:
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_COOKIE_NAME=bean_session` (same values as accounts.signaturesi)
+   - optional, for calls on strict mobile/office networks: `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL`
+3. **Domain**: `bean.signaturesi.com` on this Vercel project (must be a signaturesi.com subdomain for the cookie).
 
 ## Local dev
 
 ```
 npm install
-npm run dev
+npm run dev        # demo mode: sample chats in localStorage, no backend
+vercel dev         # real API locally
 ```
 
-Vite has no `/api`, so local dev runs in **Demo** mode with sample chats saved in localStorage. Use `vercel dev` to run the real API locally.
+## API (7 serverless functions)
 
-## API
+| Route | Does |
+|---|---|
+| `GET/POST /api/me` | session · `{action:"logout"}` |
+| `GET /api/users?q=` | find Bean IDs |
+| `GET/POST /api/conversations` | list · `open_dm`, `create_group`, `rename`, `add_members`, `remove_member`, `leave`, `mute`, `read` |
+| `GET/POST /api/messages` | history (`before` cursor) · `send`, `edit`, `delete`, `react` |
+| `GET/POST /api/sync` | poll every 2.5 s: new/changed messages, typing, seen, chat list, incoming call · POST typing |
+| `POST /api/upload` | signed upload URL into `bean-media` |
+| `GET/POST /api/calls` | ICE config, signal polling · `start`, `accept`, `decline`, `end`, `signal` |
 
-| Route | Method | What |
-|---|---|---|
-| `/api/me` | GET | Current Bean ID |
-| `/api/logout` | POST | Revoke session, clear cookie |
-| `/api/users?q=` | GET | Find Bean IDs |
-| `/api/conversations` | GET / POST `{username}` | List chats / open a 1:1 chat |
-| `/api/messages?conversationId=&after=` | GET | Messages (incremental) |
-| `/api/messages` | POST `{conversationId,text}` | Send |
+## Notes
 
-Messages refresh every 3 seconds while the tab is open.
-
-## Next
-
-- Supabase Realtime instead of polling
-- Attachments (Storage `uploads` bucket, like Neyo)
-- Unread counts, typing indicator, voice/video
+- Real-time is HTTP polling (works on Vercel without extra services). Supabase Realtime can replace it later.
+- Calls use Google STUN; add a TURN server (e.g. Metered, Twilio, Cloudflare) for networks that block peer-to-peer.
+- Group calls, message search inside a chat, and end-to-end encryption are not built yet.

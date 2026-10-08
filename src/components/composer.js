@@ -1,41 +1,101 @@
 import { store } from "../core/store.js";
 import { icons } from "./icons.js";
+import { escapeHtml, formatDuration } from "../core/utils.js";
 
-export function renderComposer(container) {
+const drafts = new Map();
+
+function pickMime() {
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+  return types.find((t) => window.MediaRecorder?.isTypeSupported?.(t)) || "";
+}
+
+export function mountComposer(container) {
+  const convId = store.getState().activeId;
+
   container.innerHTML = `
-    <form class="composer-form"><div class="composer-inner">
-      <div class="composer-pill-container">
-        <button type="button" class="icon-btn" disabled title="Attachments coming soon" aria-label="Attach file">${icons.paperclip}</button>
-        <textarea rows="1" placeholder="Type a message..." aria-label="Message" maxlength="4000"></textarea>
-        <button type="submit" class="composer-send-btn" aria-label="Send message" disabled>${icons.arrowUp}</button>
+    <form class="composer-form" autocomplete="off">
+      <div class="composer-inner">
+        <div class="compose-banner" hidden></div>
+        <div class="composer-pill-container">
+          <button type="button" class="icon-btn attach-btn" title="Photo or file" aria-label="Attach">${icons.plus}</button>
+          <input type="file" class="file-input" multiple hidden />
+          <textarea rows="1" placeholder="Message" aria-label="Message" maxlength="4000"></textarea>
+          <div class="recording" hidden>
+            <button type="button" class="icon-btn rec-cancel" aria-label="Cancel recording">${icons.trash}</button>
+            <span class="rec-dot"></span><span class="rec-time">0:00</span>
+            <span class="rec-label">Recording…</span>
+          </div>
+          <button type="button" class="round-btn mic-btn" title="Voice message" aria-label="Record voice message">${icons.mic}</button>
+          <button type="submit" class="round-btn composer-send-btn" aria-label="Send" hidden>${icons.arrowUp}</button>
+        </div>
       </div>
-      <p class="composer-hint">Enter to send · Shift + Enter for a new line</p>
-    </div></form>`;
+    </form>`;
 
   const form = container.querySelector("form");
   const input = container.querySelector("textarea");
   const sendBtn = container.querySelector(".composer-send-btn");
+  const micBtn = container.querySelector(".mic-btn");
+  const attachBtn = container.querySelector(".attach-btn");
+  const fileInput = container.querySelector(".file-input");
+  const banner = container.querySelector(".compose-banner");
+  const recBox = container.querySelector(".recording");
+  const recTime = container.querySelector(".rec-time");
 
-  const resize = () => {
+  let recorder = null;
+  let recStart = 0;
+  let recTimer = null;
+  let recChunks = [];
+  let recCancelled = false;
+
+  input.value = drafts.get(convId) || "";
+
+  const paint = () => {
     input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 140) + "px";
-    sendBtn.disabled = !input.value.trim();
+    input.style.height = Math.min(input.scrollHeight, 168) + "px";
+    const hasText = Boolean(input.value.trim());
+    const recording = Boolean(recorder);
+    sendBtn.hidden = !(hasText || recording);
+    micBtn.hidden = hasText || recording;
+    input.hidden = recording;
+    recBox.hidden = !recording;
+    attachBtn.hidden = recording;
   };
 
   const submit = () => {
-    const text = input.value.trim();
-    if (!text) return;
-    store.sendMessage(text);
+    if (recorder) return stopRecording(true);
+    const text = input.value;
+    if (!text.trim()) return;
+    store.sendText(text);
     input.value = "";
-    resize();
+    drafts.delete(convId);
+    paint();
     input.focus();
   };
 
-  input.addEventListener("input", resize);
+  input.addEventListener("input", () => {
+    drafts.set(convId, input.value);
+    paint();
+    if (input.value.trim()) store.notifyTyping();
+  });
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && window.innerWidth > 767) {
       e.preventDefault();
       submit();
+    }
+    if (e.key === "ArrowUp" && !input.value) {
+      const s = store.getState();
+      const mine = [...store.thread().items].reverse().find((m) => m.senderId === s.me.id && m.kind === "text" && !m.deletedAt && !m.pending);
+      if (mine) {
+        e.preventDefault();
+        store.setEditing(mine);
+      }
+    }
+  });
+  input.addEventListener("paste", (e) => {
+    const files = [...(e.clipboardData?.files || [])];
+    if (files.length) {
+      e.preventDefault();
+      store.sendFiles(files);
     }
   });
   form.addEventListener("submit", (e) => {
@@ -43,5 +103,101 @@ export function renderComposer(container) {
     submit();
   });
 
-  if (window.innerWidth > 768) input.focus();
+  attachBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files.length) store.sendFiles(fileInput.files);
+    fileInput.value = "";
+  });
+
+  /* ----- voice notes ----- */
+  async function startRecording() {
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return store.toast("Voice notes aren't supported in this browser");
+    if (store.getState().call) return store.toast("Finish the call first");
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch {
+      return store.toast("Microphone permission was denied");
+    }
+    const mime = pickMime();
+    recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    recChunks = [];
+    recCancelled = false;
+    recorder.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
+    recorder.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const duration = (Date.now() - recStart) / 1000;
+      const blob = new Blob(recChunks, { type: recorder?.mimeType || mime || "audio/webm" });
+      recorder = null;
+      clearInterval(recTimer);
+      paint();
+      if (!recCancelled && duration >= 0.8 && blob.size) store.sendVoice(blob, Math.round(duration));
+      else if (!recCancelled) store.toast("Hold on a little longer to record");
+    };
+    recorder.start(250);
+    recStart = Date.now();
+    recTime.textContent = "0:00";
+    recTimer = setInterval(() => {
+      const s = (Date.now() - recStart) / 1000;
+      recTime.textContent = formatDuration(s);
+      if (s >= 300) stopRecording(true); // 5 min cap
+    }, 250);
+    paint();
+  }
+
+  function stopRecording(send) {
+    if (!recorder) return;
+    recCancelled = !send;
+    recorder.stop();
+  }
+
+  micBtn.addEventListener("click", startRecording);
+  container.querySelector(".rec-cancel").addEventListener("click", () => stopRecording(false));
+
+  /* ----- reply / edit banner ----- */
+  let lastBanner = "";
+  const renderBanner = (s) => {
+    const conv = store.conversation();
+    const target = s.editing || s.replyTo;
+    const key = target ? `${s.editing ? "e" : "r"}:${target.id}` : "";
+    if (key === lastBanner) return;
+    const wasEditing = lastBanner.startsWith("e:");
+    lastBanner = key;
+
+    if (!target) {
+      banner.hidden = true;
+      banner.innerHTML = "";
+      if (wasEditing) {
+        input.value = drafts.get(convId) || "";
+        paint();
+      }
+      return;
+    }
+    const preview =
+      target.kind === "image" ? "📷 Photo" : target.kind === "audio" ? "🎤 Voice message" : target.kind === "file" ? `📎 ${target.attachment?.name || "File"}` : target.text;
+    banner.hidden = false;
+    banner.innerHTML = `
+      <span class="banner-icon">${s.editing ? icons.edit : icons.reply}</span>
+      <span class="banner-text">
+        <strong>${s.editing ? "Editing message" : `Replying to ${escapeHtml(store.userName(target.senderId, conv))}`}</strong>
+        <span>${escapeHtml(preview)}</span>
+      </span>
+      <button type="button" class="icon-btn" aria-label="Cancel">${icons.close}</button>`;
+    banner.querySelector("button").onclick = () => store.cancelCompose();
+    if (s.editing) {
+      input.value = s.editing.text;
+      paint();
+    }
+    input.focus();
+  };
+
+  const unsub = store.subscribe(renderBanner);
+  renderBanner(store.getState());
+  paint();
+  if (window.innerWidth > 767) input.focus();
+
+  return () => {
+    unsub();
+    if (recorder) stopRecording(false);
+  };
 }

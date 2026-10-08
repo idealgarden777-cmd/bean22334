@@ -11,7 +11,7 @@ const APPS = [
   {
     id: "messenger",
     name: "Messenger",
-    desc: "Private 1:1 chats with any Bean ID.",
+    desc: "Chats, groups, voice notes and calls.",
     href: "/chat",
     icon: icons.chat,
     needsLogin: true,

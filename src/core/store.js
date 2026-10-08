@@ -1,255 +1,660 @@
+/* =========================================================
+ * Bean store — app state, sync loop and every user action.
+ * ========================================================= */
 import { api } from "./api.js";
-import { loadDemo, saveDemo } from "./demo.js";
+import { CallSession } from "./call.js";
+import {
+  playMessageSound, startRinging, stopRinging, showNotification, setTitleBadge,
+  notificationPermission, askNotificationPermission,
+} from "./notify.js";
 
-const POLL_MS = 3000;
+const VISIBLE_MS = 2500;
+const HIDDEN_MS = 7000;
+const OVERLAP_MS = 3000;
+const RING_TIMEOUT_MS = 45000;
+
+const byCreated = (a, b) => new Date(a.createdAt) - new Date(b.createdAt);
+const tempId = () => `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
 export const store = {
   state: {
     status: "loading", // loading | signedOut | ready | error
-    mode: "live", // live | demo
+    error: null,
     me: null,
     conversations: [],
-    messages: {},
+    threads: {}, // convId -> { items, hasMore, loaded, loading }
     activeId: null,
     search: "",
-    contactPanelOpen: false,
-    newChatOpen: false,
-    error: null,
+    panelOpen: false,
+    modal: null, // null | "new"
+    replyTo: null,
+    editing: null,
+    typing: {}, // convId -> [userId]
+    reads: {}, // convId -> { userId: iso }
+    uploads: [], // { id, conversationId, name, progress }
+    call: null,
+    incomingCall: null,
+    toast: null,
+    notifPermission: notificationPermission(),
   },
 
   listeners: new Set(),
-  pollTimer: null,
-  pollTick: 0,
+  since: {},
+  tick: 0,
+  timer: null,
+  knownUnread: null,
+  dismissedCalls: new Set(),
+  session: null,
+  lastTypingSent: 0,
 
   getState() {
     return this.state;
   },
-
-  subscribe(listener) {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+  subscribe(fn) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
   },
-
   set(patch) {
     this.state = { ...this.state, ...patch };
-    this.listeners.forEach((l) => l(this.state));
+    this.listeners.forEach((fn) => fn(this.state));
   },
 
-  /* ---------- boot ---------- */
+  /* ---------------- selectors ---------------- */
+
+  conversation(id = this.state.activeId) {
+    return this.state.conversations.find((c) => c.id === id) || null;
+  },
+  thread(id = this.state.activeId) {
+    return this.state.threads[id] || { items: [], hasMore: false, loaded: false, loading: false };
+  },
+  userName(id, conv = this.conversation()) {
+    if (id === this.state.me?.id) return "You";
+    return conv?.members?.find((m) => m.id === id)?.displayName || "Someone";
+  },
+  filteredConversations() {
+    const q = this.state.search.trim().toLowerCase();
+    if (!q) return this.state.conversations;
+    return this.state.conversations.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.members.some((m) => m.username.toLowerCase().includes(q) || m.displayName.toLowerCase().includes(q))
+    );
+  },
+
+  /* ---------------- boot ---------------- */
 
   async init() {
     try {
       const res = await api.me();
       if (!res.authenticated) return this.set({ status: "signedOut" });
-      this.set({ me: res.user, mode: "live" });
-      await this.refreshConversations();
-      this.set({ status: "ready" });
-      this.startPolling();
+      this.set({ me: res.user });
     } catch (err) {
-      if (err.code === "NO_API") return this.startDemo();
-      this.set({ status: "error", error: err.message });
+      if (err.code !== "NO_API") return this.set({ status: "error", error: err.message });
+      api.enableDemo();
+      const res = await api.me();
+      this.set({ me: res.user });
+    }
+
+    try {
+      const { conversations } = await api.conversations();
+      this.knownUnread = Object.fromEntries(conversations.map((c) => [c.id, c.unread]));
+      this.set({ conversations, status: "ready" });
+      this.updateBadge();
+    } catch (err) {
+      return this.set({ status: "error", error: err.message });
+    }
+
+    const fromHash = location.hash.slice(1);
+    if (fromHash && this.conversation(fromHash)) this.selectConversation(fromHash);
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) this.syncNow();
+    });
+    window.addEventListener("hashchange", () => {
+      const id = location.hash.slice(1);
+      if (id !== (this.state.activeId || "")) id ? this.selectConversation(id) : this.closeChat();
+    });
+    this.loop();
+  },
+
+  isDemo() {
+    return api.isDemo();
+  },
+
+  /* ---------------- sync loop ---------------- */
+
+  loop() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(async () => {
+      await this.syncOnce();
+      this.loop();
+    }, document.hidden ? HIDDEN_MS : VISIBLE_MS);
+  },
+
+  syncNow() {
+    clearTimeout(this.timer);
+    this.syncOnce().finally(() => this.loop());
+  },
+
+  async syncOnce() {
+    if (this.state.status !== "ready" || this.syncing) return;
+    this.syncing = true;
+    this.tick += 1;
+    const active = this.state.activeId;
+    const wantLists = !active || this.tick % 2 === 0;
+    try {
+      const res = await api.sync({
+        active: active || undefined,
+        since: active ? this.since[active] : undefined,
+        read: active && !document.hidden ? "1" : undefined,
+        lists: wantLists ? "1" : undefined,
+      });
+
+      if (res.active && res.active.conversationId === this.state.activeId) {
+        const cid = res.active.conversationId;
+        this.since[cid] = new Date(new Date(res.now).getTime() - OVERLAP_MS).toISOString();
+        this.mergeMessages(cid, res.active.messages, { fromSync: true });
+        this.set({
+          typing: { ...this.state.typing, [cid]: res.active.typing },
+          reads: { ...this.state.reads, [cid]: res.active.reads },
+        });
+      }
+      if (res.conversations) this.applyConversations(res.conversations);
+      this.handleIncomingCall(res.incomingCall);
+    } catch (err) {
+      if (err.status === 401) this.set({ status: "signedOut" });
+    } finally {
+      this.syncing = false;
     }
   },
 
-  startDemo() {
-    const demo = loadDemo();
+  applyConversations(conversations) {
+    const prev = this.knownUnread || {};
+    const active = this.state.activeId;
+    for (const c of conversations) {
+      const before = prev[c.id] ?? c.unread;
+      const isActiveVisible = c.id === active && !document.hidden;
+      if (c.unread > before && !c.muted && !isActiveVisible && c.lastSenderId !== this.state.me.id) {
+        playMessageSound();
+        const who = c.type === "group" ? `${this.userName(c.lastSenderId, c)}: ` : "";
+        showNotification(c.title, `${who}${c.lastMessage}`, () => this.selectConversation(c.id));
+      }
+    }
+    this.knownUnread = Object.fromEntries(conversations.map((c) => [c.id, c.unread]));
+    if (active && !document.hidden) {
+      conversations = conversations.map((c) => (c.id === active ? { ...c, unread: 0 } : c));
+    }
+    this.set({ conversations });
+    if (active && !conversations.some((c) => c.id === active)) this.closeChat();
+    this.updateBadge();
+  },
+
+  updateBadge() {
+    setTitleBadge(this.state.conversations.filter((c) => !c.muted).reduce((n, c) => n + (c.unread || 0), 0));
+  },
+
+  mergeMessages(cid, incoming, { fromSync = false, prepend = false, hasMore } = {}) {
+    const thread = this.thread(cid);
+    const items = [...thread.items];
+    const index = new Map(items.map((m, i) => [m.id, i]));
+    const hasPending = items.some((m) => m.pending);
+    let changed = false;
+    let newFromOthers = false;
+
+    for (const m of incoming) {
+      const i = index.get(m.id);
+      if (i !== undefined) {
+        if (items[i].updatedAt !== m.updatedAt) {
+          items[i] = m;
+          changed = true;
+        }
+        continue;
+      }
+      // our own message arrived via sync before the send call returned: let send() place it
+      if (fromSync && hasPending && m.senderId === this.state.me.id) continue;
+      items.push(m);
+      index.set(m.id, items.length - 1);
+      changed = true;
+      if (fromSync && m.senderId !== this.state.me.id) newFromOthers = true;
+    }
+
+    if (!changed && hasMore === undefined) return;
+    items.sort(byCreated);
     this.set({
-      status: "ready",
-      mode: "demo",
-      me: demo.me,
-      conversations: demo.conversations,
-      messages: demo.messages,
+      threads: {
+        ...this.state.threads,
+        [cid]: { ...thread, items, loaded: true, loading: false, hasMore: hasMore ?? thread.hasMore },
+      },
     });
+    if (newFromOthers && document.hidden) {
+      const conv = this.conversation(cid);
+      if (conv && !conv.muted) playMessageSound();
+    }
+    if (!prepend) this.bumpConversation(cid, items[items.length - 1]);
   },
 
-  persistDemo() {
-    if (this.state.mode !== "demo") return;
-    const { me, conversations, messages } = this.state;
-    saveDemo({ me, conversations, messages });
+  bumpConversation(cid, last) {
+    if (!last) return;
+    const preview =
+      last.deletedAt ? "Message deleted" :
+      last.kind === "image" ? "📷 Photo" :
+      last.kind === "audio" ? "🎤 Voice message" :
+      last.kind === "file" ? `📎 ${last.attachment?.name || "File"}` : last.text;
+    const conversations = this.state.conversations
+      .map((c) =>
+        c.id === cid
+          ? { ...c, lastMessage: preview, lastSenderId: last.senderId, updatedAt: last.createdAt > c.updatedAt ? last.createdAt : c.updatedAt }
+          : c
+      )
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    this.set({ conversations });
   },
 
-  /* ---------- selectors ---------- */
+  /* ---------------- navigation ---------------- */
 
-  getActiveConversation() {
-    return this.state.conversations.find((c) => c.id === this.state.activeId) || null;
+  async selectConversation(id) {
+    if (!this.conversation(id)) return;
+    if (location.hash.slice(1) !== id) history.replaceState(null, "", `#${id}`);
+    const conversations = this.state.conversations.map((c) => (c.id === id ? { ...c, unread: 0 } : c));
+    this.set({ activeId: id, replyTo: null, editing: null, conversations, panelOpen: this.state.panelOpen && window.innerWidth > 1100 });
+    this.updateBadge();
+
+    if (!this.thread(id).loaded) {
+      this.set({ threads: { ...this.state.threads, [id]: { ...this.thread(id), loading: true } } });
+      try {
+        const { messages, hasMore } = await api.messages(id);
+        this.mergeMessages(id, messages, { hasMore, prepend: true });
+        if (!messages.length) {
+          this.set({ threads: { ...this.state.threads, [id]: { items: [], hasMore: false, loaded: true, loading: false } } });
+        }
+      } catch (err) {
+        this.toast(err.message);
+      }
+    }
+    api.conversationAction("read", { conversationId: id }).catch(() => {});
+    this.syncNow();
   },
 
-  getActiveMessages() {
-    return this.state.messages[this.state.activeId] || [];
+  closeChat() {
+    if (location.hash) history.replaceState(null, "", location.pathname);
+    this.set({ activeId: null, panelOpen: false, replyTo: null, editing: null });
   },
 
-  getFilteredConversations() {
-    const q = this.state.search.trim().toLowerCase();
-    if (!q) return this.state.conversations;
-    return this.state.conversations.filter(
-      (c) =>
-        c.contact.displayName.toLowerCase().includes(q) ||
-        c.contact.username.toLowerCase().includes(q)
-    );
+  async loadOlder() {
+    const id = this.state.activeId;
+    const t = this.thread(id);
+    if (!id || !t.hasMore || t.loading || !t.items.length) return;
+    this.set({ threads: { ...this.state.threads, [id]: { ...t, loading: true } } });
+    try {
+      const { messages, hasMore } = await api.messages(id, t.items[0].createdAt);
+      this.mergeMessages(id, messages, { hasMore, prepend: true });
+    } catch (err) {
+      this.toast(err.message);
+      this.set({ threads: { ...this.state.threads, [id]: { ...this.thread(id), loading: false } } });
+    }
   },
-
-  /* ---------- actions ---------- */
 
   setSearch(search) {
     this.set({ search });
   },
-
-  toggleContactPanel(open = !this.state.contactPanelOpen) {
-    this.set({ contactPanelOpen: open });
+  togglePanel(open = !this.state.panelOpen) {
+    this.set({ panelOpen: open });
+  },
+  openModal(modal) {
+    this.set({ modal });
+  },
+  closeModal() {
+    this.set({ modal: null });
   },
 
-  toggleNewChat(open = !this.state.newChatOpen) {
-    this.set({ newChatOpen: open });
+  toast(message) {
+    clearTimeout(this.toastTimer);
+    this.set({ toast: message });
+    this.toastTimer = setTimeout(() => this.set({ toast: null }), 3200);
   },
 
-  closeChat() {
-    this.set({ activeId: null, contactPanelOpen: false });
+  async enableNotifications() {
+    const p = await askNotificationPermission();
+    this.set({ notifPermission: p });
   },
 
-  async selectConversation(id) {
-    this.set({ activeId: id });
-    if (this.state.mode === "live" && !this.state.messages[id]) {
-      await this.fetchMessages(id);
-    }
+  /* ---------------- composing ---------------- */
+
+  setReply(message) {
+    this.set({ replyTo: message, editing: null });
+  },
+  setEditing(message) {
+    this.set({ editing: message, replyTo: null });
+  },
+  cancelCompose() {
+    this.set({ replyTo: null, editing: null });
   },
 
-  async refreshConversations() {
-    if (this.state.mode !== "live") return;
-    const { conversations } = await api.conversations();
-    this.set({ conversations });
+  notifyTyping() {
+    const now = Date.now();
+    if (!this.state.activeId || now - this.lastTypingSent < 3000) return;
+    this.lastTypingSent = now;
+    api.typing(this.state.activeId).catch(() => {});
   },
 
-  async fetchMessages(id, { incremental = false } = {}) {
-    const existing = this.state.messages[id] || [];
-    const confirmed = existing.filter((m) => !m.pending && !m.failed);
-    const after = incremental && confirmed.length ? confirmed[confirmed.length - 1].createdAt : null;
-
-    const { messages } = await api.messages(id, after);
-    if (incremental && !messages.length) return;
-
-    const known = new Set(existing.map((m) => m.id));
-    const merged = incremental ? [...existing, ...messages.filter((m) => !known.has(m.id))] : messages;
-    this.set({ messages: { ...this.state.messages, [id]: merged } });
+  pushTemp(cid, temp) {
+    const t = this.thread(cid);
+    this.set({ threads: { ...this.state.threads, [cid]: { ...t, loaded: true, items: [...t.items, temp] } } });
+    this.bumpConversation(cid, temp);
   },
 
-  async startConversation(username) {
-    if (this.state.mode === "demo") {
-      const clean = username.replace(/@bean$/, "").toLowerCase();
-      let conv = this.state.conversations.find((c) => c.contact.username === clean);
-      if (!conv) {
-        conv = {
-          id: `c_${Date.now()}`,
-          updatedAt: new Date().toISOString(),
-          lastMessage: "",
-          lastSenderId: null,
-          contact: { id: `u_${clean}`, username: clean, displayName: clean, beanId: `${clean}@bean` },
-        };
-        this.set({
-          conversations: [conv, ...this.state.conversations],
-          messages: { ...this.state.messages, [conv.id]: [] },
-        });
-        this.persistDemo();
+  settleTemp(cid, id, real) {
+    const t = this.thread(cid);
+    let items = t.items;
+    if (real && items.some((m) => m.id === real.id)) items = items.filter((m) => m.id !== id);
+    else items = items.map((m) => (m.id === id ? real || { ...m, pending: false, failed: true } : m));
+    this.set({ threads: { ...this.state.threads, [cid]: { ...t, items } } });
+  },
+
+  async send({ text = "", attachment = null, file = null, duration = null }) {
+    const cid = this.state.activeId;
+    if (!cid) return;
+    const clean = text.trim();
+    if (!clean && !attachment && !file) return;
+
+    const replyTo = this.state.replyTo;
+    const id = tempId();
+    const now = new Date().toISOString();
+    const localUrl = file ? URL.createObjectURL(file) : null;
+    const temp = {
+      id,
+      conversationId: cid,
+      senderId: this.state.me.id,
+      kind: file ? (file.type.startsWith("image/") ? "image" : file.type.startsWith("audio/") ? "audio" : "file") : "text",
+      text: clean,
+      attachment: file ? { url: localUrl, name: file.name, size: file.size, mime: file.type, duration } : null,
+      replyTo: replyTo ? { id: replyTo.id, senderId: replyTo.senderId, kind: replyTo.kind, text: replyTo.text || "Attachment" } : null,
+      reactions: [],
+      createdAt: now,
+      updatedAt: now,
+      pending: true,
+      retry: { text: clean, file, duration, replyToId: replyTo?.id || null },
+    };
+    this.set({ replyTo: null });
+    this.pushTemp(cid, temp);
+    this.lastTypingSent = 0;
+
+    try {
+      let att = attachment;
+      if (file) {
+        const upId = id;
+        this.set({ uploads: [...this.state.uploads, { id: upId, conversationId: cid, name: file.name, progress: 0 }] });
+        att = await api.upload(cid, file, (p) =>
+          this.set({ uploads: this.state.uploads.map((u) => (u.id === upId ? { ...u, progress: p } : u)) })
+        );
+        if (duration) att.duration = duration;
+        this.set({ uploads: this.state.uploads.filter((u) => u.id !== upId) });
       }
-      this.set({ activeId: conv.id, newChatOpen: false });
-      return conv;
+      const { message } = await api.messageAction("send", {
+        conversationId: cid,
+        text: clean,
+        attachment: att,
+        replyTo: replyTo?.id || null,
+        clientId: id,
+      });
+      if (localUrl && message.attachment && !message.attachment.url) message.attachment.url = localUrl;
+      this.settleTemp(cid, id, message);
+    } catch (err) {
+      this.set({ uploads: this.state.uploads.filter((u) => u.id !== id) });
+      this.settleTemp(cid, id, null);
+      this.toast(err.message || "Message not sent");
     }
+  },
 
-    const { conversation } = await api.openConversation(username);
-    const others = this.state.conversations.filter((c) => c.id !== conversation.id);
-    this.set({ conversations: [conversation, ...others], newChatOpen: false });
-    await this.selectConversation(conversation.id);
-    return conversation;
+  sendText(text) {
+    if (this.state.editing) return this.saveEdit(text);
+    return this.send({ text });
+  },
+
+  sendFiles(files) {
+    const list = [...files].slice(0, 10);
+    for (const file of list) {
+      if (file.size > 25 * 1024 * 1024) {
+        this.toast(`${file.name} is over 25 MB`);
+        continue;
+      }
+      this.send({ file });
+    }
+  },
+
+  sendVoice(blob, duration) {
+    const ext = blob.type.includes("mp4") ? "m4a" : blob.type.includes("ogg") ? "ogg" : "webm";
+    const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type || "audio/webm" });
+    return this.send({ file, duration });
+  },
+
+  retry(id) {
+    const cid = this.state.activeId;
+    const msg = this.thread(cid).items.find((m) => m.id === id);
+    if (!msg?.retry) return;
+    const t = this.thread(cid);
+    this.set({ threads: { ...this.state.threads, [cid]: { ...t, items: t.items.filter((m) => m.id !== id) } } });
+    const reply = msg.retry.replyToId ? t.items.find((m) => m.id === msg.retry.replyToId) : null;
+    if (reply) this.set({ replyTo: reply });
+    this.send({ text: msg.retry.text, file: msg.retry.file, duration: msg.retry.duration });
+  },
+
+  async messageAction(action, payload) {
+    try {
+      const { message } = await api.messageAction(action, payload);
+      this.mergeMessages(message.conversationId, [message]);
+      return message;
+    } catch (err) {
+      this.toast(err.message);
+    }
+  },
+
+  async saveEdit(text) {
+    const msg = this.state.editing;
+    const clean = text.trim();
+    this.set({ editing: null });
+    if (!msg || !clean || clean === msg.text) return;
+    await this.messageAction("edit", { messageId: msg.id, text: clean });
+  },
+
+  deleteMessage(id) {
+    return this.messageAction("delete", { messageId: id });
+  },
+
+  react(id, emoji) {
+    // optimistic toggle
+    const cid = this.state.activeId;
+    const me = this.state.me.id;
+    const t = this.thread(cid);
+    const items = t.items.map((m) => {
+      if (m.id !== id) return m;
+      const mine = m.reactions.find((r) => r.userIds.includes(me));
+      let reactions = m.reactions.map((r) => ({ ...r, userIds: r.userIds.filter((u) => u !== me) })).filter((r) => r.userIds.length);
+      if (mine?.emoji !== emoji) {
+        const r = reactions.find((x) => x.emoji === emoji);
+        if (r) r.userIds = [...r.userIds, me];
+        else reactions = [...reactions, { emoji, userIds: [me] }];
+      }
+      return { ...m, reactions };
+    });
+    this.set({ threads: { ...this.state.threads, [cid]: { ...t, items } } });
+    return this.messageAction("react", { messageId: id, emoji });
+  },
+
+  /* ---------------- conversations ---------------- */
+
+  upsertConversation(conversation) {
+    if (!conversation) return;
+    const rest = this.state.conversations.filter((c) => c.id !== conversation.id);
+    this.set({ conversations: [conversation, ...rest].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)) });
   },
 
   async searchUsers(q) {
-    if (this.state.mode === "demo") return [];
     const { users } = await api.searchUsers(q);
     return users;
   },
 
-  async sendMessage(text) {
-    const clean = text.trim();
-    const id = this.state.activeId;
-    if (!clean || !id) return;
+  async openDm(username) {
+    const { conversation } = await api.conversationAction("open_dm", { username });
+    this.upsertConversation(conversation);
+    this.closeModal();
+    await this.selectConversation(conversation.id);
+  },
 
-    const temp = {
-      id: `tmp_${Date.now()}`,
-      senderId: this.state.me.id,
-      text: clean,
-      createdAt: new Date().toISOString(),
-      pending: this.state.mode === "live",
-    };
+  async createGroup(title, usernames) {
+    const { conversation } = await api.conversationAction("create_group", { title, usernames });
+    this.upsertConversation(conversation);
+    this.closeModal();
+    await this.selectConversation(conversation.id);
+  },
 
-    this.appendMessage(id, temp);
-
-    if (this.state.mode === "demo") {
-      this.persistDemo();
-      return;
-    }
-
+  async groupAction(action, payload) {
     try {
-      const { message } = await api.sendMessage(id, clean);
-      this.replaceMessage(id, temp.id, message);
-    } catch {
-      this.replaceMessage(id, temp.id, { ...temp, pending: false, failed: true });
+      const res = await api.conversationAction(action, { conversationId: this.state.activeId, ...payload });
+      if (res.conversation) this.upsertConversation(res.conversation);
+      this.syncNow();
+      return res;
+    } catch (err) {
+      this.toast(err.message);
+      throw err;
     }
   },
 
-  retryMessage(messageId) {
+  async leaveGroup() {
     const id = this.state.activeId;
-    const msg = (this.state.messages[id] || []).find((m) => m.id === messageId);
-    if (!msg) return;
-    this.set({
-      messages: { ...this.state.messages, [id]: this.state.messages[id].filter((m) => m.id !== messageId) },
-    });
-    this.sendMessage(msg.text);
+    await this.groupAction("leave");
+    this.closeChat();
+    this.set({ conversations: this.state.conversations.filter((c) => c.id !== id) });
   },
 
-  appendMessage(convId, message) {
-    const list = [...(this.state.messages[convId] || []), message];
-    const conversations = this.state.conversations
-      .map((c) =>
-        c.id === convId
-          ? { ...c, lastMessage: message.text, lastSenderId: message.senderId, updatedAt: message.createdAt }
-          : c
-      )
-      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-    this.set({ messages: { ...this.state.messages, [convId]: list }, conversations });
+  async toggleMute() {
+    const conv = this.conversation();
+    if (!conv) return;
+    const muted = !conv.muted;
+    this.upsertConversation({ ...conv, muted });
+    this.updateBadge();
+    await api.conversationAction("mute", { conversationId: conv.id, muted }).catch((e) => this.toast(e.message));
   },
 
-  replaceMessage(convId, tempId, message) {
-    const list = (this.state.messages[convId] || []).map((m) => (m.id === tempId ? message : m));
-    this.set({ messages: { ...this.state.messages, [convId]: list } });
+  /* ---------------- calls ---------------- */
+
+  callSnapshot(session) {
+    return {
+      id: session.call.id,
+      kind: session.call.kind,
+      role: session.call.role,
+      peer: session.call.peer,
+      status: session.call.status,
+      connectedAt: session.connectedAt,
+      muted: session.muted,
+      cameraOff: session.cameraOff,
+      localStream: session.localStream,
+      remoteStream: session.remoteStream,
+    };
   },
+
+  attachSession(session) {
+    this.session = session;
+    session.onUpdate = (s) => {
+      if (s.connectedAt) stopRinging();
+      this.set({ call: this.callSnapshot(s) });
+    };
+    session.onEnd = (reason) => {
+      stopRinging();
+      clearTimeout(this.ringTimeout);
+      this.session = null;
+      const label = { declined: "Call declined", missed: "No answer", failed: "Call dropped" }[reason];
+      if (label) this.toast(label);
+      this.set({ call: null });
+      this.syncNow();
+    };
+    this.set({ call: this.callSnapshot(session) });
+  },
+
+  async startCall(kind = "audio") {
+    const conv = this.conversation();
+    if (!conv || conv.type !== "dm") return this.toast("Calls work in one-to-one chats");
+    if (this.session) return;
+    if (!navigator.mediaDevices?.getUserMedia) return this.toast("This browser can't make calls");
+    try {
+      const { call, iceServers } = await api.callAction("start", { conversationId: conv.id, kind });
+      const session = new CallSession({ call: { ...call, peer: call.peer || conv.peer }, iceServers });
+      this.attachSession(session);
+      startRinging(true);
+      this.ringTimeout = setTimeout(() => {
+        if (this.session === session && !session.connectedAt && session.call.status === "ringing") session.hangup("missed");
+      }, RING_TIMEOUT_MS);
+      await session.start();
+    } catch (err) {
+      stopRinging();
+      this.set({ call: null });
+      this.session = null;
+      this.toast(err.message);
+    }
+  },
+
+  handleIncomingCall(incoming) {
+    const current = this.state.incomingCall;
+    if (incoming && !this.session && !this.dismissedCalls.has(incoming.id)) {
+      if (current?.id !== incoming.id) {
+        this.set({ incomingCall: incoming });
+        startRinging(false);
+        showNotification(incoming.peer?.displayName || "Bean", `Incoming ${incoming.kind === "video" ? "video" : "voice"} call`);
+      }
+    } else if (!incoming && current) {
+      stopRinging();
+      this.set({ incomingCall: null });
+    }
+  },
+
+  async acceptCall() {
+    const incoming = this.state.incomingCall;
+    if (!incoming) return;
+    stopRinging();
+    this.dismissedCalls.add(incoming.id);
+    this.set({ incomingCall: null });
+    try {
+      const { call, iceServers } = await api.callAction("accept", { id: incoming.id });
+      const session = new CallSession({ call: { ...call, peer: call.peer || incoming.peer, status: "connecting" }, iceServers });
+      this.attachSession(session);
+      if (this.conversation(incoming.conversationId)) this.selectConversation(incoming.conversationId);
+      await session.start();
+    } catch (err) {
+      this.set({ call: null });
+      this.session = null;
+      this.toast(err.message);
+    }
+  },
+
+  async declineCall() {
+    const incoming = this.state.incomingCall;
+    if (!incoming) return;
+    stopRinging();
+    this.dismissedCalls.add(incoming.id);
+    this.set({ incomingCall: null });
+    await api.callAction("decline", { id: incoming.id }).catch(() => {});
+    this.syncNow();
+  },
+
+  hangup() {
+    stopRinging();
+    this.session?.hangup("hangup");
+  },
+  toggleCallMute() {
+    this.session?.toggleMute();
+  },
+  toggleCamera() {
+    this.session?.toggleCamera();
+  },
+
+  /* ---------------- account ---------------- */
 
   async logout() {
-    if (this.state.mode === "live") {
-      try {
-        await api.logout();
-      } catch {}
-    }
-    this.stopPolling();
-    this.set({ status: "signedOut", me: null, conversations: [], messages: {}, activeId: null });
-  },
-
-  /* ---------- polling (near real-time) ---------- */
-
-  startPolling() {
-    this.stopPolling();
-    this.pollTimer = setInterval(async () => {
-      if (document.hidden || this.state.mode !== "live") return;
-      this.pollTick += 1;
-      try {
-        if (this.state.activeId) await this.fetchMessages(this.state.activeId, { incremental: true });
-        if (this.pollTick % 3 === 0) await this.refreshConversations();
-      } catch (err) {
-        if (err.status === 401) this.set({ status: "signedOut" });
-      }
-    }, POLL_MS);
-  },
-
-  stopPolling() {
-    if (this.pollTimer) clearInterval(this.pollTimer);
-    this.pollTimer = null;
+    try {
+      await api.logout();
+    } catch {}
+    clearTimeout(this.timer);
+    this.session?.hangup();
+    this.set({ status: "signedOut", me: null, conversations: [], threads: {}, activeId: null });
   },
 };

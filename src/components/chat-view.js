@@ -1,28 +1,28 @@
 import { store } from "../core/store.js";
 import { logoMark } from "./logo.js";
-import { renderChatHeader } from "./chat-header.js";
+import { mountChatHeader } from "./chat-header.js";
 import { mountMessageList } from "./message-list.js";
-import { renderComposer } from "./composer.js";
+import { mountComposer } from "./composer.js";
 
 export function mountChatView(container) {
   let currentId;
-  let unsubscribeList = null;
+  let cleanups = [];
 
   const render = (state) => {
     if (state.activeId === currentId) return;
     currentId = state.activeId;
-    if (unsubscribeList) unsubscribeList();
-    unsubscribeList = null;
+    cleanups.forEach((fn) => fn && fn());
+    cleanups = [];
 
     if (!currentId) {
       container.innerHTML = `
         <div class="chat-empty">
           <span class="chat-empty-mark">${logoMark}</span>
           <h2>Bean Messenger</h2>
-          <p>Pick a chat or start a new one with any Bean ID.</p>
+          <p>Message anyone with a Bean ID. Chats, groups, voice notes and calls in one place.</p>
           <button type="button" class="btn-primary" data-action="new">New chat</button>
         </div>`;
-      container.querySelector("[data-action=new]").onclick = () => store.toggleNewChat(true);
+      container.querySelector("[data-action=new]").onclick = () => store.openModal("new");
       return;
     }
 
@@ -31,11 +31,31 @@ export function mountChatView(container) {
         <div class="chat-header-slot"></div>
         <div class="message-list-slot"></div>
         <div class="composer-slot"></div>
+        <div class="drop-overlay"><div>Drop to send</div></div>
       </div>`;
 
-    renderChatHeader(container.querySelector(".chat-header-slot"));
-    unsubscribeList = mountMessageList(container.querySelector(".message-list-slot"));
-    renderComposer(container.querySelector(".composer-slot"));
+    cleanups.push(mountChatHeader(container.querySelector(".chat-header-slot")));
+    cleanups.push(mountMessageList(container.querySelector(".message-list-slot")));
+    cleanups.push(mountComposer(container.querySelector(".composer-slot")));
+
+    const view = container.querySelector(".chat-view-container");
+    let depth = 0;
+    view.addEventListener("dragenter", (e) => {
+      if (![...(e.dataTransfer?.types || [])].includes("Files")) return;
+      depth++;
+      view.classList.add("dragging");
+    });
+    view.addEventListener("dragleave", () => {
+      depth = Math.max(0, depth - 1);
+      if (!depth) view.classList.remove("dragging");
+    });
+    view.addEventListener("dragover", (e) => e.preventDefault());
+    view.addEventListener("drop", (e) => {
+      e.preventDefault();
+      depth = 0;
+      view.classList.remove("dragging");
+      if (e.dataTransfer?.files?.length) store.sendFiles(e.dataTransfer.files);
+    });
   };
 
   store.subscribe(render);

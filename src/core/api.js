@@ -24,7 +24,7 @@ async function request(path, { method = "GET", body } = {}) {
   }
   const data = await res.json();
   if (!res.ok) {
-    const err = new Error(data.error || "Request failed");
+    const err = new Error([data.error || "Request failed", data.detail].filter(Boolean).join(": "));
     err.status = res.status;
     throw err;
   }
@@ -74,6 +74,10 @@ const live = {
     });
     return { path: sign.path, name: file.name, size: file.size, mime: file.type || "application/octet-stream" };
   },
+
+  neyoReply: (conversationId, tz) => request("/api/neyo", { method: "POST", body: { action: "reply", conversationId, tz } }),
+  neyoGhost: (conversationId) => request("/api/neyo", { method: "POST", body: { action: "ghost", conversationId } }),
+  neyoTick: () => request("/api/neyo?action=tick", { method: "POST", body: { action: "tick" } }),
 
   callConfig: () => request("/api/calls?config=1"),
   callPoll: (id, after) => request(`/api/calls?${qs({ id, after })}`),

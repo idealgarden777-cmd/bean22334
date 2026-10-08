@@ -148,7 +148,7 @@ function messageHtml(m, ctx) {
         <div class="bubble-wrap">
           <div class="message-bubble">
             ${reply}${body}
-            <span class="bubble-meta">${m.expiresAt && !deleted ? `<span class="meta-timer" title="Disappears ${escapeHtml(new Date(m.expiresAt).toLocaleString())}">${icons.timer}</span>` : ""}${m.editedAt && !deleted ? "<span>edited</span>" : ""}<time>${formatTime(m.createdAt)}</time>${statusHtml(m, state, conv, m.id === lastOwnId)}</span>
+            <span class="bubble-meta">${m.ghost ? `<span class="ghost-tag" title="Sent by Neyo Ghost while ${own ? "you were" : "they were"} away">👻 Ghost</span>` : ""}${m.expiresAt && !deleted ? `<span class="meta-timer" title="Disappears ${escapeHtml(new Date(m.expiresAt).toLocaleString())}">${icons.timer}</span>` : ""}${m.editedAt && !deleted ? "<span>edited</span>" : ""}<time>${formatTime(m.createdAt)}</time>${statusHtml(m, state, conv, m.id === lastOwnId)}</span>
           </div>
           ${
             !deleted && !m.pending && !m.failed

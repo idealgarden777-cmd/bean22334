@@ -10,6 +10,7 @@ const PEOPLE = [
   { id: "u2", username: "zain", displayName: "Zain Ahmed", beanId: "zain@bean" },
   { id: "u3", username: "sara", displayName: "Sara Malik", beanId: "sara@bean" },
   { id: "u4", username: "leo11", displayName: "Leo", beanId: "leo11@bean" },
+  { id: "neyo", username: "neyo", displayName: "Neyo", beanId: "neyo@bean", avatarUrl: "/neyo-icon.png", isBot: true },
 ];
 
 function seed() {
@@ -53,7 +54,8 @@ function save() {
 const alive = (m) => !m.expiresAt || m.expiresAt > new Date().toISOString();
 const userById = (id) => {
   const u = id === "me" ? ME : PEOPLE.find((p) => p.id === id);
-  return u ? { ...u, online: id === "u1", lastSeenAt: id === "u1" ? new Date().toISOString() : ago(42) } : null;
+  const on = id === "u1" || id === "neyo";
+  return u ? { ...u, online: on, lastSeenAt: on ? new Date().toISOString() : ago(42) } : null;
 };
 
 function preview(m) {
@@ -151,7 +153,7 @@ export const demoApi = {
   updateMe: (changes) => {
     if (changes.displayName) ME.displayName = changes.displayName.trim();
     saveMe();
-    db.settings = { ...settings(), ...(changes.messageTimer !== undefined ? { messageTimer: Number(changes.messageTimer) } : {}), ...(changes.wallpaper ? { wallpaper: changes.wallpaper } : {}) };
+    db.settings = { ...settings(), ...(changes.messageTimer !== undefined ? { messageTimer: Number(changes.messageTimer) } : {}), ...(changes.wallpaper ? { wallpaper: changes.wallpaper } : {}), ...(changes.ghostEnabled !== undefined ? { ghostEnabled: Boolean(changes.ghostEnabled), ghostUntil: changes.ghostEnabled && changes.ghostHours ? new Date(Date.now() + changes.ghostHours * 3600000).toISOString() : null } : {}), ...(changes.ghostNote !== undefined ? { ghostNote: changes.ghostNote } : {}) };
     save();
     return delay({ success: true, user: { ...ME, online: true }, settings: settings() });
   },
@@ -210,6 +212,10 @@ export const demoApi = {
     conv(conversationId);
     return delay({ messages: db.messages.filter((m) => m.conversationId === conversationId && alive(m)).map(shapeMsg), hasMore: false });
   },
+
+  neyoReply: () => delay({ ok: true }),
+  neyoGhost: () => delay({ skipped: "demo" }),
+  neyoTick: () => delay({ skipped: "demo" }),
 
   async messageAction(action, p) {
     const now = new Date().toISOString();

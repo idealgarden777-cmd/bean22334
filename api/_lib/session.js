@@ -78,9 +78,10 @@ export function publicUser(user, presence, avatarUrl = null) {
     username: user.username,
     displayName: user.display_name || user.username,
     beanId: `${user.username}@bean`,
-    avatarUrl: avatarUrl || null,
+    avatarUrl: avatarUrl || (user.username === "neyo" ? "/neyo-icon.png" : null),
     lastSeenAt,
-    online: lastSeenAt ? Date.now() - new Date(lastSeenAt).getTime() < ONLINE_WINDOW_MS : false,
+    online: user.username === "neyo" || (lastSeenAt ? Date.now() - new Date(lastSeenAt).getTime() < ONLINE_WINDOW_MS : false),
+    ...(user.username === "neyo" ? { isBot: true } : {}),
   };
 }
 
@@ -130,10 +131,17 @@ export async function getAvatars(ids) {
 /* Per-user Bean settings (message timer, wallpaper). Optional table. */
 export async function getSettings(userId) {
   try {
-    const { data, error } = await supabase.from("bean_settings").select("message_timer, wallpaper").eq("user_id", userId).maybeSingle();
-    if (!error && data) return { messageTimer: Number(data.message_timer) || 0, wallpaper: data.wallpaper || "none" };
+    const { data, error } = await supabase.from("bean_settings").select("*").eq("user_id", userId).maybeSingle();
+    if (!error && data)
+      return {
+        messageTimer: Number(data.message_timer) || 0,
+        wallpaper: data.wallpaper || "none",
+        ghostEnabled: Boolean(data.ghost_enabled),
+        ghostNote: data.ghost_note || "",
+        ghostUntil: data.ghost_until || null,
+      };
   } catch {}
-  return { messageTimer: 0, wallpaper: "none" };
+  return { messageTimer: 0, wallpaper: "none", ghostEnabled: false, ghostNote: "", ghostUntil: null };
 }
 
 /* Wraps a handler: method check, session check, error handling. */
@@ -150,7 +158,7 @@ export function withUser(handler, { methods = ["GET"] } = {}) {
     } catch (err) {
       if (err instanceof HttpError) return send(res, err.status, { error: err.message });
       console.error("Bean API error:", err);
-      return send(res, 500, { error: "Something went wrong" });
+      return send(res, 500, { error: "Something went wrong", detail: [err?.message, err?.details, err?.hint].filter(Boolean).join(" | ") || undefined, code: err?.code });
     }
   };
 }

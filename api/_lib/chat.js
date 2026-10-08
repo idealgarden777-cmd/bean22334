@@ -1,5 +1,6 @@
 /* Shared chat logic: shaping messages and conversations. */
 import { supabase, publicUser, MEDIA_BUCKET, getAvatars } from "./session.js";
+import { ghostFlags } from "./ghost.js";
 
 const SIGNED_URL_TTL = 60 * 60 * 6; // 6 hours
 
@@ -13,9 +14,10 @@ export function previewFor(kind, body, attachment) {
 /* Hide messages whose disappearing timer ran out. */
 export const notExpired = (query) => query.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
 
-export async function insertMessage({ conversationId, senderId, kind = "text", body = null, attachment = null, replyTo = null, expiresAt = null }) {
+export async function insertMessage({ conversationId, senderId, kind = "text", body = null, attachment = null, replyTo = null, expiresAt = null, ghost = false }) {
   const row = { conversation_id: conversationId, sender_id: senderId, kind, body, attachment, reply_to: replyTo };
   if (expiresAt) row.expires_at = expiresAt;
+  if (ghost) row.ghost = true;
   const { data: message, error } = await supabase
     .from("bean_messages")
     .insert(row)
@@ -42,15 +44,16 @@ export const systemMessage = (conversationId, body, senderId = null) =>
 export async function loadUsers(ids) {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return new Map();
-  const [{ data: users, error: e1 }, { data: presence, error: e2 }, avatars] = await Promise.all([
+  const [{ data: users, error: e1 }, { data: presence, error: e2 }, avatars, ghosts] = await Promise.all([
     supabase.from("bean_users").select("id, username, display_name, status").in("id", unique),
     supabase.from("bean_presence").select("user_id, last_seen_at").in("user_id", unique),
     getAvatars(unique),
+    ghostFlags(unique),
   ]);
   if (e1) throw e1;
   if (e2) throw e2;
   const presenceById = new Map((presence || []).map((p) => [p.user_id, p]));
-  return new Map((users || []).map((u) => [u.id, publicUser(u, presenceById.get(u.id), avatars.get(u.id))]));
+  return new Map((users || []).map((u) => [u.id, { ...publicUser(u, presenceById.get(u.id), avatars.get(u.id)), ...(ghosts.has(u.id) ? { ghost: true } : {}) }]));
 }
 
 /* Rows from bean_messages -> client messages with replies, reactions, signed media URLs. */
@@ -113,6 +116,7 @@ export async function hydrateMessages(rows) {
         : null,
       reactions: deleted ? [] : Object.entries(grouped).map(([emoji, userIds]) => ({ emoji, userIds })),
       expiresAt: r.expires_at || null,
+      ghost: Boolean(r.ghost) && !deleted,
       editedAt: r.edited_at,
       deletedAt: r.deleted_at,
       createdAt: r.created_at,

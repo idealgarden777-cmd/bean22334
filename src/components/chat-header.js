@@ -13,6 +13,7 @@ function subtitle(conv, state) {
     const online = conv.members.filter((m) => m.online && m.id !== state.me.id).length;
     return `${conv.members.length} members${online ? ` · ${online} online` : ""}`;
   }
+  if (conv.peer?.ghost) return `<span class="ghost-status">👻 Away · Ghost replies for them</span>`;
   return escapeHtml(lastSeen(conv.peer));
 }
 
@@ -22,7 +23,7 @@ export function mountChatHeader(container) {
   const render = (state) => {
     const conv = store.conversation();
     if (!conv) return;
-    const key = JSON.stringify([conv.id, conv.title, conv.members.length, conv.peer?.online, conv.peer?.lastSeenAt, state.typing[conv.id], state.call?.id, conv.muted]);
+    const key = JSON.stringify([conv.id, conv.title, conv.members.length, conv.peer?.online, conv.peer?.lastSeenAt, conv.peer?.ghost, state.typing[conv.id], state.call?.id, conv.muted]);
     if (key === lastKey) return;
     lastKey = key;
 

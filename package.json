@@ -1,6 +1,6 @@
 {
   "name": "bean22334",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "Bean — warm minimal chat for the Signaturesi ecosystem (Bean ID login)",
   "private": true,
   "type": "module",

@@ -18,7 +18,7 @@ function chatRow(c, state) {
       ${avatar(c.type === "group" ? c : c.peer, "md", { online: c.peer?.online })}
       <span class="chat-info">
         <span class="chat-info-top">
-          <strong>${escapeHtml(c.title)}</strong>
+          <strong>${escapeHtml(c.title)}${c.peer?.isBot ? ` <span class="ai-tag">AI</span>` : ""}</strong>
           <time>${formatListTime(c.updatedAt)}</time>
         </span>
         <span class="chat-info-bottom">
@@ -28,6 +28,15 @@ function chatRow(c, state) {
         </span>
       </span>
     </button>`;
+}
+
+/* Neyo pinned on Home until the user has a chat with him */
+function neyoRow(s) {
+  if (s.view !== "home" || s.search || s.conversations.some((c) => c.peer?.username === "neyo")) return "";
+  return `<button type="button" class="chat-item neyo-pin" data-neyo>
+    ${avatar({ id: "neyo", displayName: "Neyo", avatarUrl: "/neyo-icon.png" }, "md", { online: true })}
+    <span class="chat-info"><strong>Neyo <span class="ai-tag">AI</span></strong><small>👻 Chat, reminders, Ghost Mode</small></span>
+  </button>`;
 }
 
 export function mountSidebar(container) {
@@ -145,17 +154,21 @@ export function mountSidebar(container) {
     tabs.forEach((t) => t.classList.toggle("active", t.dataset.view === s.view));
 
     const key = JSON.stringify([
-      s.activeId, s.search, s.notifPermission, s.view,
+      s.activeId, s.search, s.notifPermission, s.view, s.settings.ghostEnabled, s.settings.ghostUntil,
       items.map((c) => [c.id, c.updatedAt, c.lastMessage, c.unread, c.muted, c.title, c.peer?.online]),
       s.activeId ? s.typing[s.activeId] : null,
     ]);
     if (key === lastKey) return;
     lastKey = key;
 
-    notifSlot.innerHTML =
-      notificationsSupported() && s.notifPermission === "default"
-        ? `<button type="button" class="notif-banner">${icons.bell}<span>Turn on notifications</span></button>`
-        : "";
+    const until = s.settings.ghostUntil ? new Date(s.settings.ghostUntil) : null;
+    notifSlot.innerHTML = s.settings.ghostEnabled
+      ? `<div class="ghost-banner"><span>👻 <strong>Ghost Mode on</strong><small>${until ? `Until ${until.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Ghost replies to your DMs"}</small></span><button type="button" class="btn-primary btn-sm" data-ghost-off>I'm back</button></div>`
+      : notificationsSupported() && s.notifPermission === "default"
+      ? `<button type="button" class="notif-banner">${icons.bell}<span>Turn on notifications</span></button>`
+      : "";
+    const ghostOff = notifSlot.querySelector("[data-ghost-off]");
+    if (ghostOff) ghostOff.onclick = () => store.setGhost({ ghostEnabled: false }).catch((err) => store.toast(err.message));
     const banner = notifSlot.querySelector(".notif-banner");
     if (banner) banner.onclick = () => store.enableNotifications();
 
@@ -169,9 +182,16 @@ export function mountSidebar(container) {
       }</div>`;
       const btn = list.querySelector("[data-empty-new]");
       if (btn) btn.onclick = () => store.openModal("new");
+      const pin = neyoRow(s);
+      if (pin) {
+        list.insertAdjacentHTML("afterbegin", pin);
+        list.querySelector("[data-neyo]").onclick = () => store.openNeyo();
+      }
       return;
     }
-    list.innerHTML = items.map((c) => chatRow(c, s)).join("");
+    list.innerHTML = neyoRow(s) + items.map((c) => chatRow(c, s)).join("");
+    const ny = list.querySelector("[data-neyo]");
+    if (ny) ny.onclick = () => store.openNeyo();
   };
 
   store.subscribe(render);

@@ -70,3 +70,14 @@ vercel dev         # real API locally
 - Calls use Google STUN; add a TURN server (e.g. Metered, Twilio, Cloudflare) for networks that block peer-to-peer.
 - Group calls, message search inside a chat, and end-to-end encryption are not built yet (the old Bean's "E2EE" label is not used).
 - Expired disappearing messages are hidden immediately; to delete them from the database too, schedule the cleanup line at the end of `bean_chat.sql` (pg_cron).
+
+## Neyo + Neyo Ghost 👻
+
+- **Neyo** (`neyo@bean`): AI contact pinned on Home. Answers in his DM, and in groups only when someone writes `@neyo`. Can set reminders, watch a chat, send a daily digest.
+- **Neyo Ghost = Delegated Presence**: Settings → Neyo Ghost (or tell Neyo "main 2 ghante busy hun, ghost on karo").
+  - While on, Ghost answers simple **direct** messages in your name, every reply marked **👻 Ghost**.
+  - Money, plans, promises, private things: polite holding reply, queued for you. Urgent messages: Neyo pings you.
+  - Others see "👻 Away · Ghost replies for them" in your chat header. Groups are never answered.
+  - "I'm back" (sidebar banner) or the timer ending → **handoff report** in your Neyo chat.
+- Setup: run `supabase/bean_neyo.sql`, add `GEMINI_API_KEY` in Vercel, redeploy.
+- Ghost runs on each send (`/api/neyo` action `ghost`) plus every minute while anyone has Bean open (`/api/neyo?action=tick`). For 24/7, enable pg_cron + pg_net (see end of `bean_neyo.sql`).

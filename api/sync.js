@@ -20,7 +20,7 @@ export default withUser(
         last_seen_at: nowIso,
         typing_in: typing || null,
         typing_at: typing ? nowIso : null,
-      });
+      }, { onConflict: "user_id" });
       return send(res, 200, { ok: true });
     }
 

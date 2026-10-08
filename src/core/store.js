@@ -21,7 +21,7 @@ export const store = {
     status: "loading", // loading | signedOut | ready | error
     error: null,
     me: null,
-    settings: { messageTimer: 0, wallpaper: "none" },
+    settings: { messageTimer: 0, wallpaper: "none", ghostEnabled: false, ghostNote: "", ghostUntil: null },
     view: "home", // home | beanbox (unread)
     conversations: [],
     threads: {}, // convId -> { items, hasMore, loaded, loading }
@@ -123,6 +123,10 @@ export const store = {
       if (id !== (this.state.activeId || "")) id ? this.selectConversation(id) : this.closeChat();
     });
     this.loop();
+    // Neyo Ghost: let the background tasks run while Bean is open
+    const tick = () => api.neyoTick().catch(() => {});
+    setTimeout(tick, 4000);
+    setInterval(tick, 60000);
   },
 
   isDemo() {
@@ -423,11 +427,53 @@ export const store = {
       });
       if (localUrl && message.attachment && !message.attachment.url) message.attachment.url = localUrl;
       this.settleTemp(cid, id, message);
+      this.askNeyo(cid, clean);
+      this.askGhost(cid);
     } catch (err) {
       this.set({ uploads: this.state.uploads.filter((u) => u.id !== id) });
       this.settleTemp(cid, id, null);
       this.toast(err.message || "Message not sent");
     }
+  },
+
+  /* Neyo answers in his DM, and in groups when someone writes @neyo */
+  askNeyo(cid, text) {
+    const c = this.conversation(cid);
+    if (!c || !text) return;
+    const neyoHere = c.members?.some((m) => m.username === "neyo");
+    if (!neyoHere || (c.type === "group" && !/@neyo\b/i.test(text))) return;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    api.neyoReply(cid, tz).then(() => {
+      this.syncNow?.();
+      this.refreshSettings(); // Neyo may have turned Ghost Mode on/off
+    }).catch(() => {});
+  },
+
+  /* Neyo Ghost (Delegated Presence): the other person is away -> Ghost may answer for them */
+  askGhost(cid) {
+    const c = this.conversation(cid);
+    if (!c || c.type !== "dm" || !c.peer || c.peer.isBot) return;
+    if (!c.peer.ghost && c.peer.online) return;
+    api.neyoGhost(cid).then((r) => r?.replied && this.syncNow?.()).catch(() => {});
+  },
+
+  async refreshSettings() {
+    try {
+      const res = await api.me();
+      if (res.authenticated) this.set({ settings: { ...this.state.settings, ...(res.settings || {}) } });
+    } catch {}
+  },
+
+  async setGhost(changes) {
+    const wasOn = this.state.settings.ghostEnabled;
+    await this.updateSettings(changes);
+    const on = this.state.settings.ghostEnabled;
+    if (on && !wasOn) this.toast("👻 Ghost Mode on");
+    if (!on && wasOn) this.toast("Welcome back! Handoff report Neyo ki chat mein hai");
+  },
+
+  openNeyo() {
+    return this.openDm("neyo").catch((err) => this.toast(err.message || "Neyo is not available yet"));
   },
 
   sendText(text) {

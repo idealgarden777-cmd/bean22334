@@ -108,6 +108,6 @@ export default async function handler(req, res) {
   } catch (err) {
     if (err instanceof HttpError) return send(res, err.status, { error: err.message });
     console.error("Bean auth error:", err);
-    return send(res, 500, { error: "Something went wrong. Please try again." });
+    return send(res, 500, { error: "Something went wrong. Please try again.", detail: [err?.message, err?.details, err?.hint].filter(Boolean).join(" | ") || undefined, code: err?.code });
   }
 }

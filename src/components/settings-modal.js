@@ -22,6 +22,17 @@ export const WALLPAPERS = [
   { id: "night", label: "Night" },
 ];
 
+const GHOST_HOURS = [
+  { value: 0, label: "Until I'm back" },
+  { value: 1, label: "1h" },
+  { value: 3, label: "3h" },
+  { value: 8, label: "8h" },
+];
+const ghostNote = (s) =>
+  s.ghostEnabled
+    ? `On${s.ghostUntil ? ` until ${new Date(s.ghostUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}. Simple messages get a 👻 Ghost reply; money, plans and private things wait for you.`
+    : "When it's off again, Neyo sends you a handoff report.";
+
 export function timerLabel(seconds) {
   return TIMERS.find((t) => t.value === Number(seconds))?.label || "Off (Keep Forever)";
 }
@@ -59,6 +70,18 @@ export function mountSettings(container) {
               <p class="modal-error" hidden></p>
               <button type="submit" class="btn-primary">Update Identity</button>
             </form>
+
+            <div class="set-section ghost-section">
+              <button type="button" class="set-row ghost-row" data-action="ghost" role="switch" aria-checked="${settings.ghostEnabled}">
+                <span>👻</span><span><strong>Neyo Ghost</strong><small>Away? Ghost replies to your DMs</small></span><i class="switch ${settings.ghostEnabled ? "on" : ""}"></i>
+              </button>
+              <label class="set-label" for="ghostNote">What Ghost can tell people</label>
+              <textarea id="ghostNote" class="set-input ghost-note" rows="2" maxlength="500" placeholder="e.g. Meeting mein hun, 6 baje ke baad free hun">${escapeHtml(settings.ghostNote || "")}</textarea>
+              <div class="timer-options ghost-hours" role="radiogroup" aria-label="Ghost duration">
+                ${GHOST_HOURS.map((h) => `<button type="button" role="radio" data-hours="${h.value}" class="${h.value === 0 ? "on" : ""}" aria-checked="${h.value === 0}">${h.label}</button>`).join("")}
+              </div>
+              <small class="set-note" data-ghost-note>${ghostNote(settings)}</small>
+            </div>
 
             <div class="set-section">
               <span class="set-label">Default Message Timer</span>
@@ -136,6 +159,43 @@ export function mountSettings(container) {
           store.toast(err.message);
         }
       };
+    });
+
+    let ghostHours = 0;
+    container.querySelectorAll("[data-hours]").forEach((b) => {
+      b.onclick = () => {
+        ghostHours = Number(b.dataset.hours);
+        container.querySelectorAll("[data-hours]").forEach((x) => {
+          x.classList.toggle("on", x === b);
+          x.setAttribute("aria-checked", String(x === b));
+        });
+      };
+    });
+    const ghostBtn = $("[data-action=ghost]");
+    const refreshGhost = () => {
+      const st = store.getState().settings;
+      ghostBtn.querySelector(".switch").classList.toggle("on", st.ghostEnabled);
+      ghostBtn.setAttribute("aria-checked", String(st.ghostEnabled));
+      $("[data-ghost-note]").textContent = ghostNote(st);
+    };
+    ghostBtn.onclick = async () => {
+      const turnOn = !store.getState().settings.ghostEnabled;
+      ghostBtn.disabled = true;
+      try {
+        await store.setGhost(turnOn ? { ghostEnabled: true, ghostNote: $("#ghostNote").value, ghostHours } : { ghostEnabled: false });
+      } catch (err) {
+        store.toast(err.message);
+      } finally {
+        ghostBtn.disabled = false;
+        refreshGhost();
+      }
+    };
+    $("#ghostNote").addEventListener("change", async (e) => {
+      try {
+        await store.updateSettings({ ghostNote: e.target.value });
+      } catch (err) {
+        store.toast(err.message);
+      }
     });
 
     $("[data-action=theme]").onclick = (e) => {

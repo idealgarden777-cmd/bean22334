@@ -2,13 +2,15 @@ import argon2 from "argon2";
 import {
   getSessionUser, send, readBody, supabase, getCookie, hashToken, COOKIE_NAME, sessionCookie, getSettings, HttpError,
 } from "./_lib/session.js";
+import { setGhost } from "./_lib/ghost.js";
 
 const TIMERS = [0, 86400, 604800, 2592000]; // off, 24h, 7d, 30d (seconds)
 const WALLPAPERS = ["none", "dots", "grid", "sand", "mist", "night"];
 
 /* GET  /api/me                                        -> { authenticated, user, settings }
  * POST /api/me {action:"logout"}
- * POST /api/me {action:"update", displayName?, password?, messageTimer?, wallpaper?}  ("Update Identity") */
+ * POST /api/me {action:"update", displayName?, password?, messageTimer?, wallpaper?}  ("Update Identity")
+ * POST /api/me {action:"update", ghostEnabled?, ghostNote?, ghostHours?}  (Neyo Ghost: Delegated Presence) */
 export default async function handler(req, res) {
   try {
     if (req.method === "GET") {
@@ -56,8 +58,16 @@ export default async function handler(req, res) {
         if (!WALLPAPERS.includes(wallpaper)) return send(res, 400, { error: "Unknown wallpaper" });
         const { error } = await supabase
           .from("bean_settings")
-          .upsert({ user_id: me.id, message_timer: messageTimer, wallpaper, updated_at: new Date().toISOString() });
+          .upsert({ user_id: me.id, message_timer: messageTimer, wallpaper, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
         if (error) throw error;
+      }
+
+      if (body.ghostEnabled !== undefined || body.ghostNote !== undefined) {
+        await setGhost(me, {
+          enabled: body.ghostEnabled === undefined ? undefined : Boolean(body.ghostEnabled),
+          note: body.ghostNote,
+          hours: body.ghostHours,
+        });
       }
 
       const user = await getSessionUser(req);
@@ -68,6 +78,6 @@ export default async function handler(req, res) {
   } catch (err) {
     if (err instanceof HttpError) return send(res, err.status, { error: err.message });
     console.error("me error:", err);
-    return send(res, 500, { error: "Something went wrong" });
+    return send(res, 500, { error: "Something went wrong", detail: [err?.message, err?.details, err?.hint].filter(Boolean).join(" | ") || undefined, code: err?.code });
   }
 }

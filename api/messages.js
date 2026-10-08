@@ -93,7 +93,7 @@ export default withUser(
           .update({ last_read_at: row.created_at })
           .eq("conversation_id", conversationId)
           .eq("user_id", me.id);
-        await supabase.from("bean_presence").upsert({ user_id: me.id, last_seen_at: new Date().toISOString(), typing_in: null, typing_at: null });
+        await supabase.from("bean_presence").upsert({ user_id: me.id, last_seen_at: new Date().toISOString(), typing_in: null, typing_at: null }, { onConflict: "user_id" });
 
         const [message] = await hydrateMessages([row]);
         return send(res, 200, { message, clientId });
@@ -153,7 +153,7 @@ export default withUser(
         if (existing?.emoji === emoji) {
           await supabase.from("bean_reactions").delete().eq("message_id", msg.id).eq("user_id", me.id);
         } else {
-          await supabase.from("bean_reactions").upsert({ message_id: msg.id, user_id: me.id, emoji });
+          await supabase.from("bean_reactions").upsert({ message_id: msg.id, user_id: me.id, emoji }, { onConflict: "message_id,user_id" });
         }
         const { data: row } = await supabase
           .from("bean_messages")

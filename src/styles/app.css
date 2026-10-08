@@ -874,3 +874,21 @@ a { color: inherit; text-decoration: none; }
 .chat-list-empty:has(+ .people-results:not([hidden])) { padding: 16px 16px 4px; }
 .chat-list:has(+ .people-results:not([hidden])) { flex: 0 1 auto; max-height: 50%; }
 .people-results:not([hidden]) { flex: 1; overflow-y: auto; }
+
+/* Neyo */
+.ai-tag { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: .04em; background: var(--text, #171717); color: var(--bg, #fff); vertical-align: 1px; }
+.neyo-pin { background: var(--hover, rgba(0,0,0,.04)); }
+.avatar img[src="/neyo-icon.png"] { background: #fff; }
+
+/* ---------- Neyo Ghost (Delegated Presence) ---------- */
+.ghost-tag { display: inline-flex; align-items: center; gap: 2px; padding: 0 6px; border-radius: 999px; font-size: 10px; font-weight: 600; background: rgba(127,127,127,.16); white-space: nowrap; }
+.ghost-status { color: var(--text-secondary, #6b6b6b); }
+.ghost-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 12px 8px; padding: 10px 12px; border-radius: 16px; background: var(--surface-2, #f1f1f1); border: 1px solid var(--border, #e5e5e5); }
+.ghost-banner > span { display: flex; flex-direction: column; font-size: 13px; line-height: 1.3; }
+.ghost-banner small { color: var(--text-secondary, #6b6b6b); font-size: 12px; }
+.ghost-section { gap: 8px; }
+.ghost-row { width: 100%; height: auto; min-height: 54px; padding: 8px 10px; }
+.ghost-row > span:nth-child(2) { display: flex; flex-direction: column; text-align: left; }
+.ghost-row small { color: var(--text-secondary, #6b6b6b); font-size: 12px; font-weight: 400; }
+.ghost-note { resize: vertical; min-height: 56px; font-family: inherit; }
+.ghost-hours button { flex: 1 1 auto; }

@@ -42,11 +42,11 @@ export function mountChatHeader(container) {
         <div class="chat-header-actions">
           ${
             dm
-              ? `<button type="button" class="icon-btn" data-action="audio" ${inCall ? "disabled" : ""} title="Voice call" aria-label="Voice call">${icons.phone}</button>
-                 <button type="button" class="icon-btn" data-action="video" ${inCall ? "disabled" : ""} title="Video call" aria-label="Video call">${icons.video}</button>`
+              ? `<button type="button" class="icon-btn" data-action="audio" ${inCall ? "disabled" : ""} data-tip="Voice call" aria-label="Voice call">${icons.phone}</button>
+                 <button type="button" class="icon-btn" data-action="video" ${inCall ? "disabled" : ""} data-tip="Video call" aria-label="Video call">${icons.video}</button>`
               : ""
           }
-          <button type="button" class="icon-btn" data-action="info" title="${dm ? "Contact info" : "Group info"}" aria-label="Info">${icons.info}</button>
+          <button type="button" class="icon-btn" data-action="info" data-tip="${dm ? "Contact info" : "Group info"}" aria-label="Info">${icons.info}</button>
         </div>
       </header>`;
 

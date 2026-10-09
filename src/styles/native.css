@@ -1,0 +1,152 @@
+/* =========================================================
+ * BEAN — in-app replacements for browser defaults
+ * tooltips · dialogs · voice player · file cards · scrollbars · autofill
+ * Same Neyo language: #171717 / white, soft depth, rounded.
+ * ========================================================= */
+
+/* ---------- browser chrome we don't want ---------- */
+button, [role="button"], .icon-btn, .voice-wave, .file-card { -webkit-user-select: none; user-select: none; }
+img { -webkit-user-drag: none; }
+.message-bubble, .bubble-image, .voice-note, .chat-item { -webkit-touch-callout: none; }
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+input::-ms-clear { display: none; }
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 60px var(--surface-soft, #f5f5f5) inset;
+  caret-color: var(--text);
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* thin, quiet scrollbars everywhere (Chrome/Edge/Safari; Firefox uses scrollbar-width) */
+* { scrollbar-color: var(--border-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--text-muted); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* focus ring: visible for keyboard, invisible for mouse */
+:focus:not(:focus-visible) { outline: none; }
+:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.message-bubble :focus-visible, .voice-wave:focus-visible { outline-offset: 3px; }
+
+/* ---------- tooltip ---------- */
+.bean-tip {
+  position: fixed; z-index: 1000; left: 0; top: 0;
+  max-width: 240px; padding: 6px 10px;
+  border-radius: 8px;
+  background: #171717; color: #fff;
+  font: 500 12px/1.35 var(--font-text); letter-spacing: 0.005em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.18);
+  pointer-events: none; white-space: normal; text-align: center;
+  opacity: 0; transform: translateY(3px) scale(0.98);
+  transition: opacity 120ms ease, transform 160ms var(--ease);
+}
+.bean-tip.below { transform: translateY(-3px) scale(0.98); }
+.bean-tip.show { opacity: 1; transform: none; }
+:root[data-theme="dark"] .bean-tip { background: #f5f5f5; color: #171717; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bean-tip { background: #f5f5f5; color: #171717; } }
+@media (hover: none) { .bean-tip { display: none; } }
+
+/* ---------- dialog (replaces confirm / prompt) ---------- */
+.bean-dialog-backdrop {
+  position: fixed; inset: 0; z-index: 900;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(0, 0, 0, 0.32);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  opacity: 0; transition: opacity 160ms ease;
+}
+.bean-dialog-backdrop.show { opacity: 1; }
+.bean-dialog {
+  width: min(380px, 100%);
+  padding: 24px 24px 18px;
+  border-radius: 24px;
+  background: var(--surface); color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow-popup);
+  transform: translateY(8px) scale(0.98); transition: transform 200ms var(--ease);
+}
+.bean-dialog-backdrop.show .bean-dialog { transform: none; }
+.bean-dialog h3 { margin: 0; font: 600 17px/1.3 var(--font-display); letter-spacing: -0.01em; }
+.bean-dialog p { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
+.bd-field { display: block; margin-top: 16px; }
+.bd-field input {
+  width: 100%; height: 46px; padding: 0 14px;
+  border: 0; border-radius: 14px; outline: 0;
+  background: var(--surface-soft); color: var(--text);
+  font: 400 15px var(--font-text);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.bd-field input:focus { box-shadow: inset 0 0 0 1.5px var(--text); }
+.bd-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+.bd-btn { height: 40px; padding: 0 18px; border-radius: 999px; font: 600 14px var(--font-text); transition: background var(--fast), opacity var(--fast), transform 80ms ease; }
+.bd-btn:active { transform: scale(0.97); }
+.bd-btn.ghost { color: var(--text); }
+.bd-btn.ghost:hover { background: var(--hover); }
+.bd-btn.primary { background: var(--accent); color: var(--accent-text); }
+.bd-btn.danger { background: var(--danger); color: #fff; }
+.bd-btn:disabled { opacity: 0.4; pointer-events: none; }
+@media (max-width: 560px) {
+  .bean-dialog-backdrop { place-items: end center; padding: 0; }
+  .bean-dialog { width: 100%; border-radius: 26px 26px 0 0; padding-bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateY(24px); }
+  .bd-actions { flex-direction: column-reverse; }
+  .bd-btn { height: 48px; width: 100%; }
+}
+
+/* ---------- voice note player ---------- */
+.voice-note { gap: 10px; min-width: 236px; max-width: 300px; padding: 4px 2px 2px 0; }
+.voice-btn {
+  position: relative; width: 38px; height: 38px; flex: 0 0 38px;
+  transition: transform 120ms ease, opacity var(--fast);
+}
+.voice-btn:active { transform: scale(0.92); }
+.voice-btn:disabled { opacity: 0.45; }
+.voice-note.loading .voice-btn::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 50%;
+  border: 2px solid transparent; border-top-color: currentColor;
+  animation: voice-spin 0.8s linear infinite;
+}
+@keyframes voice-spin { to { transform: rotate(360deg); } }
+.voice-body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.voice-wave { height: 26px; gap: 2px; cursor: pointer; overflow: visible; border-radius: 4px; }
+.voice-wave i { flex: 1; min-width: 2px; max-width: 3px; opacity: 0.32; transition: opacity 120ms ease; }
+.voice-wave i.on { opacity: 1; }
+.voice-note:not(.active) .voice-wave:hover i { opacity: 0.5; }
+.voice-foot { display: flex; align-items: center; justify-content: space-between; min-height: 16px; }
+.voice-time { font-size: 11.5px; }
+.voice-speed {
+  display: none; height: 18px; padding: 0 7px; border-radius: 999px;
+  background: currentColor; font: 700 10.5px/18px var(--font-text);
+}
+.voice-note.active .voice-speed { display: inline-block; }
+.voice-speed { color: inherit; }
+.message-row.own .voice-speed { color: var(--bubble-own); background: var(--bubble-own-text); }
+.message-row.other .voice-speed { color: var(--bubble-other); background: var(--bubble-other-text); }
+.voice-progress { display: none; }
+
+/* ---------- file card (now an in-app button) ---------- */
+button.file-card { width: 100%; text-align: left; color: inherit; font: inherit; cursor: pointer; transition: background var(--fast), transform 80ms ease; }
+button.file-card:hover:not(:disabled) { background: rgba(127, 127, 127, 0.2); }
+button.file-card:active:not(:disabled) { transform: scale(0.985); }
+button.file-card:disabled { cursor: default; }
+.file-icon { position: relative; }
+.file-icon em {
+  position: absolute; bottom: -3px; right: -5px;
+  padding: 1px 4px; border-radius: 5px;
+  background: var(--text); color: var(--bg);
+  font: 700 8.5px/1.3 var(--font-text); font-style: normal; letter-spacing: 0.02em;
+}
+.message-row.own .file-icon em { background: var(--bubble-own-text); color: var(--bubble-own); }
+button.info-file { width: 100%; text-align: left; color: var(--text); }
+button.info-file span { flex: 1; }
+button.info-file svg:last-child { opacity: 0; transition: opacity var(--fast); }
+button.info-file:hover svg:last-child { opacity: 0.6; }
+
+/* message menu: buttons and links look the same */
+.msg-menu .menu-items a, .msg-menu .menu-items button { text-decoration: none; }
+
+/* links inside bubbles */
+.bubble-text a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; word-break: break-word; }

@@ -56,6 +56,15 @@ ok(r.code === 400, "too long message rejected");
 // dangerous file types become plain downloads
 r = await call(messages, { cookie: sam.cookie, body: { action: "send", conversationId: dm.id, attachment: { path: `${dm.id}/x_evil.svg`, name: "evil.svg", size: 10, mime: "image/svg+xml" } } });
 ok(r.code === 200 && r.body.message.kind === "file" && r.body.message.attachment.mime === "application/octet-stream", "SVG/HTML upload can't run as a page");
+r = await call(messages, { cookie: sam.cookie, body: { action: "send", conversationId: dm.id, attachment: { path: `${dm.id}/v.webm`, name: "voice-1.webm", size: 900, duration: 4, mime: "audio/webm;codecs=opus" } } });
+ok(r.code === 200 && r.body.message.kind === "audio" && r.body.message.attachment.mime === "audio/webm", "Chrome voice note (codec in mime) is a voice note, not a file");
+r = await call(messages, { cookie: sam.cookie, body: { action: "send", conversationId: dm.id, attachment: { path: `${dm.id}/v2.webm`, name: "voice-2.webm", size: 900, duration: 3, mime: "text/html;charset=utf-8" } } });
+ok(r.code === 200 && r.body.message.attachment.mime === "application/octet-stream", "mime parameters can't smuggle html");
+{
+  const { hydrateMessages } = await import("../api/_lib/chat.js");
+  const [legacy] = await hydrateMessages([{ id: "lg1", conversation_id: dm.id, sender_id: "x", kind: "file", body: null, created_at: new Date().toISOString(), attachment: { path: `${dm.id}/old.webm`, name: "voice-171.webm", size: 900, mime: "application/octet-stream", duration: 5 } }]);
+  ok(legacy.kind === "audio" && legacy.attachment.mime === "audio/webm", "old voice notes saved as files play as voice notes");
+}
 r = await call(messages, { cookie: sam.cookie, body: { action: "send", conversationId: dm.id, attachment: { path: `${dm.id}/p.jpg`, name: "p.jpg", size: 10, mime: "image/jpeg" } } });
 ok(r.body.message.kind === "image", "normal photo still a photo");
 r = await call(messages, { cookie: sam.cookie, body: { action: "send", conversationId: "someone-else", attachment: { path: `${dm.id}/p.jpg`, name: "p.jpg", size: 10, mime: "image/jpeg" } } });
@@ -119,10 +128,10 @@ r = await call(me, { cookie: sam.cookie, body: { action: "logout_all" } });
 r = await call(me, { method: "GET", cookie: sam.cookie });
 ok(r.body.authenticated === false, "log out all devices");
 r = await call(me, { method: "GET", cookie: leo.cookie });
-ok(r.body.authenticated === true && r.body.build?.version === "3.2.0", "other users unaffected; build 3.0.0");
+ok(r.body.authenticated === true && r.body.build?.version === "3.2.1", "other users unaffected; build 3.2.1");
 
 r = await call(me, { method: "GET", query: { health: "1" } });
-ok(r.code === 200 && r.body.ok && r.body.database === "ok" && r.body.version === "3.2.0" && r.body.serverKey, "health check");
+ok(r.code === 200 && r.body.ok && r.body.database === "ok" && r.body.version === "3.2.1" && r.body.serverKey, "health check");
 
 // brute force
 let blocked = false;

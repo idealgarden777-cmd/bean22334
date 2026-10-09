@@ -4,6 +4,7 @@
 import { store } from "../core/store.js";
 import { api } from "../core/api.js";
 import { icons } from "./icons.js";
+import { confirmDialog } from "./dialog.js";
 import { avatar, escapeHtml } from "../core/utils.js";
 import { isDark, toggleTheme } from "../core/theme.js";
 import { notificationsSupported } from "../core/notify.js";
@@ -349,7 +350,7 @@ export function mountSettings(container) {
     });
 
     $("[data-action=logout-all]").onclick = () => {
-      if (confirm("Sign out of every device, including this one?")) store.logoutAll();
+      confirmDialog({ title: "Sign out everywhere?", text: "Every device, including this one, will need to sign in again.", confirm: "Sign out all", danger: true }).then((ok) => ok && store.logoutAll());
     };
     const deviceList = $(".device-list");
     let devicesLoaded = false;

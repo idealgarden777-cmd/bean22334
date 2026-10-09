@@ -8,6 +8,8 @@ import "./core/theme.js";
 import { mountAppShell } from "./components/app-shell.js";
 import { store } from "./core/store.js";
 import { initAnimatedEmoji } from "./core/emoji-anim.js";
+import { mountTooltips } from "./components/tooltip.js";
+import { stopVoice } from "./core/voice-player.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   let root = document.getElementById("app");
@@ -18,5 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   mountAppShell(root);
   initAnimatedEmoji();
+  mountTooltips();
   store.init();
+  store.subscribe((s) => s.call && stopVoice()); // a call always wins over a voice note
 });

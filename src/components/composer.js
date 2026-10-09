@@ -4,13 +4,15 @@ import { escapeHtml, formatDuration } from "../core/utils.js";
 import { timerLabel } from "./settings-modal.js";
 import { EMOJIS } from "../core/emoji.js";
 import { emojiTag } from "../core/emoji-anim.js";
+import { stopVoice } from "../core/voice-player.js";
 
 const MAX_CHARS = 2000;
 
 const drafts = new Map();
 
 function pickMime() {
-  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+  // AAC/MP4 first: it plays on every phone and browser. WebM/Opus where MP4 recording isn't available.
+  const types = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
   return types.find((t) => window.MediaRecorder?.isTypeSupported?.(t)) || "";
 }
 
@@ -28,16 +30,16 @@ export function mountComposer(container) {
         </div>
         <div class="composer-pill-container">
           <span class="char-counter" aria-live="polite"></span>
-          <button type="button" class="icon-btn attach-btn" title="Photo or file" aria-label="Attach">${icons.plus}</button>
+          <button type="button" class="icon-btn attach-btn" data-tip="Photo or file" aria-label="Attach">${icons.plus}</button>
           <input type="file" class="file-input" multiple hidden />
-          <button type="button" class="icon-btn emoji-btn" title="Emoji" aria-label="Emoji">${icons.smile}</button>
+          <button type="button" class="icon-btn emoji-btn" data-tip="Emoji" aria-label="Emoji">${icons.smile}</button>
           <textarea rows="1" placeholder="Message" aria-label="Message" maxlength="${MAX_CHARS}"></textarea>
           <div class="recording" hidden>
             <button type="button" class="icon-btn rec-cancel" aria-label="Cancel recording">${icons.trash}</button>
             <span class="rec-dot"></span><span class="rec-time">0:00</span>
             <span class="rec-label">Recording…</span>
           </div>
-          <button type="button" class="round-btn mic-btn" title="Voice message" aria-label="Record voice message">${icons.mic}</button>
+          <button type="button" class="round-btn mic-btn" data-tip="Voice message" aria-label="Record voice message">${icons.mic}</button>
           <button type="submit" class="round-btn composer-send-btn" aria-label="Send" hidden>${icons.arrowUp}</button>
         </div>
       </div>
@@ -68,14 +70,17 @@ export function mountComposer(container) {
   input.value = drafts.get(convId) || "";
 
   const paint = () => {
-    input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 168) + "px";
     const hasText = Boolean(input.value.trim());
     const recording = Boolean(recorder);
     sendBtn.hidden = !(hasText || recording);
     micBtn.hidden = hasText || recording;
     input.hidden = recording;
     recBox.hidden = !recording;
+    // measure only while visible (a hidden textarea reports 0 and collapses after recording)
+    if (!recording) {
+      input.style.height = "auto";
+      input.style.height = Math.min(Math.max(input.scrollHeight, 24), 168) + "px";
+    }
     attachBtn.hidden = recording;
     emojiBtn.hidden = recording;
     const n = input.value.length;
@@ -89,7 +94,7 @@ export function mountComposer(container) {
     const term = q.trim().toLowerCase();
     const list = term ? EMOJIS.filter(([, name]) => name.includes(term)) : EMOJIS;
     emojiGrid.innerHTML = list.length
-      ? list.map(([e, name]) => `<button type="button" data-emoji="${e}" title="${name}">${emojiTag(e, "pick")}</button>`).join("")
+      ? list.map(([e, name]) => `<button type="button" data-emoji="${e}" data-tip="${name}">${emojiTag(e, "pick")}</button>`).join("")
       : `<p class="emoji-empty">No emoji found</p>`;
   };
   const togglePicker = (open = picker.hidden) => {
@@ -173,6 +178,7 @@ export function mountComposer(container) {
   async function startRecording() {
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return store.toast("Voice notes aren't supported in this browser");
     if (store.getState().call) return store.toast("Finish the call first");
+    stopVoice();
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });

@@ -7,15 +7,19 @@ const EMOJI_OK = /^[\p{Extended_Pictographic}\u200d\ufe0f\u{1F3FB}-\u{1F3FF}]{1,
 
 /* Files that a browser could run as a page/script are stored as plain downloads. */
 function safeMime(mime) {
-  const m = String(mime || "").toLowerCase().slice(0, 100);
+  // "audio/webm;codecs=opus" -> "audio/webm" (parameters dropped, never trusted)
+  const m = String(mime || "").toLowerCase().split(";")[0].trim().slice(0, 100);
   if (!/^[a-z0-9.+-]+\/[a-z0-9.+-]+$/.test(m)) return "application/octet-stream";
   if (/html|svg|xml|javascript|ecmascript|x-sh|wasm/.test(m)) return "application/octet-stream";
   return m;
 }
 
-function kindForMime(mime) {
+const VOICE_NAME = /^voice-\d+\.(webm|m4a|mp4|ogg|aac)$/;
+
+function kindForMime(mime, attachment) {
   if (String(mime).startsWith("image/")) return "image";
   if (String(mime).startsWith("audio/")) return "audio";
+  if (attachment?.duration && VOICE_NAME.test(attachment.name || "")) return "audio";
   return "file";
 }
 
@@ -90,7 +94,7 @@ export default withUser(
           expiresAt: messageTimer ? new Date(Date.now() + messageTimer * 1000).toISOString() : null,
           conversationId,
           senderId: me.id,
-          kind: attachment ? kindForMime(attachment.mime) : "text",
+          kind: attachment ? kindForMime(attachment.mime, attachment) : "text",
           body: text || null,
           attachment,
           replyTo: replyTo || null,

@@ -7,7 +7,10 @@ const SIGNED_URL_TTL = 60 * 60 * 6; // 6 hours
 export function previewFor(kind, body, attachment) {
   if (kind === "image") return body ? `📷 ${body}` : "📷 Photo";
   if (kind === "audio") return "🎤 Voice message";
-  if (kind === "file") return `📎 ${attachment?.name || "File"}`;
+  if (kind === "file") {
+    if (attachment?.duration && /^voice-\d+\./.test(attachment?.name || "")) return "🎤 Voice message";
+    return `📎 ${attachment?.name || "File"}`;
+  }
   return (body || "").slice(0, 140);
 }
 
@@ -56,6 +59,11 @@ export async function loadUsers(ids) {
   return new Map((users || []).map((u) => [u.id, { ...publicUser(u, presenceById.get(u.id), avatars.get(u.id)), ...(ghosts.has(u.id) ? { ghost: true } : {}) }]));
 }
 
+function voiceMime(name) {
+  const ext = String(name).split(".").pop();
+  return ext === "ogg" ? "audio/ogg" : ext === "webm" ? "audio/webm" : "audio/mp4";
+}
+
 /* Rows from bean_messages -> client messages with replies, reactions, signed media URLs. */
 export async function hydrateMessages(rows) {
   if (!rows?.length) return [];
@@ -90,11 +98,13 @@ export async function hydrateMessages(rows) {
     const grouped = {};
     for (const x of reactionsByMsg.get(r.id) || []) (grouped[x.emoji] ||= []).push(x.user_id);
 
+    // voice notes saved by v3.0-3.2 as "file" (codec parameter in the mime) still play as voice
+    const legacyVoice = r.kind === "file" && r.attachment?.duration && /^voice-\d+\.(webm|m4a|mp4|ogg|aac)$/.test(r.attachment.name || "");
     return {
       id: r.id,
       conversationId: r.conversation_id,
       senderId: r.sender_id,
-      kind: deleted ? "text" : r.kind,
+      kind: deleted ? "text" : legacyVoice ? "audio" : r.kind,
       text: deleted ? "" : r.body || (r.enc ? "🔒 This message was sent with an older encrypted version of Bean" : ""),
       attachment:
         !deleted && r.attachment
@@ -102,7 +112,7 @@ export async function hydrateMessages(rows) {
               url: urlByPath.get(r.attachment.path) || null,
               name: r.attachment.name,
               size: r.attachment.size,
-              mime: r.attachment.mime,
+              mime: legacyVoice ? voiceMime(r.attachment.name) : r.attachment.mime,
               duration: r.attachment.duration || null,
             }
           : null,

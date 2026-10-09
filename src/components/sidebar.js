@@ -92,7 +92,7 @@ function chatRow(c, state) {
     c.lastSenderId === me ? "You: " : c.type === "group" && c.lastSenderId ? `${escapeHtml(store.userName(c.lastSenderId, c).split(" ")[0])}: ` : "";
   const preview = typing
     ? `<em class="typing-text">typing…</em>`
-    : `${prefix}${escapeHtml(c.lastMessage || (c.type === "group" ? `${c.members.length} members` : c.peer?.beanId || ""))}`;
+    : `${prefix}${escapeHtml((c.lastMessage && /^📎 voice-\d+\.(webm|m4a|mp4|ogg|aac)$/.test(c.lastMessage) ? "🎤 Voice message" : c.lastMessage) || (c.type === "group" ? `${c.members.length} members` : c.peer?.beanId || ""))}`;
   const unread = c.unread > 0 && c.id !== state.activeId;
 
   return `
@@ -105,7 +105,7 @@ function chatRow(c, state) {
         </span>
         <span class="chat-info-bottom">
           <small>${typing ? preview : emojify(preview)}</small>
-          ${c.muted ? `<span class="muted-icon" title="Muted">${icons.bellOff}</span>` : ""}
+          ${c.muted ? `<span class="muted-icon" data-tip="Muted">${icons.bellOff}</span>` : ""}
           ${unread ? `<span class="unread-badge">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}
         </span>
       </span>
@@ -125,8 +125,8 @@ export function mountSidebar(container) {
   container.innerHTML = `
     <div class="sidebar-header">
       <div class="brand">${logoMark}<span class="brand-name">Bean</span></div>
-      ${store.isDemo() ? `<span class="demo-badge" title="Local demo, no backend">Demo</span>` : ""}
-      <button type="button" class="icon-btn header-new" data-action="new" title="New chat" aria-label="New chat">${icons.compose}</button>
+      ${store.isDemo() ? `<span class="demo-badge" data-tip="Local demo, no backend">Demo</span>` : ""}
+      <button type="button" class="icon-btn header-new" data-action="new" data-tip="New chat" aria-label="New chat">${icons.compose}</button>
     </div>
 
     <div class="sidebar-nav">
@@ -150,7 +150,7 @@ export function mountSidebar(container) {
         <span class="profile-text"><strong class="me-name"></strong><small class="me-id"></small></span>
         <span class="profile-chevron">${icons.chevronUp}</span>
       </button>
-      <button type="button" class="icon-btn" data-action="settings" title="Settings" aria-label="Settings">${icons.settings}</button>
+      <button type="button" class="icon-btn" data-action="settings" data-tip="Settings" aria-label="Settings">${icons.settings}</button>
     </div>`;
 
   const list = container.querySelector(".chat-list");

@@ -1,5 +1,7 @@
 import { store } from "../core/store.js";
 import { icons } from "./icons.js";
+import { confirmDialog, promptDialog } from "./dialog.js";
+import { downloadFile } from "../core/media.js";
 import { avatar, escapeHtml, lastSeen, debounce } from "../core/utils.js";
 import { openLightbox } from "./lightbox.js";
 
@@ -54,7 +56,7 @@ export function mountInfoPanel(container) {
         ${
           files.length
             ? `<section class="info-section"><h4>Files</h4><div class="info-list">${files
-                .map((m) => `<a class="info-file" href="${escapeHtml(m.attachment.url || "#")}" target="_blank" rel="noopener">${icons.file}<span>${escapeHtml(m.attachment.name)}</span></a>`)
+                .map((m) => `<button type="button" class="info-file" data-file="${escapeHtml(m.id)}">${icons.file}<span>${escapeHtml(m.attachment.name)}</span>${icons.download}</button>`)
                 .join("")}</div></section>`
             : ""
         }
@@ -74,7 +76,7 @@ export function mountInfoPanel(container) {
                       ${avatar(m, "sm", { online: m.online })}
                       <span class="member-text"><strong>${escapeHtml(m.id === s.me.id ? "You" : m.displayName)}</strong><small>${escapeHtml(m.beanId)}</small></span>
                       ${m.role === "admin" ? `<span class="role-tag">Admin</span>` : ""}
-                      ${admin && m.id !== s.me.id ? `<button type="button" class="icon-btn" data-remove="${escapeHtml(m.id)}" title="Remove" aria-label="Remove">${icons.close}</button>` : ""}
+                      ${admin && m.id !== s.me.id ? `<button type="button" class="icon-btn" data-remove="${escapeHtml(m.id)}" data-tip="Remove" aria-label="Remove">${icons.close}</button>` : ""}
                     </div>`
                   )
                   .join("")}</div>
@@ -89,17 +91,26 @@ export function mountInfoPanel(container) {
     container.querySelector("[data-action=audio]")?.addEventListener("click", () => store.startCall("audio"));
     container.querySelector("[data-action=video]")?.addEventListener("click", () => store.startCall("video"));
     container.querySelectorAll("[data-image]").forEach((b) => (b.onclick = () => openLightbox(b.dataset.image)));
+    container.querySelectorAll("[data-file]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const m = store.thread().items.find((x) => x.id === b.dataset.file);
+        downloadFile(m?.attachment?.url, m?.attachment?.name);
+      })
+    );
     container.querySelector("[data-action=rename]")?.addEventListener("click", () => {
-      const title = prompt("Group name", conv.title);
-      if (title && title.trim() && title.trim() !== conv.title) store.groupAction("rename", { title: title.trim() }).catch(() => {});
+      promptDialog({ title: "Rename group", input: { value: conv.title, maxLength: 60, placeholder: "Group name" }, confirm: "Save" }).then((title) => {
+        if (title && title !== conv.title) store.groupAction("rename", { title }).catch(() => {});
+      });
     });
     container.querySelector("[data-action=leave]")?.addEventListener("click", () => {
-      if (confirm(`Leave "${conv.title}"?`)) store.leaveGroup().catch(() => {});
+      confirmDialog({ title: `Leave "${conv.title}"?`, text: "You won't get new messages from this group.", confirm: "Leave group", danger: true }).then((ok) => ok && store.leaveGroup().catch(() => {}));
     });
     container.querySelectorAll("[data-remove]").forEach((b) =>
       b.addEventListener("click", () => {
         const m = conv.members.find((x) => x.id === b.dataset.remove);
-        if (confirm(`Remove ${m?.displayName} from the group?`)) store.groupAction("remove_member", { userId: b.dataset.remove }).catch(() => {});
+        confirmDialog({ title: `Remove ${m?.displayName || "this member"}?`, text: "They will leave the group and stop getting its messages.", confirm: "Remove", danger: true }).then(
+          (ok) => ok && store.groupAction("remove_member", { userId: b.dataset.remove }).catch(() => {})
+        );
       })
     );
 

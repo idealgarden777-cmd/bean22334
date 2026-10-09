@@ -234,3 +234,12 @@ textarea.field-input { resize: none; min-height: 88px; line-height: 1.5; }
 .msg-actions { position: absolute; top: 50%; margin-top: -18px; z-index: 4; white-space: nowrap; }
 .message-row.other .msg-actions { left: calc(100% + 6px); }
 .message-row.own .msg-actions { right: calc(100% + 6px); }
+
+/* Signaturesi ink mark: bare mark, no tile, follows text colour */
+.bean-logo { display: inline-grid; place-items: center; background: transparent !important; color: var(--text) !important; box-shadow: none !important; border-radius: 0 !important; }
+.bean-logo svg { width: 100%; height: 100%; display: block; }
+.sidebar-header .bean-logo { width: 28px; height: 28px; }
+.gate-card .bean-logo { width: 52px; height: 52px; }
+.gate-card .bean-logo svg { width: 52px; height: 52px; }
+.chat-empty-mark .bean-logo { width: 64px; height: 64px; }
+.chat-empty-mark .bean-logo svg { width: 64px; height: 64px; }

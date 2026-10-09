@@ -79,7 +79,8 @@ export function mountComposer(container) {
     // measure only while visible (a hidden textarea reports 0 and collapses after recording)
     if (!recording) {
       input.style.height = "auto";
-      input.style.height = Math.min(Math.max(input.scrollHeight, 24), 168) + "px";
+      const h = input.scrollHeight; // 0 while the chat is off-screen (phones): keep the natural height
+      input.style.height = h ? Math.min(h, 168) + "px" : "";
     }
     attachBtn.hidden = recording;
     emojiBtn.hidden = recording;

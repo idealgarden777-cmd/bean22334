@@ -18,11 +18,15 @@ export function mountNewChat(container) {
       <div class="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true" aria-label="New chat">
           <div class="modal-header">
-            <div class="segmented">
-              <button type="button" class="active" data-mode="direct">Direct</button>
-              <button type="button" data-mode="group">New group</button>
+            <div class="modal-heading">
+              <h2 class="modal-title">New chat</h2>
+              <p class="modal-sub">Message anyone by their Bean ID.</p>
             </div>
-            <button type="button" class="icon-btn" data-close aria-label="Close">${icons.close}</button>
+            <button type="button" class="icon-btn modal-x" data-close aria-label="Close">${icons.close}</button>
+          </div>
+          <div class="segmented segmented-full">
+            <button type="button" class="active" data-mode="direct">Direct</button>
+            <button type="button" data-mode="group">New group</button>
           </div>
           <form class="modal-form">
             <input class="group-name" type="text" placeholder="Group name" maxlength="60" hidden />
@@ -60,6 +64,8 @@ export function mountNewChat(container) {
       mode = m;
       container.querySelectorAll("[data-mode]").forEach((b) => b.classList.toggle("active", b.dataset.mode === m));
       groupName.hidden = m !== "group";
+      container.querySelector(".modal-title").textContent = m === "group" ? "New group" : "New chat";
+      container.querySelector(".modal-sub").textContent = m === "group" ? "Name it, then add people by Bean ID." : "Message anyone by their Bean ID.";
       input.placeholder = m === "group" ? "Add people by Bean ID" : "Search a Bean ID, e.g. leo11";
       showError("");
       paintPicked();

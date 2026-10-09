@@ -128,10 +128,10 @@ r = await call(me, { cookie: sam.cookie, body: { action: "logout_all" } });
 r = await call(me, { method: "GET", cookie: sam.cookie });
 ok(r.body.authenticated === false, "log out all devices");
 r = await call(me, { method: "GET", cookie: leo.cookie });
-ok(r.body.authenticated === true && r.body.build?.version === "3.2.1", "other users unaffected; build 3.2.1");
+ok(r.body.authenticated === true && r.body.build?.version === "3.3.0", "other users unaffected; build 3.3.0");
 
 r = await call(me, { method: "GET", query: { health: "1" } });
-ok(r.code === 200 && r.body.ok && r.body.database === "ok" && r.body.version === "3.2.1" && r.body.serverKey, "health check");
+ok(r.code === 200 && r.body.ok && r.body.database === "ok" && r.body.version === "3.3.0" && r.body.serverKey, "health check");
 
 // brute force
 let blocked = false;

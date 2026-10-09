@@ -89,9 +89,13 @@ const profileTab = (me) => `
         <button type="button" class="photo-btn" data-photo-pick aria-label="Change photo">${TAB_ICONS.camera}</button>
         <input type="file" accept="image/jpeg,image/png,image/webp" data-photo-input hidden>
       </div>
+      <div class="profile-card-text">
+        <strong>${escapeHtml(me.displayName || me.username || "")}</strong>
+        <small>${escapeHtml(me.beanId || (me.username ? `${me.username}@bean` : ""))}</small>
       <div class="profile-photo-actions">
         <button type="button" class="btn-soft btn-sm" data-photo-pick>Change photo</button>
         ${me.avatarUrl ? `<button type="button" class="btn-ghost btn-sm" data-photo-remove>Remove</button>` : ""}
+      </div>
       </div>
     </div>
     <form class="set-form" data-form="profile" autocomplete="off">

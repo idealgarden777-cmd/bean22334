@@ -32,7 +32,7 @@ export function initials(name) {
     .join("");
 }
 
-const AVATAR_TONES = ["#171717", "#3a3a3a", "#5b5b5b", "#0f8f66", "#3377e8", "#7660e8"];
+const AVATAR_TONES = ["var(--avatar-ink)", "#3a3a3a", "#5b5b5b", "#0f8f66", "#3377e8", "#7660e8"];
 
 export function toneFor(seed) {
   let hash = 0;

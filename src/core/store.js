@@ -14,6 +14,22 @@ const OVERLAP_MS = 3000;
 const RING_TIMEOUT_MS = 45000;
 
 const byCreated = (a, b) => new Date(a.createdAt) - new Date(b.createdAt);
+/* Media links are signed for 6 hours and the server signs a fresh one on every fetch.
+ * Keep the first link we saw (or the local copy of our own upload) so photos and voice
+ * notes don't reload / flicker on every sync. Refresh after 5 hours. */
+const mediaUrls = new Map(); // message id -> { url, at }
+const URL_KEEP_MS = 5 * 60 * 60 * 1000;
+function stableMedia(m) {
+  if (!m?.attachment?.url || m.pending) return m;
+  const known = mediaUrls.get(m.id);
+  if (known && Date.now() - known.at < URL_KEEP_MS) {
+    if (known.url === m.attachment.url) return m;
+    return { ...m, attachment: { ...m.attachment, url: known.url } };
+  }
+  mediaUrls.set(m.id, { url: m.attachment.url, at: Date.now() });
+  return m;
+}
+
 const tempId = () => `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
 export const store = {
@@ -226,11 +242,13 @@ export const store = {
     let changed = false;
     let newFromOthers = false;
 
-    for (const m of incoming) {
+    for (const raw of incoming) {
+      const m = stableMedia(raw);
       const i = index.get(m.id);
       if (i !== undefined) {
         if (items[i].updatedAt !== m.updatedAt) {
-          items[i] = m;
+          // keep the on-screen key of a message we sent, so its bubble is updated, not re-created
+          items[i] = items[i].localKey ? { ...m, localKey: items[i].localKey } : m;
           changed = true;
         }
         continue;
@@ -386,8 +404,11 @@ export const store = {
   settleTemp(cid, id, real) {
     const t = this.thread(cid);
     let items = t.items;
-    if (real && items.some((m) => m.id === real.id)) items = items.filter((m) => m.id !== id);
-    else items = items.map((m) => (m.id === id ? real || { ...m, pending: false, failed: true } : m));
+    if (real && items.some((m) => m.id === real.id)) {
+      items = items.filter((m) => m.id !== id).map((m) => (m.id === real.id ? { ...m, localKey: id } : m));
+    } else {
+      items = items.map((m) => (m.id === id ? (real ? stableMedia({ ...real, localKey: id }) : { ...m, pending: false, failed: true }) : m));
+    }
     this.set({ threads: { ...this.state.threads, [cid]: { ...t, items } } });
   },
 
@@ -438,7 +459,11 @@ export const store = {
         replyTo: replyTo?.id || null,
         clientId: id,
       });
-      if (localUrl && message.attachment && !message.attachment.url) message.attachment.url = localUrl;
+      // show our own upload from the local copy: no reload, no flicker
+      if (localUrl && message.attachment) {
+        message.attachment.url = localUrl;
+        mediaUrls.set(message.id, { url: localUrl, at: Date.now() });
+      }
       this.settleTemp(cid, id, message);
       this.askNeyo(cid, clean);
       this.askGhost(cid);

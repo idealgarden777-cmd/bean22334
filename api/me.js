@@ -6,7 +6,7 @@ import {
 import { setGhost } from "./_lib/ghost.js";
 
 const TIMERS = [0, 86400, 604800, 2592000]; // off, 24h, 7d, 30d (seconds)
-const VERSION = "3.0.0";
+const VERSION = "3.1.0";
 const build = () => ({
   version: VERSION,
   commit: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || null,
@@ -14,6 +14,21 @@ const build = () => ({
     ? `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER}/${process.env.VERCEL_GIT_REPO_SLUG}`
     : null,
 });
+
+/* Which kind of Supabase key the server has (never the key itself).
+ * Must be service_role / secret: bean_lockdown.sql blocks the public anon key. */
+function keyKind(key) {
+  const k = String(key || "");
+  if (!k) return "missing";
+  if (k.startsWith("sb_secret_")) return "secret";
+  if (k.startsWith("sb_publishable_")) return "publishable (WRONG: use the service_role/secret key)";
+  try {
+    const role = JSON.parse(Buffer.from(k.split(".")[1], "base64url").toString()).role;
+    return role === "service_role" ? "service_role" : `${role} (WRONG: use the service_role key)`;
+  } catch {
+    return "unknown";
+  }
+}
 
 function deviceName(ua) {
   const s = String(ua || "");
@@ -66,6 +81,7 @@ export default async function handler(req, res) {
         database: error ? "down" : "ok",
         dbMs: Date.now() - t0,
         neyo: process.env.GEMINI_API_KEY ? "configured" : "missing GEMINI_API_KEY",
+        serverKey: keyKind(process.env.SUPABASE_SERVICE_ROLE_KEY),
         ...build(),
       });
     }

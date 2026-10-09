@@ -1,3 +1,4 @@
+import { patchList } from "../core/dom.js";
 import { store } from "../core/store.js";
 import { icons } from "./icons.js";
 import { avatar, escapeHtml, formatListTime } from "../core/utils.js";
@@ -138,6 +139,7 @@ export function mountSidebar(container) {
     if (item) store.selectConversation(item.dataset.id);
   });
 
+  let listNodes = new Map();
   let lastKey = "";
   let lastMe = "";
   const render = (s) => {
@@ -187,9 +189,16 @@ export function mountSidebar(container) {
         list.insertAdjacentHTML("afterbegin", pin);
         list.querySelector("[data-neyo]").onclick = () => store.openNeyo();
       }
+      listNodes = new Map();
       return;
     }
-    list.innerHTML = neyoRow(s) + items.map((c) => chatRow(c, s)).join("");
+    // patch only the rows that changed (no flicker of avatars while chatting)
+    const parts = [];
+    const pinRow = neyoRow(s);
+    if (pinRow) parts.push({ key: "neyo", html: pinRow });
+    for (const c of items) parts.push({ key: c.id, html: chatRow(c, s) });
+    if (list.querySelector(".chat-list-empty")) list.textContent = "";
+    listNodes = patchList(list, listNodes, parts, false);
     const ny = list.querySelector("[data-neyo]");
     if (ny) ny.onclick = () => store.openNeyo();
   };

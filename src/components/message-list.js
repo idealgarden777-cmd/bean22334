@@ -1,3 +1,4 @@
+import { patchList } from "../core/dom.js";
 import { store } from "../core/store.js";
 import { icons } from "./icons.js";
 import {
@@ -238,6 +239,8 @@ export function mountMessageList(container) {
   let lastCount = 0;
   let unseenBelow = 0;
   let firstPaint = true;
+  let nodes = new Map(); // row key -> { html, el }
+  let shownConv = null;
 
   const nearBottom = () => scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 140;
   const toBottom = (smooth = false) => scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth ? "smooth" : "auto" });
@@ -266,41 +269,57 @@ export function mountMessageList(container) {
 
     if (!thread.loaded) {
       list.innerHTML = `<div class="list-loading"><div class="spinner"></div></div>`;
+      nodes = new Map();
       return;
+    }
+    const switched = shownConv !== conv.id;
+    if (switched) {
+      shownConv = conv.id;
+      nodes = new Map();
+      list.textContent = "";
     }
 
     const now = new Date().toISOString();
     const items = thread.items.filter((m) => !state.unsending[m.id] && !(m.expiresAt && m.expiresAt <= now));
     const lastOwn = [...items].reverse().find((m) => m.senderId === state.me.id && !m.pending && !m.deletedAt && !["system", "call"].includes(m.kind));
-    let html = thread.hasMore ? `<div class="load-older">${thread.loading ? `<div class="spinner"></div>` : `<button type="button" data-older>Load earlier messages</button>`}</div>` : "";
+    const parts = [];
+    if (thread.hasMore) {
+      parts.push({ key: "older", html: `<div class="load-older">${thread.loading ? `<div class="spinner"></div>` : `<button type="button" data-older>Load earlier messages</button>`}</div>` });
+    }
     if (!items.length) {
-      html += `<div class="message-empty">
+      parts.push({
+        key: "empty",
+        html: `<div class="message-empty">
         ${avatar(conv.type === "dm" ? conv.peer : conv, "lg")}
         <strong>${escapeHtml(conv.title)}</strong>
         <span>${conv.type === "dm" ? escapeHtml(conv.peer?.beanId || "") : `${conv.members.length} members`}</span>
         <p>No messages yet. Say hi 👋</p>
-      </div>`;
+      </div>`,
+      });
     }
     let lastDay = "";
     items.forEach((m, i) => {
       const day = formatDay(m.createdAt);
-      if (day !== lastDay) html += `<div class="day-divider"><span>${day}</span></div>`;
+      if (day !== lastDay) parts.push({ key: `day:${day}`, html: `<div class="day-divider"><span>${day}</span></div>` });
       lastDay = day;
-      html += messageHtml(m, { state, conv, prev: items[i - 1], next: items[i + 1], lastOwnId: lastOwn?.id });
+      parts.push({ key: `m:${m.localKey || m.id}`, msg: true, html: messageHtml(m, { state, conv, prev: items[i - 1], next: items[i + 1], lastOwnId: lastOwn?.id }) });
     });
     if (typing.length) {
-      html += `<div class="message-row other first last typing-row">
+      parts.push({
+        key: "typing",
+        html: `<div class="message-row other first last typing-row">
         ${conv.type === "group" ? `<span class="row-avatar"></span>` : ""}
         <div class="message-content"><div class="message-bubble typing-bubble"><i></i><i></i><i></i></div></div>
-      </div>`;
+      </div>`,
+      });
     }
-    list.innerHTML = html;
+    nodes = patchList(list, nodes, parts, !firstPaint && !switched && !prepended);
     bindPlayer(list);
 
     const newCount = items.length;
     const lastMsg = items[items.length - 1];
     const grew = newCount > lastCount;
-    if (firstPaint) {
+    if (firstPaint || switched) {
       toBottom();
       firstPaint = false;
     } else if (prepended) {

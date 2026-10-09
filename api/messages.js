@@ -5,6 +5,14 @@ const PAGE = 50;
 const MAX_TEXT = 2000;
 const EMOJI_OK = /^[\p{Extended_Pictographic}\u200d\ufe0f\u{1F3FB}-\u{1F3FF}]{1,8}$/u;
 
+/* Files that a browser could run as a page/script are stored as plain downloads. */
+function safeMime(mime) {
+  const m = String(mime || "").toLowerCase().slice(0, 100);
+  if (!/^[a-z0-9.+-]+\/[a-z0-9.+-]+$/.test(m)) return "application/octet-stream";
+  if (/html|svg|xml|javascript|ecmascript|x-sh|wasm/.test(m)) return "application/octet-stream";
+  return m;
+}
+
 function kindForMime(mime) {
   if (String(mime).startsWith("image/")) return "image";
   if (String(mime).startsWith("audio/")) return "audio";
@@ -65,9 +73,9 @@ export default withUser(
           attachment = {
             path: a.path,
             name: String(a.name || "file").slice(0, 200),
-            size: Number(a.size) || 0,
-            mime: String(a.mime || "application/octet-stream").slice(0, 100),
-            duration: a.duration ? Number(a.duration) : null,
+            size: Math.max(0, Math.min(Number(a.size) || 0, 25 * 1024 * 1024)),
+            mime: safeMime(a.mime),
+            duration: Number.isFinite(Number(a.duration)) && Number(a.duration) > 0 ? Math.min(Number(a.duration), 3600) : null,
           };
         }
         if (!text && !attachment) fail(400, "Message is empty");

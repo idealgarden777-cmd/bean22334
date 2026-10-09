@@ -117,6 +117,10 @@ export const store = {
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) this.syncNow();
     });
+    window.addEventListener("online", () => {
+      this.failures = Math.min(this.failures || 0, 2);
+      this.syncNow();
+    });
     window.addEventListener("pagehide", () => this.pendingUnsend?.commit());
     window.addEventListener("hashchange", () => {
       const id = location.hash.slice(1);
@@ -137,10 +141,13 @@ export const store = {
 
   loop() {
     clearTimeout(this.timer);
+    // network trouble -> back off (2.5s, 5s, 10s ... max 30s) instead of hammering the server
+    const base = document.hidden ? HIDDEN_MS : VISIBLE_MS;
+    const wait = this.failures ? Math.min(30000, base * 2 ** Math.min(this.failures, 4)) : base;
     this.timer = setTimeout(async () => {
       await this.syncOnce();
       this.loop();
-    }, document.hidden ? HIDDEN_MS : VISIBLE_MS);
+    }, wait);
   },
 
   syncNow() {
@@ -173,8 +180,14 @@ export const store = {
       }
       if (res.conversations) this.applyConversations(res.conversations);
       this.handleIncomingCall(res.incomingCall);
+      if (this.failures >= 2) this.toast("Wapas online ✓");
+      this.failures = 0;
     } catch (err) {
       if (err.status === 401) this.set({ status: "signedOut" });
+      else {
+        this.failures = (this.failures || 0) + 1;
+        if (this.failures === 2) this.toast("Internet/connection masla: dobara jor raha hai…", 6000);
+      }
     } finally {
       this.syncing = false;
     }

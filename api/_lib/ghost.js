@@ -158,8 +158,14 @@ export async function handleGhostDm(conversationId) {
   const line = (r) => `${r.sender_id === ownerId ? (r.ghost ? "Ghost" : ownerName) : peerName}: ${r.body || `[${r.kind}${r.attachment?.name ? " " + r.attachment.name : ""}]`}`;
   const freshText = fresh.map((r) => r.body || `[${r.kind}]`).join(" / ").slice(0, 300);
 
+  // cost + spam guard: at most 8 AI decisions per chat per hour, then the plain away note
+  const { count: recentAi } = await supabase
+    .from("bean_ghost_log")
+    .select("id", { head: true, count: "exact" })
+    .eq("conversation_id", conversationId)
+    .gt("created_at", new Date(Date.now() - 3600000).toISOString());
   let decision = null;
-  if (geminiReady()) {
+  if (geminiReady() && (recentAi || 0) <= 8) {
     try {
       decision = cleanJson(
         await ask(

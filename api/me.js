@@ -58,6 +58,17 @@ const WALLPAPERS = ["none", "dots", "grid", "sand", "mist", "night"];
  * POST /api/me {action:"update", ghostEnabled?, ghostNote?, ghostHours?}  (Neyo Ghost: Delegated Presence) */
 export default async function handler(req, res) {
   try {
+    if (req.method === "GET" && req.query?.health) {
+      const t0 = Date.now();
+      const { error } = await supabase.from("bean_users").select("id", { head: true, count: "exact" }).limit(1);
+      return send(res, error ? 503 : 200, {
+        ok: !error,
+        database: error ? "down" : "ok",
+        dbMs: Date.now() - t0,
+        neyo: process.env.GEMINI_API_KEY ? "configured" : "missing GEMINI_API_KEY",
+        ...build(),
+      });
+    }
     if (req.method === "GET") {
       const user = await getSessionUser(req);
       if (!user) return send(res, 200, { authenticated: false });

@@ -3,8 +3,6 @@
  * ========================================================= */
 import { api } from "./api.js";
 import { CallSession } from "./call.js";
-import { e2ee, E2EEError } from "./e2ee.js";
-import { keyStore } from "./keystore.js";
 import {
   playMessageSound, startRinging, stopRinging, showNotification, setTitleBadge,
   notificationPermission, askNotificationPermission,
@@ -20,11 +18,7 @@ const tempId = () => `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 7)
 
 export const store = {
   state: {
-    status: "loading", // loading | signedOut | locked | ready | error
-    lockMode: null, // password | oldlock | reset (unlock screen)
-    build: null,
-    media: {}, // messageId -> decrypted blob URL (photos, voice notes, files)
-    keyTick: 0, // bumps when a contact key / safety number state changes
+    status: "loading", // loading | signedOut | ready | error
     error: null,
     me: null,
     settings: { messageTimer: 0, wallpaper: "none", ghostEnabled: false, ghostNote: "", ghostUntil: null },
@@ -106,132 +100,12 @@ export const store = {
       res = await api.me();
     }
     if (!res.authenticated) return this.set({ status: "signedOut" });
-    this.set({ me: res.user, settings: { ...this.state.settings, ...(res.settings || {}) }, build: res.build || null });
-    e2ee.onChange(() => this.set({ keyTick: this.state.keyTick + 1 }));
+    this.set({ me: res.user, settings: { ...this.state.settings, ...(res.settings || {}) } });
 
-    // One password for everything: the login password also unlocks the encryption key (no extra screen).
-    let once = null;
-    try {
-      once = sessionStorage.getItem("bean_unlock_once");
-      sessionStorage.removeItem("bean_unlock_once");
-    } catch {}
-    try {
-      const lock = await e2ee.status(res.user);
-      if (lock !== "ready") {
-        if (once) {
-          this.set({ status: "loading" });
-          try {
-            await this.unlockWithPassword(once, { verified: true });
-            return;
-          } catch (err) {
-            if (err.code !== "SWITCHED") throw err; // backup still uses an older separate Chat Lock: ask once
-            return this.set({ status: "locked", lockMode: "oldlock" });
-          }
-        }
-        return this.set({ status: "locked", lockMode: "password" });
-      }
-    } catch (err) {
-      return this.set({ status: "error", error: err.message });
-    }
-    return this.boot();
-  },
-
-  /* ---------------- Chat Lock ---------------- */
-
-  /* Unlock (or first-time set up) this device's chats with the Bean password. */
-  async unlockWithPassword(password, { verified = false } = {}) {
-    if (!e2ee.record) {
-      if (!verified) {
-        const { ok } = await api.verifyPassword(password);
-        if (!ok) throw Object.assign(new Error("Password galat hai"), { code: "BAD_PASSWORD" });
-      }
-      await e2ee.setup(password);
-      return this.boot();
-    }
-    try {
-      await e2ee.unlock(password);
-    } catch (err) {
-      if (err.code !== "WRONG_PASSPHRASE") throw err;
-      // right Bean password but the backup still uses an older separate Chat Lock?
-      const ok = verified || (await api.verifyPassword(password)).ok;
-      if (!ok) throw Object.assign(new Error("Password galat hai"), { code: "BAD_PASSWORD" });
-      this.loginPassword = password;
-      this.set({ lockMode: "oldlock" });
-      throw Object.assign(new Error(""), { code: "SWITCHED" });
-    }
-    return this.boot();
-  },
-  /* Older separate Chat Lock: open with it once, then move the backup onto the Bean password. */
-  async unlockOldLock(oldLock) {
-    await e2ee.unlock(oldLock);
-    if (this.loginPassword) {
-      try {
-        await e2ee.saveBackup(await e2ee.resealBackup(oldLock, this.loginPassword));
-      } catch {}
-      this.loginPassword = null;
-    }
-    return this.boot();
-  },
-  /* Bean password change keeps the same key: the backup is re-sealed with the new password. */
-  async changePassword({ displayName, currentPassword, password }) {
-    let resealed = null;
-    try {
-      resealed = await e2ee.resealBackup(currentPassword, password);
-    } catch (err) {
-      if (!["WRONG_PASSPHRASE", "NO_KEY"].includes(err.code)) throw err;
-    }
-    const res = await this.updateSettings({ displayName, password, currentPassword });
-    if (resealed) {
-      try {
-        await e2ee.saveBackup(resealed);
-      } catch {
-        this.toast("Password badal gaya, lekin chat backup update nahi hua. Dobara try karein.");
-      }
-    }
-    return res;
-  },
-
-  async resetWithPassword(password) {
-    const { ok } = await api.verifyPassword(password);
-    if (!ok) throw Object.assign(new Error("Password galat hai"), { code: "BAD_PASSWORD" });
-    await e2ee.setup(password, { reset: true });
-    return this.boot();
-  },
-
-  async setupLock(passphrase) {
-    await e2ee.setup(passphrase);
-    return this.boot();
-  },
-  async unlock(passphrase) {
-    await e2ee.unlock(passphrase);
-    return this.boot();
-  },
-  async resetLock(passphrase) {
-    await e2ee.setup(passphrase, { reset: true });
-    return this.boot();
-  },
-  setLockMode(lockMode) {
-    this.set({ lockMode });
-  },
-  async changeLock(oldPass, newPass) {
-    await e2ee.changeLock(oldPass, newPass);
-    this.toast("Updated");
-  },
-  async lockThisDevice() {
-    await e2ee.lockDevice();
-    location.reload();
-  },
-
-  async boot() {
-    if (this.booted) return;
-    this.booted = true;
-    this.set({ status: "loading" });
-    await e2ee.loadAllWraps().catch(() => {});
     try {
       const { conversations } = await api.conversations();
-      const decorated = await this.decorate(conversations);
-      this.knownUnread = Object.fromEntries(decorated.map((c) => [c.id, c.unread]));
-      this.set({ conversations: decorated, status: "ready" });
+      this.knownUnread = Object.fromEntries(conversations.map((c) => [c.id, c.unread]));
+      this.set({ conversations, status: "ready" });
       this.updateBadge();
     } catch (err) {
       return this.set({ status: "error", error: err.message });
@@ -249,84 +123,10 @@ export const store = {
       if (id !== (this.state.activeId || "")) id ? this.selectConversation(id) : this.closeChat();
     });
     this.loop();
-    // Neyo: reminders, digests, Away Mode auto-off while Bean is open
+    // Neyo Ghost: let the background tasks run while Bean is open
     const tick = () => api.neyoTick().catch(() => {});
     setTimeout(tick, 4000);
     setInterval(tick, 60000);
-  },
-
-  /* ---------------- E2EE: decrypt what the server sent ---------------- */
-
-  previews: new Map(), // last message id -> decrypted preview
-
-  async decorate(conversations) {
-    return Promise.all(
-      conversations.map(async (c) => {
-        if (!c.lastEnc) return c;
-        if (!this.previews.has(c.lastEnc.id)) {
-          const text = await e2ee.previewOf(c).catch(() => "🔒 Encrypted message");
-          if (!/^🔒/.test(text)) this.previews.set(c.lastEnc.id, text);
-          return { ...c, lastMessage: text };
-        }
-        return { ...c, lastMessage: this.previews.get(c.lastEnc.id) };
-      })
-    );
-  },
-
-  async open(list) {
-    const out = await Promise.all((list || []).map((m) => (m.enc || m.replyTo?.enc || m.encReactions?.length ? e2ee.openMessage(m) : m)));
-    for (const m of out) this.loadMedia(m, false);
-    return out;
-  },
-
-  /* photos + voice notes decrypt right away, files when tapped */
-  async loadMedia(m, force = true) {
-    const a = m?.attachment;
-    if (!a?.encUrl || !a.k || this.state.media[m.id] || this.mediaLoading?.has(m.id)) return this.state.media[m?.id];
-    if (!force && !["image", "audio"].includes(m.kind)) return null;
-    (this.mediaLoading ||= new Set()).add(m.id);
-    try {
-      const url = await e2ee.decryptMedia(a);
-      this.set({ media: { ...this.state.media, [m.id]: url } });
-      return url;
-    } catch {
-      if (force) this.toast("File decrypt nahi ho saki");
-      return null;
-    } finally {
-      this.mediaLoading.delete(m.id);
-    }
-  },
-
-  async downloadFile(id) {
-    const m = this.thread().items.find((x) => x.id === id);
-    if (!m) return;
-    const url = this.state.media[id] || (await this.loadMedia(m, true));
-    if (!url) return;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = m.attachment?.name || "file";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  },
-
-  /* contact key changed: user confirms, then everything re-decrypts */
-  async acceptKey(userId) {
-    e2ee.acceptKey(userId);
-    const cid = this.state.activeId;
-    if (cid) {
-      await e2ee.loadConv(cid, { force: true }).catch(() => {});
-      await this.reloadThread(cid);
-    }
-  },
-
-  async reloadThread(cid) {
-    try {
-      const { messages, hasMore } = await api.messages(cid);
-      const opened = await this.open(messages);
-      this.set({ threads: { ...this.state.threads, [cid]: { items: [], hasMore, loaded: false, loading: false } } });
-      this.mergeMessages(cid, opened, { hasMore, prepend: true });
-    } catch {}
   },
 
   isDemo() {
@@ -365,13 +165,13 @@ export const store = {
       if (res.active && res.active.conversationId === this.state.activeId) {
         const cid = res.active.conversationId;
         this.since[cid] = new Date(new Date(res.now).getTime() - OVERLAP_MS).toISOString();
-        this.mergeMessages(cid, await this.open(res.active.messages), { fromSync: true });
+        this.mergeMessages(cid, res.active.messages, { fromSync: true });
         this.set({
           typing: { ...this.state.typing, [cid]: res.active.typing },
           reads: { ...this.state.reads, [cid]: res.active.reads },
         });
       }
-      if (res.conversations) this.applyConversations(await this.decorate(res.conversations));
+      if (res.conversations) this.applyConversations(res.conversations);
       this.handleIncomingCall(res.incomingCall);
     } catch (err) {
       if (err.status === 401) this.set({ status: "signedOut" });
@@ -416,7 +216,7 @@ export const store = {
     for (const m of incoming) {
       const i = index.get(m.id);
       if (i !== undefined) {
-        if (items[i].updatedAt !== m.updatedAt || (items[i].decryptError && !m.decryptError)) {
+        if (items[i].updatedAt !== m.updatedAt) {
           items[i] = m;
           changed = true;
         }
@@ -470,14 +270,12 @@ export const store = {
     const conversations = this.state.conversations.map((c) => (c.id === id ? { ...c, unread: 0 } : c));
     this.set({ activeId: id, replyTo: null, editing: null, conversations, panelOpen: this.state.panelOpen && window.innerWidth > 1100 });
     this.updateBadge();
-    const opened = this.conversation(id);
-    if (opened?.e2ee !== false) e2ee.keysFor(opened.members.map((m) => m.id), { maxAge: 10000 }).catch(() => {});
 
     if (!this.thread(id).loaded) {
       this.set({ threads: { ...this.state.threads, [id]: { ...this.thread(id), loading: true } } });
       try {
         const { messages, hasMore } = await api.messages(id);
-        this.mergeMessages(id, await this.open(messages), { hasMore, prepend: true });
+        this.mergeMessages(id, messages, { hasMore, prepend: true });
         if (!messages.length) {
           this.set({ threads: { ...this.state.threads, [id]: { items: [], hasMore: false, loaded: true, loading: false } } });
         }
@@ -501,7 +299,7 @@ export const store = {
     this.set({ threads: { ...this.state.threads, [id]: { ...t, loading: true } } });
     try {
       const { messages, hasMore } = await api.messages(id, t.items[0].createdAt);
-      this.mergeMessages(id, await this.open(messages), { hasMore, prepend: true });
+      this.mergeMessages(id, messages, { hasMore, prepend: true });
     } catch (err) {
       this.toast(err.message);
       this.set({ threads: { ...this.state.threads, [id]: { ...this.thread(id), loading: false } } });
@@ -609,62 +407,54 @@ export const store = {
     this.pushTemp(cid, temp);
     this.lastTypingSent = 0;
 
-    const conv = this.conversation(cid);
-    const secure = conv?.e2ee !== false; // every chat except the Neyo chat
     try {
-      if (secure) await e2ee.sendKey(conv); // fail fast (missing / changed keys) before uploading
       let att = attachment;
-      let fileMeta = null;
       if (file) {
         const upId = id;
         this.set({ uploads: [...this.state.uploads, { id: upId, conversationId: cid, name: file.name, progress: 0 }] });
-        let toSend = file;
-        if (secure) {
-          const sealed = await e2ee.encryptFile(file);
-          toSend = new File([sealed.blob], "encrypted.bin", { type: "application/octet-stream" });
-          fileMeta = { name: file.name, mime: file.type || "application/octet-stream", size: file.size, duration: duration || null, k: sealed.k, iv: sealed.iv };
-        }
-        att = await api.upload(cid, toSend, (p) =>
+        att = await api.upload(cid, file, (p) =>
           this.set({ uploads: this.state.uploads.map((u) => (u.id === upId ? { ...u, progress: p } : u)) })
         );
-        if (duration && !secure) att.duration = duration;
+        if (duration) att.duration = duration;
         this.set({ uploads: this.state.uploads.filter((u) => u.id !== upId) });
       }
-      let payload;
-      if (secure) {
-        const enc = await e2ee.encryptMessage(conv, { t: temp.kind, x: clean, ...(fileMeta ? { a: fileMeta } : {}) });
-        payload = { conversationId: cid, enc, attachment: att ? { path: att.path, size: att.size } : null, replyTo: replyTo?.id || null, clientId: id };
-      } else {
-        payload = { conversationId: cid, text: clean, attachment: att, replyTo: replyTo?.id || null, clientId: id };
-      }
-      const { message: raw } = await api.messageAction("send", payload);
-      const [message] = await this.open([raw]);
-      if (localUrl && message.attachment) {
-        message.attachment.url ||= localUrl;
-        this.set({ media: { ...this.state.media, [message.id]: localUrl } });
-      }
+      const { message } = await api.messageAction("send", {
+        conversationId: cid,
+        text: clean,
+        attachment: att,
+        replyTo: replyTo?.id || null,
+        clientId: id,
+      });
+      if (localUrl && message.attachment && !message.attachment.url) message.attachment.url = localUrl;
       this.settleTemp(cid, id, message);
       this.askNeyo(cid, clean);
+      this.askGhost(cid);
     } catch (err) {
       this.set({ uploads: this.state.uploads.filter((u) => u.id !== id) });
       this.settleTemp(cid, id, null);
-      this.toast(err.message || "Message not sent", err instanceof E2EEError ? 6000 : 3200);
+      this.toast(err.message || "Message not sent");
     }
   },
 
-  /* Neyo answers only in its own chat (the one chat that is not end-to-end encrypted) */
+  /* Neyo answers in his DM, and in groups when someone writes @neyo */
   askNeyo(cid, text) {
     const c = this.conversation(cid);
-    if (!c || !text || c.e2ee !== false || !c.peer?.isBot) return;
+    if (!c || !text) return;
+    const neyoHere = c.members?.some((m) => m.username === "neyo");
+    if (!neyoHere || (c.type === "group" && !/@neyo\b/i.test(text))) return;
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const run = (retry) =>
-      api.neyoReply(cid, tz).then(() => {
-        this.syncNow?.();
-        this.refreshSettings(); // Neyo may have turned Away Mode on/off
-      }).catch((err) => {
-        if (retry && (!err.status || err.status >= 500)) setTimeout(() => run(false), 1500);
-      });
-    run(true);
+    api.neyoReply(cid, tz).then(() => {
+      this.syncNow?.();
+      this.refreshSettings(); // Neyo may have turned Ghost Mode on/off
+    }).catch(() => {});
+  },
+
+  /* Neyo Ghost (Delegated Presence): the other person is away -> Ghost may answer for them */
+  askGhost(cid) {
+    const c = this.conversation(cid);
+    if (!c || c.type !== "dm" || !c.peer || c.peer.isBot) return;
+    if (!c.peer.ghost && c.peer.online) return;
+    api.neyoGhost(cid).then((r) => r?.replied && this.syncNow?.()).catch(() => {});
   },
 
   async refreshSettings() {
@@ -678,8 +468,8 @@ export const store = {
     const wasOn = this.state.settings.ghostEnabled;
     await this.updateSettings(changes);
     const on = this.state.settings.ghostEnabled;
-    if (on && !wasOn) this.toast("👻 Away Mode on");
-    if (!on && wasOn) this.toast("Welcome back! Report Neyo ki chat mein hai");
+    if (on && !wasOn) this.toast("👻 Ghost Mode on");
+    if (!on && wasOn) this.toast("Welcome back! Handoff report Neyo ki chat mein hai");
   },
 
   openNeyo() {
@@ -721,8 +511,7 @@ export const store = {
 
   async messageAction(action, payload) {
     try {
-      const { message: raw } = await api.messageAction(action, payload);
-      const [message] = await this.open([raw]);
+      const { message } = await api.messageAction(action, payload);
       this.mergeMessages(message.conversationId, [message]);
       return message;
     } catch (err) {
@@ -735,17 +524,6 @@ export const store = {
     const clean = text.trim();
     this.set({ editing: null });
     if (!msg || !clean || clean === msg.text) return;
-    const conv = this.conversation(msg.conversationId);
-    if (conv?.e2ee !== false) {
-      if (!msg.encrypted) return this.toast("Purane (not encrypted) messages edit nahi ho sakte");
-      try {
-        const enc = await e2ee.encryptMessage(conv, { t: "text", x: clean });
-        await this.messageAction("edit", { messageId: msg.id, enc });
-      } catch (err) {
-        this.toast(err.message);
-      }
-      return;
-    }
     await this.messageAction("edit", { messageId: msg.id, text: clean });
   },
 
@@ -794,19 +572,7 @@ export const store = {
       return { ...m, reactions };
     });
     this.set({ threads: { ...this.state.threads, [cid]: { ...t, items } } });
-    const conv = this.conversation(cid);
-    const original = t.items.find((m) => m.id === id);
-    if (conv?.e2ee === false || !original?.encrypted) {
-      if (conv?.e2ee !== false && original && !original.encrypted) {
-        // old plaintext message in an encrypted chat: the reaction itself is still encrypted
-      } else return this.messageAction("react", { messageId: id, emoji });
-    }
-    const mine = original?.reactions.find((r) => r.userIds.includes(me));
-    if (mine?.emoji === emoji) return this.messageAction("react", { messageId: id, remove: true });
-    return e2ee
-      .encryptReaction(conv, id, emoji)
-      .then((enc) => this.messageAction("react", { messageId: id, enc }))
-      .catch((err) => this.toast(err.message));
+    return this.messageAction("react", { messageId: id, emoji });
   },
 
   /* ---------------- conversations ---------------- */
@@ -905,9 +671,8 @@ export const store = {
     if (this.session) return;
     if (!navigator.mediaDevices?.getUserMedia) return this.toast("This browser can't make calls");
     try {
-      await e2ee.sendKey(conv); // calls are set up with end-to-end encrypted signalling
       const { call, iceServers } = await api.callAction("start", { conversationId: conv.id, kind });
-      const session = new CallSession({ call: { ...call, peer: call.peer || conv.peer }, iceServers, conversation: conv });
+      const session = new CallSession({ call: { ...call, peer: call.peer || conv.peer }, iceServers });
       this.attachSession(session);
       startRinging(true);
       this.ringTimeout = setTimeout(() => {
@@ -943,11 +708,8 @@ export const store = {
     this.dismissedCalls.add(incoming.id);
     this.set({ incomingCall: null });
     try {
-      const conv = this.conversation(incoming.conversationId);
-      if (!conv) throw new Error("Call ki chat nahi mili. Bean refresh karein.");
-      await e2ee.sendKey(conv);
       const { call, iceServers } = await api.callAction("accept", { id: incoming.id });
-      const session = new CallSession({ call: { ...call, peer: call.peer || incoming.peer, status: "connecting" }, iceServers, conversation: conv });
+      const session = new CallSession({ call: { ...call, peer: call.peer || incoming.peer, status: "connecting" }, iceServers });
       this.attachSession(session);
       if (this.conversation(incoming.conversationId)) this.selectConversation(incoming.conversationId);
       await session.start();
@@ -981,6 +743,15 @@ export const store = {
 
   /* ---------------- account ---------------- */
 
+  async logoutAll() {
+    try {
+      await api.logoutAll();
+    } catch (err) {
+      return this.toast(err.message);
+    }
+    location.replace("/");
+  },
+
   async logout() {
     this.pendingUnsend?.commit();
     clearTimeout(this.timer);
@@ -988,17 +759,6 @@ export const store = {
     try {
       await api.logout();
     } catch {}
-    await keyStore.clear().catch(() => {}); // the key leaves this device with you
-    location.replace("/");
-  },
-
-  async logoutAll() {
-    try {
-      await api.logoutAll();
-    } catch (err) {
-      return this.toast(err.message);
-    }
-    await keyStore.clear().catch(() => {});
     location.replace("/");
   },
 };

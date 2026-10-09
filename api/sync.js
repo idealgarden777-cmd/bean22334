@@ -107,5 +107,5 @@ export default withUser(
     await Promise.all(jobs);
     return send(res, 200, out);
   },
-  { methods: ["GET", "POST"] }
+  { methods: ["GET", "POST"], limit: [600, 60], name: "sync" }
 );

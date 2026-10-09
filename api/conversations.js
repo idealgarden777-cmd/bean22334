@@ -1,5 +1,5 @@
 import {
-  supabase, send, withUser, readBody, fail, getMembership, findUsersByUsernames, cleanUsername, NEYO_ID,
+  supabase, send, withUser, readBody, fail, getMembership, findUsersByUsernames, cleanUsername,
 } from "./_lib/session.js";
 import { loadConversations, systemMessage } from "./_lib/chat.js";
 
@@ -47,7 +47,7 @@ async function openDm(me, username) {
 async function createGroup(me, title, usernames) {
   const name = String(title || "").trim().slice(0, 60);
   if (!name) fail(400, "Give the group a name");
-  const users = (await findUsersByUsernames(usernames)).filter((u) => u.id !== me.id && u.id !== NEYO_ID);
+  const users = (await findUsersByUsernames(usernames)).filter((u) => u.id !== me.id);
   if (!users.length) fail(400, "Add at least one Bean ID");
   if (users.length + 1 > MAX_GROUP) fail(400, "Too many members");
 
@@ -104,8 +104,8 @@ export default withUser(
 
       case "add_members": {
         await requireGroupAdmin(conversationId, me);
-        const users = (await findUsersByUsernames(body.usernames)).filter((u) => u.id !== NEYO_ID);
-        if (!users.length) fail(404, "No matching Bean IDs (Neyo can't join encrypted groups)");
+        const users = await findUsersByUsernames(body.usernames);
+        if (!users.length) fail(404, "No matching Bean IDs");
         const { error } = await supabase
           .from("bean_conversation_members")
           .upsert(users.map((u) => ({ conversation_id: conversationId, user_id: u.id, role: "member" })), {

@@ -2,6 +2,14 @@
 
 The Signaturesi communication app. One **Bean ID** (same as Neyo, from `accounts.signaturesi.com`) for chats, groups, voice notes and calls.
 
+## v3.0 (simple, no end-to-end encryption)
+
+Bean works like before: log in and chat. Messages are protected in transit (HTTPS) and stored in Supabase (encrypted at rest by Supabase), but they are **not end-to-end encrypted**, so don't market it as E2EE.
+
+Hardening kept from v2: same-origin check on every POST, rate limits (login per IP and per Bean ID, sign up, messages, uploads, search, Neyo), equal-time failed logins, reserved Bean IDs, password change needs the current password and signs out other devices, device list + **Log out all devices**, CSP/HSTS/no-framing headers, self-hosted fonts (no third-party scripts). Neyo: Gemini key in a header, overall deadline, quick retry, model fallback, exactly one answer per message. Ghost: AI replies for you while away, 👻 labelled, once per message.
+
+Database: no new SQL. Uses `bean_rate_limits`/`bean_rate_hit` and `bean_neyo_jobs` from `bean_e2ee.sql` (already run); the E2EE key tables simply stay unused. Messages sent by the short-lived v2 show "🔒 purane encrypted version" instead of a blank bubble.
+
 ## Pages
 
 | URL | What |
@@ -51,7 +59,7 @@ npm run dev        # demo mode: any username/password signs in, sample chats in 
 vercel dev         # real API locally
 ```
 
-## API (10 serverless functions)
+## API (8 serverless functions)
 
 | Route | Does |
 |---|---|
@@ -62,49 +70,22 @@ vercel dev         # real API locally
 | `GET/POST /api/messages` | history (`before` cursor) · `send`, `edit`, `delete`, `react` |
 | `GET/POST /api/sync` | poll every 2.5 s: new/changed messages, typing, seen, chat list, incoming call · POST typing |
 | `POST /api/upload` | signed upload URL into `bean-media` |
-| `GET/POST /api/calls` | ICE config, signal polling · `start`, `accept`, `decline`, `end`, `signal` (encrypted only) |
-| `GET/POST /api/keys` | public keys, password-sealed key backup, wrapped chat keys · `publish`, `backup`, `rekey` |
-| `POST /api/neyo` | Neyo reply (Neyo chat only) · `tick` (reminders, digest, Away Mode auto-off) |
+| `GET/POST /api/calls` | ICE config, signal polling · `start`, `accept`, `decline`, `end`, `signal` |
 
 ## Notes
 
 - Real-time is HTTP polling (works on Vercel without extra services). Supabase Realtime can replace it later.
 - Calls use Google STUN; add a TURN server (e.g. Metered, Twilio, Cloudflare) for networks that block peer-to-peer.
-- Group calls and message search inside a chat are not built yet. (Search inside encrypted chats would have to run on the device.)
+- Group calls, message search inside a chat, and end-to-end encryption are not built yet (the old Bean's "E2EE" label is not used).
 - Expired disappearing messages are hidden immediately; to delete them from the database too, schedule the cleanup line at the end of `bean_chat.sql` (pg_cron).
 
-## v2.0: true end-to-end encryption 🔒
+## Neyo + Neyo Ghost 👻
 
-Every chat between people is end-to-end encrypted by default: DMs, groups, text, edits, reactions, photos, files, voice notes and call setup. The server stores only ciphertext. Plain text is refused by the API, so an old or modified client can't downgrade a chat.
-
-| Piece | How |
-|---|---|
-| Identity key | ECDH P-256, one per Bean ID, same on all your devices |
-| Key backup | the Bean login password → Argon2id (64 MB, 3 passes, own salt) → AES-256-GCM seals the private key in the browser. Login passes the password to /chat once (sessionStorage, same tab) so chats unlock with no extra screen. Caveat: the server sees the password at login, so a compromised server could capture it; a DB leak alone cannot open backups. Password change re-seals the backup. Users who set a separate Chat Lock in early v2.0 type it once and it is moved onto the password |
-| Device | unlocked key kept in IndexedDB as a non-extractable CryptoKey; wiped on Sign out |
-| Chat keys | random AES-256 key per chat "epoch", wrapped for each member with ECDH + HKDF. New epoch automatically when a member joins/leaves or changes key |
-| Messages | AES-256-GCM; AAD binds chat + sender + epoch (no tampering, no re-labelling) |
-| Media | a fresh AES-256-GCM key per file, uploaded as `encrypted.bin` (server can't see name or type) |
-| Calls | WebRTC (DTLS-SRTP); the offer/answer/ICE are encrypted with the chat key, so the server can't swap the call fingerprint |
-| Trust | 60-digit **safety number** per contact, "Verified" mark, **key-change warning** (sending is paused until you tap "Theek hai"), keys pinned per device |
-
-**Not end-to-end encrypted, and labelled in the app:** the Neyo chat (an AI must read it; sent to Google Gemini), messages from before v2.0 (**"Not encrypted"** tag), the Away note, group names, profile, and metadata (who talks to whom, when, sizes).
-
-**Security hardening:** rate limits (login per IP + per Bean ID, sign-up, messages, uploads, search, Neyo), same-origin check on every POST, equal-time login answers, reserved Bean IDs, password change needs the current password and signs out other devices, device list + "Log out all devices", strict CSP / HSTS / no framing / no referrer, fonts self-hosted, no third-party scripts, Gemini key sent in a header.
-
-**Neyo (fast + stable):** answers only in its own chat, exactly once per message, overall deadline under Vercel's limit, quick retry on 429/5xx, broken models skipped for 30 min, last good model tried first. It can't read people's chats (encrypted), so chat-watching was removed; the daily digest is "who + how many".
-
-**Ghost = Away Mode 👻:** contacts see "Away" + your short note (a status, not encrypted; the app says so and asks for a "Samajh gaya, Ghost on karo" tick). Ghost never reads or answers messages. When you're back, Neyo sends a handoff report: who wrote and how many messages.
-
-**Security page:** `/security` (plain-language explanation) and `/.well-known/security.txt`.
-
-### Upgrade to v2.0 (once)
-
-1. Push this code to the GitHub repo (Vercel redeploys).
-2. Supabase → SQL Editor → run `supabase/bean_e2ee.sql` (after `bean_chat.sql`, `bean_fix_old_tables.sql`, `bean_neyo.sql`).
-3. Everyone just logs in once on the new Bean: the key is created automatically. A message to someone who hasn't opened it yet waits with a clear note.
-4. Optional for trust: make the GitHub repo public (it holds no secrets) and put a real inbox behind `security@signaturesi.com` or change it in `public/.well-known/security.txt`.
-
-### Honest limits
-
-Bean is a web app: users trust the JavaScript the site serves (CSP, no third-party code and the build number in Settings reduce this risk). Malware on a device or screenshots can still expose messages. No independent security audit has been done yet.
+- **Neyo** (`neyo@bean`): AI contact pinned on Home. Answers in his DM, and in groups only when someone writes `@neyo`. Can set reminders, watch a chat, send a daily digest.
+- **Neyo Ghost = Delegated Presence**: Settings → Neyo Ghost (or tell Neyo "main 2 ghante busy hun, ghost on karo").
+  - While on, Ghost answers simple **direct** messages in your name, every reply marked **👻 Ghost**.
+  - Money, plans, promises, private things: polite holding reply, queued for you. Urgent messages: Neyo pings you.
+  - Others see "👻 Away · Ghost replies for them" in your chat header. Groups are never answered.
+  - "I'm back" (sidebar banner) or the timer ending → **handoff report** in your Neyo chat.
+- Setup: run `supabase/bean_neyo.sql`, add `GEMINI_API_KEY` in Vercel, redeploy.
+- Ghost runs on each send (`/api/neyo` action `ghost`) plus every minute while anyone has Bean open (`/api/neyo?action=tick`). For 24/7, enable pg_cron + pg_net (see end of `bean_neyo.sql`).

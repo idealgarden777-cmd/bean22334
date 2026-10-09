@@ -6,7 +6,7 @@ import {
 import { setGhost } from "./_lib/ghost.js";
 
 const TIMERS = [0, 86400, 604800, 2592000]; // off, 24h, 7d, 30d (seconds)
-const VERSION = "2.1.0";
+const VERSION = "3.0.0";
 const build = () => ({
   version: VERSION,
   commit: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || null,
@@ -54,7 +54,6 @@ const WALLPAPERS = ["none", "dots", "grid", "sand", "mist", "night"];
 
 /* GET  /api/me                                        -> { authenticated, user, settings }
  * POST /api/me {action:"logout"}
- * POST /api/me {action:"verify_password", password}  -> { ok }  (unlocks chats on a device that was already signed in)
  * POST /api/me {action:"update", displayName?, password?, messageTimer?, wallpaper?}  ("Update Identity")
  * POST /api/me {action:"update", ghostEnabled?, ghostNote?, ghostHours?}  (Neyo Ghost: Delegated Presence) */
 export default async function handler(req, res) {
@@ -86,18 +85,6 @@ export default async function handler(req, res) {
         if (error) throw error;
       }
       return send(res, 200, { sessions: await listSessions(req, me) });
-    }
-
-    if (body.action === "verify_password") {
-      const me = await getSessionUser(req);
-      if (!me) return send(res, 401, { error: "Not signed in" });
-      await rateLimit(`verify:${me.id}`, 10, 900);
-      const { data: cred } = await supabase.from("bean_credentials").select("password_hash").eq("user_id", me.id).maybeSingle();
-      let ok = false;
-      try {
-        ok = Boolean(cred?.password_hash) && (await argon2.verify(cred.password_hash, String(body.password || "")));
-      } catch {}
-      return send(res, 200, { ok });
     }
 
     if (body.action === "logout") {

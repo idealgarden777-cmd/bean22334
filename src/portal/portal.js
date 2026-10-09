@@ -117,8 +117,6 @@ function render(root) {
     submit.innerHTML = `<span class="btn-spinner"></span>`;
     try {
       await (register ? api.register(username, password) : api.login(username, password));
-      // One password for everything: /chat uses it once, in this tab, to unlock the encryption key, then deletes it.
-      try { sessionStorage.setItem("bean_unlock_once", password); } catch {}
       location.replace(nextUrl());
     } catch (err) {
       showError(!err.status ? "Can't reach Bean right now. Check your internet and try again." : err.message);

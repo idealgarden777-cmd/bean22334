@@ -2,12 +2,11 @@
  * Display Name · New Password · Update Identity · Default Message Timer · Chat Wallpaper
  * plus appearance, notifications and sign out. */
 import { store } from "../core/store.js";
+import { api } from "../core/api.js";
 import { icons } from "./icons.js";
 import { avatar, escapeHtml } from "../core/utils.js";
 import { isDark, toggleTheme } from "../core/theme.js";
 import { notificationsSupported } from "../core/notify.js";
-import { e2ee } from "../core/e2ee.js";
-import { api } from "../core/api.js";
 
 export const TIMERS = [
   { value: 0, label: "Off (Keep Forever)", short: "Off" },
@@ -32,11 +31,8 @@ const GHOST_HOURS = [
 ];
 const ghostNote = (s) =>
   s.ghostEnabled
-    ? `On${s.ghostUntil ? ` until ${new Date(s.ghostUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}. Contacts see you're away with your note.`
-    : "Wapas aane par Neyo batayega kis ne kitne messages bheje (content nahi).";
-const GHOST_DISCLOSURE = "Ghost sirf aap ka \"away\" status aur ye note contacts ko dikhata hai. Ye note status ki tarah server par save hota hai, encrypted nahi: is mein private baat na likhein. Ghost aap ke messages kabhi nahi parhta aur na jawab deta hai (chats end-to-end encrypted hain).";
-
-const fpGroups = (fp) => (fp || "").slice(0, 32).match(/.{1,4}/g)?.join(" ") || "";
+    ? `On${s.ghostUntil ? ` until ${new Date(s.ghostUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}. Simple messages get a 👻 Ghost reply; money, plans and private things wait for you.`
+    : "When it's off again, Neyo sends you a handoff report.";
 
 export function timerLabel(seconds) {
   return TIMERS.find((t) => t.value === Number(seconds))?.label || "Off (Keep Forever)";
@@ -82,29 +78,22 @@ export function mountSettings(container) {
             </form>
 
             <div class="set-section security-section">
-              <span class="set-label">${icons.lock} Security</span>
-              <div class="sec-status"><strong>End-to-end encryption: On</strong><small>Aap ki key: <code>${escapeHtml(fpGroups(e2ee.fp))}</code></small></div>
-              <div class="set-rows">
-                <button type="button" class="set-row" data-action="lock-device"><span>${icons.shield}</span><span>Is device se key hatayein</span><small>Agli baar password se unlock hoga</small></button>
-              </div>
               <span class="set-label">Devices</span>
               <div class="device-list"><small class="set-note">Loading…</small></div>
               <button type="button" class="set-row danger" data-action="logout-all"><span>${icons.logout}</span><span>Log out all devices</span></button>
-              <small class="set-note">${escapeHtml(`Bean v${state.build?.version || "2.1.0"}${state.build?.commit ? ` · build ${state.build.commit}` : ""}`)} · <a href="/security" target="_blank" rel="noopener">Security &amp; privacy</a>${state.build?.repo ? ` · <a href="${escapeHtml(state.build.repo)}" target="_blank" rel="noopener">Source code</a>` : ""}</small>
             </div>
 
             <div class="set-section ghost-section">
               <button type="button" class="set-row ghost-row" data-action="ghost" role="switch" aria-checked="${settings.ghostEnabled}">
-                <span>👻</span><span><strong>Ghost · Away Mode</strong><small>Contacts ko batayein ke aap away hain</small></span><i class="switch ${settings.ghostEnabled ? "on" : ""}"></i>
+                <span>👻</span><span><strong>Neyo Ghost</strong><small>Away? Ghost replies to your DMs</small></span><i class="switch ${settings.ghostEnabled ? "on" : ""}"></i>
               </button>
-              <label class="set-label" for="ghostNote">Away note (contacts dekhenge)</label>
-              <textarea id="ghostNote" class="set-input ghost-note" rows="2" maxlength="160" placeholder="e.g. Meeting mein hun, 6 baje ke baad free hun">${escapeHtml(settings.ghostNote || "")}</textarea>
-              <div class="timer-options ghost-hours" role="radiogroup" aria-label="Away duration">
+              <label class="set-label" for="ghostNote">What Ghost can tell people</label>
+              <textarea id="ghostNote" class="set-input ghost-note" rows="2" maxlength="500" placeholder="e.g. Meeting mein hun, 6 baje ke baad free hun">${escapeHtml(settings.ghostNote || "")}</textarea>
+              <div class="timer-options ghost-hours" role="radiogroup" aria-label="Ghost duration">
                 ${GHOST_HOURS.map((h) => `<button type="button" role="radio" data-hours="${h.value}" class="${h.value === 0 ? "on" : ""}" aria-checked="${h.value === 0}">${h.label}</button>`).join("")}
               </div>
-              <p class="ghost-disclosure">${escapeHtml(GHOST_DISCLOSURE)}</p>
-              <label class="lock-check" ${settings.ghostEnabled ? "hidden" : ""}><input type="checkbox" data-ghost-ok> <span>Samajh gaya, Ghost on karo.</span></label>
               <small class="set-note" data-ghost-note>${ghostNote(settings)}</small>
+              <small class="set-note">Ghost on ho to Neyo (Gemini AI) aap ke DMs parh kar aap ki taraf se jawab deta hai, 👻 label ke sath.</small>
             </div>
 
             <div class="set-section">
@@ -143,13 +132,13 @@ export function mountSettings(container) {
       const btn = e.currentTarget.querySelector(".btn-primary");
       const displayName = $("#editUsername").value.trim();
       const password = $("#editPassword").value;
-      const currentPassword = $("#currentPassword").value;
       if (!displayName) return Object.assign(error, { hidden: false, textContent: "Display name can't be empty" });
+      const currentPassword = $("#currentPassword").value;
       if (password && password.length < 10) return Object.assign(error, { hidden: false, textContent: "Password must be at least 10 characters" });
       if (password && !currentPassword) return Object.assign(error, { hidden: false, textContent: "Current password likhein" });
       btn.disabled = true;
       try {
-        await (password ? store.changePassword({ displayName, password, currentPassword }) : store.updateSettings({ displayName }));
+        await store.updateSettings({ displayName, ...(password ? { password, currentPassword } : {}) });
         $("#editPassword").value = "";
         $("#currentPassword").value = "";
         $(".current-pass").hidden = true;
@@ -206,19 +195,9 @@ export function mountSettings(container) {
       ghostBtn.querySelector(".switch").classList.toggle("on", st.ghostEnabled);
       ghostBtn.setAttribute("aria-checked", String(st.ghostEnabled));
       $("[data-ghost-note]").textContent = ghostNote(st);
-      const ok = $("[data-ghost-ok]");
-      ok.checked = false;
-      ok.closest("label").hidden = st.ghostEnabled;
     };
     ghostBtn.onclick = async () => {
       const turnOn = !store.getState().settings.ghostEnabled;
-      const ok = $("[data-ghost-ok]");
-      if (turnOn && ok && !ok.checked) {
-        store.toast("Pehle \"Samajh gaya, Ghost on karo\" par tick karein");
-        ok.closest("label").classList.add("shake");
-        setTimeout(() => ok.closest("label")?.classList.remove("shake"), 600);
-        return;
-      }
       ghostBtn.disabled = true;
       try {
         await store.setGhost(turnOn ? { ghostEnabled: true, ghostNote: $("#ghostNote").value, ghostHours } : { ghostEnabled: false });
@@ -250,35 +229,34 @@ export function mountSettings(container) {
     $("[data-action=logout]").onclick = () => store.logout();
     $("#editPassword").addEventListener("input", (e) => ($(".current-pass").hidden = !e.target.value));
 
-    // ---- security ----
-    $("[data-action=lock-device]").onclick = () => {
-      if (confirm("Is device se encryption key hata dein? Bean dobara kholne par password likhna hoga.")) store.lockThisDevice();
-    };
+    // ---- devices ----
     $("[data-action=logout-all]").onclick = () => {
       if (confirm("Har device se sign out karein (ye device bhi)?")) store.logoutAll();
     };
     const deviceList = $(".device-list");
-    const loadDevices = async () => {
+    async function loadDevices() {
       try {
         const { sessions } = await api.sessions();
-        deviceList.innerHTML = (sessions || [])
-          .map((d) => `<div class="device-row"><span><strong>${escapeHtml(d.device)}</strong><small>${d.current ? "Ye device" : `Since ${new Date(d.createdAt).toLocaleDateString()}`}</small></span>${d.current ? "" : `<button type="button" class="link-btn" data-revoke="${escapeHtml(d.id)}">Log out</button>`}</div>`)
-          .join("") || `<small class="set-note">No devices</small>`;
-        deviceList.querySelectorAll("[data-revoke]").forEach((b) =>
-          (b.onclick = async () => {
-            b.disabled = true;
-            try {
-              await api.revokeSession(b.dataset.revoke);
-              loadDevices();
-            } catch (ex) {
-              store.toast(ex.message);
-            }
-          })
+        deviceList.innerHTML =
+          (sessions || [])
+            .map((d) => `<div class="device-row"><span><strong>${escapeHtml(d.device)}</strong><small>${d.current ? "Ye device" : `Since ${new Date(d.createdAt).toLocaleDateString()}`}</small></span>${d.current ? "" : `<button type="button" class="link-btn" data-revoke="${escapeHtml(d.id)}">Log out</button>`}</div>`)
+            .join("") || `<small class="set-note">No devices</small>`;
+        deviceList.querySelectorAll("[data-revoke]").forEach(
+          (b) =>
+            (b.onclick = async () => {
+              b.disabled = true;
+              try {
+                await api.revokeSession(b.dataset.revoke);
+                loadDevices();
+              } catch (ex) {
+                store.toast(ex.message);
+              }
+            })
         );
       } catch {
         deviceList.innerHTML = `<small class="set-note">Devices load nahi ho sake</small>`;
       }
-    };
+    }
     loadDevices();
   };
 

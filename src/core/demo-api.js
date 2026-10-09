@@ -1,8 +1,6 @@
 /* In-browser demo backend for local dev (no /api). Mirrors the real API shapes.
  * Data lives in localStorage; uploads use object URLs for this session only. */
-import { generateIdentity } from "./crypto.js";
-
-const KEY = "bean_demo_v3";
+const KEY = "bean_demo_v2";
 const ago = (m) => new Date(Date.now() - m * 60000).toISOString();
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
 
@@ -83,10 +81,8 @@ function shapeConv(c) {
     myRole: c.admins.includes("me") ? "admin" : "member",
     muted: c.muted,
     unread: msgs.filter((m) => m.senderId && m.senderId !== "me" && m.kind !== "system" && m.createdAt > (c.readAt.me || "")).length,
-    lastMessage: last?.enc ? "🔒 Encrypted message" : preview(last),
+    lastMessage: preview(last),
     lastSenderId: last?.senderId || null,
-    lastEnc: last?.enc && !last.deletedAt ? { id: last.id, senderId: last.senderId, enc: last.enc } : null,
-    e2ee: !c.memberIds.includes("neyo"),
     updatedAt: last?.createdAt || c.updatedAt,
   };
 }
@@ -95,12 +91,9 @@ function shapeMsg(m) {
   const reply = m.replyTo ? db.messages.find((x) => x.id === m.replyTo) : null;
   return {
     ...m,
-    text: m.deletedAt || m.enc ? "" : m.text,
-    enc: m.deletedAt ? null : m.enc || null,
-    encrypted: Boolean(m.enc) && !m.deletedAt,
-    encReactions: m.encReactions || [],
+    text: m.deletedAt ? "" : m.text,
     attachment: m.deletedAt ? null : m.attachment,
-    replyTo: reply ? { id: reply.id, senderId: reply.senderId, kind: reply.kind, text: reply.enc ? "🔒 Encrypted message" : preview(reply), enc: reply.enc || null } : null,
+    replyTo: reply ? { id: reply.id, senderId: reply.senderId, kind: reply.kind, text: preview(reply) } : null,
   };
 }
 
@@ -141,6 +134,12 @@ const settings = () => ({ messageTimer: 0, wallpaper: "none", ...(db.settings ||
 const signedIn = () => localStorage.getItem(SKEY) === "1";
 
 export const demoApi = {
+  sessions: () => delay({ sessions: [{ id: "s1", device: "This browser", createdAt: new Date().toISOString(), current: true }] }),
+  revokeSession: () => delay({ sessions: [] }),
+  logoutAll: () => {
+    localStorage.removeItem(SKEY);
+    return delay({ success: true });
+  },
   me: () => delay(signedIn() ? { authenticated: true, user: { ...ME, online: true }, settings: settings() } : { authenticated: false }),
   logout: () => {
     localStorage.removeItem(SKEY);
@@ -229,14 +228,13 @@ export const demoApi = {
     if (action === "send") {
       const c = conv(p.conversationId);
       const a = p.attachment;
-      const kind = p.enc ? "text" : a ? (a.mime.startsWith("image/") ? "image" : a.mime.startsWith("audio/") ? "audio" : "file") : "text";
+      const kind = a ? (a.mime.startsWith("image/") ? "image" : a.mime.startsWith("audio/") ? "audio" : "file") : "text";
       const msg = addMessage({
         conversationId: c.id,
         senderId: "me",
         kind,
-        text: p.enc ? "" : p.text || "",
-        enc: p.enc || null,
-        attachment: a ? { url: a.path, name: p.enc ? "encrypted" : a.name, size: a.size, mime: p.enc ? "application/octet-stream" : a.mime, duration: a.duration || null } : null,
+        text: p.text || "",
+        attachment: a ? { url: a.path, name: a.name, size: a.size, mime: a.mime, duration: a.duration || null } : null,
         replyTo: p.replyTo || null,
         expiresAt: settings().messageTimer ? new Date(Date.now() + settings().messageTimer * 1000).toISOString() : null,
       });
@@ -247,14 +245,9 @@ export const demoApi = {
     }
     const msg = db.messages.find((m) => m.id === p.messageId);
     if (!msg) throw new Error("Message not found");
-    if (action === "edit") Object.assign(msg, p.enc ? { enc: p.enc, editedAt: now, updatedAt: now } : { text: p.text.trim(), editedAt: now, updatedAt: now });
-    if (action === "delete") Object.assign(msg, { text: "", enc: null, attachment: null, reactions: [], encReactions: [], deletedAt: now, updatedAt: now });
-    if (action === "react" && (p.enc || p.remove)) {
-      msg.encReactions = (msg.encReactions || []).filter((r) => r.userId !== "me");
-      msg.reactions = msg.reactions.map((r) => ({ ...r, userIds: r.userIds.filter((u) => u !== "me") })).filter((r) => r.userIds.length);
-      if (p.enc) msg.encReactions.push({ userId: "me", enc: p.enc });
-      msg.updatedAt = now;
-    } else if (action === "react") {
+    if (action === "edit") Object.assign(msg, { text: p.text.trim(), editedAt: now, updatedAt: now });
+    if (action === "delete") Object.assign(msg, { text: "", attachment: null, reactions: [], deletedAt: now, updatedAt: now });
+    if (action === "react") {
       const mine = msg.reactions.find((r) => r.userIds.includes("me"));
       msg.reactions = msg.reactions.map((r) => ({ ...r, userIds: r.userIds.filter((u) => u !== "me") })).filter((r) => r.userIds.length);
       if (mine?.emoji !== p.emoji) {
@@ -293,61 +286,6 @@ export const demoApi = {
   async upload(conversationId, file, onProgress) {
     onProgress?.(1);
     return { path: URL.createObjectURL(file), name: file.name, size: file.size, mime: file.type || "application/octet-stream" };
-  },
-
-  /* ---- E2EE (demo keeps keys in this browser only) ---- */
-  keysMe: () => delay({ key: db.myKey || null }),
-  async keys(ids) {
-    const out = [];
-    for (const id of ids) {
-      if (id === "me") {
-        if (db.myKey) out.push({ userId: "me", publicKey: db.myKey.publicKey, fingerprint: db.myKey.fingerprint, keyVersion: 1 });
-        continue;
-      }
-      if (!PEOPLE.some((p) => p.id === id && !p.isBot)) continue;
-      db.peerKeys ||= {};
-      if (!db.peerKeys[id]) {
-        const g = await generateIdentity();
-        db.peerKeys[id] = { publicKey: g.pub, fingerprint: g.fingerprint };
-        save();
-      }
-      out.push({ userId: id, ...db.peerKeys[id], keyVersion: 1 });
-    }
-    return delay({ keys: out });
-  },
-  keyWraps: () => delay({ wraps: (db.wraps || []).filter((w) => w.userId === "me") }),
-  convKeys(conversationId) {
-    const all = (db.wraps || []).filter((w) => w.conversationId === conversationId);
-    const epoch = all.reduce((n, w) => Math.max(n, w.epoch), 0);
-    return delay({
-      wraps: all.filter((w) => w.userId === "me"),
-      latest: { epoch, recipients: all.filter((w) => w.epoch === epoch).map((w) => ({ userId: w.userId, fp: w.recipientFp })) },
-    });
-  },
-  keysPublish({ publicKey, fingerprint, backup, reset }) {
-    if (db.myKey && !reset) return Promise.reject(Object.assign(new Error("Chat Lock already set up"), { status: 409 }));
-    db.myKey = { userId: "me", publicKey, fingerprint, backup, keyVersion: (db.myKey?.keyVersion || 0) + 1 };
-    save();
-    return delay({ ok: true });
-  },
-  keysBackup({ backup }) {
-    db.myKey = { ...db.myKey, backup };
-    save();
-    return delay({ ok: true });
-  },
-  rekey({ conversationId, epoch, senderPub, wraps }) {
-    const current = (db.wraps || []).filter((w) => w.conversationId === conversationId).reduce((n, w) => Math.max(n, w.epoch), 0);
-    if (epoch !== current + 1) return Promise.reject(Object.assign(new Error("Try again"), { status: 409 }));
-    db.wraps = [...(db.wraps || []), ...wraps.map((w) => ({ conversationId, epoch, senderId: "me", senderPub, recipientFp: w.recipientFp, wrapped: w.wrapped, userId: w.userId }))];
-    save();
-    return delay({ ok: true, epoch });
-  },
-  verifyPassword: () => delay({ ok: true }),
-  sessions: () => delay({ sessions: [{ id: "s1", device: "This browser", createdAt: new Date().toISOString(), current: true }] }),
-  revokeSession: () => delay({ sessions: [] }),
-  logoutAll: () => {
-    localStorage.removeItem(SKEY);
-    return delay({ success: true });
   },
 
   callConfig: () => Promise.resolve({ iceServers: [] }),

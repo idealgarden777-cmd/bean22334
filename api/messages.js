@@ -1,5 +1,5 @@
-import { supabase, send, withUser, readBody, fail, getMembership, getSettings, chatInfo } from "./_lib/session.js";
-import { hydrateMessages, insertMessage, notExpired, cleanEnc, ENC_PREVIEW } from "./_lib/chat.js";
+import { supabase, send, withUser, readBody, fail, getMembership, getSettings } from "./_lib/session.js";
+import { hydrateMessages, insertMessage, notExpired } from "./_lib/chat.js";
 
 const PAGE = 50;
 const MAX_TEXT = 2000;
@@ -55,30 +55,22 @@ export default withUser(
       case "send": {
         const { conversationId, replyTo, clientId } = body;
         await getMembership(conversationId, me.id);
-        const chat = await chatInfo(conversationId);
-        const enc = cleanEnc(body.enc);
-        if (body.enc && !enc) fail(400, "Bad encrypted message");
-        // True E2EE: people-to-people chats only accept ciphertext. Plain text only in the Neyo chat.
-        if (!chat.plain && !enc) fail(400, "Ye chat end-to-end encrypted hai. Bean ko refresh karein (naya version).");
-        if (chat.plain && enc) fail(400, "Neyo chat is not end-to-end encrypted");
-        const text = enc ? "" : String(body.text || "").trim();
+        const text = String(body.text || "").trim();
         if (text.length > MAX_TEXT) fail(400, "Message is too long");
 
         let attachment = null;
         if (body.attachment) {
           const a = body.attachment;
           if (typeof a.path !== "string" || !a.path.startsWith(`${conversationId}/`)) fail(400, "Bad attachment");
-          attachment = enc
-            ? { path: a.path, name: "encrypted", size: Number(a.size) || 0, mime: "application/octet-stream", duration: null }
-            : {
-                path: a.path,
-                name: String(a.name || "file").slice(0, 200),
-                size: Number(a.size) || 0,
-                mime: String(a.mime || "application/octet-stream").slice(0, 100),
-                duration: a.duration ? Number(a.duration) : null,
-              };
+          attachment = {
+            path: a.path,
+            name: String(a.name || "file").slice(0, 200),
+            size: Number(a.size) || 0,
+            mime: String(a.mime || "application/octet-stream").slice(0, 100),
+            duration: a.duration ? Number(a.duration) : null,
+          };
         }
-        if (!text && !attachment && !enc) fail(400, "Message is empty");
+        if (!text && !attachment) fail(400, "Message is empty");
 
         if (replyTo) {
           const { data: parent } = await supabase.from("bean_messages").select("conversation_id").eq("id", replyTo).maybeSingle();
@@ -90,12 +82,10 @@ export default withUser(
           expiresAt: messageTimer ? new Date(Date.now() + messageTimer * 1000).toISOString() : null,
           conversationId,
           senderId: me.id,
-          // encrypted messages are stored as kind "text": the real kind is inside the ciphertext
-          kind: enc ? "text" : attachment ? kindForMime(attachment.mime) : "text",
+          kind: attachment ? kindForMime(attachment.mime) : "text",
           body: text || null,
           attachment,
           replyTo: replyTo || null,
-          enc,
         });
 
         await supabase
@@ -113,23 +103,18 @@ export default withUser(
         const msg = await ownMessage(body.messageId, me);
         if (msg.sender_id !== me.id) fail(403, "You can only edit your own messages");
         if (msg.deleted_at || msg.kind !== "text") fail(400, "This message can't be edited");
+        const text = String(body.text || "").trim();
+        if (!text) fail(400, "Message is empty");
+        if (text.length > MAX_TEXT) fail(400, "Message is too long");
         const now = new Date().toISOString();
-        let patch;
-        if (msg.enc) {
-          const enc = cleanEnc(body.enc);
-          if (!enc) fail(400, "Ye chat end-to-end encrypted hai. Bean ko refresh karein.");
-          patch = { enc, body: null, edited_at: now, updated_at: now };
-        } else {
-          const chat = await chatInfo(msg.conversation_id);
-          if (!chat.plain) fail(400, "Purane (not encrypted) messages edit nahi ho sakte. Naya message bhejein.");
-          const text = String(body.text || "").trim();
-          if (!text) fail(400, "Message is empty");
-          if (text.length > MAX_TEXT) fail(400, "Message is too long");
-          patch = { body: text, edited_at: now, updated_at: now };
-        }
-        const { data: row, error } = await supabase.from("bean_messages").update(patch).eq("id", msg.id).select("*").single();
+        const { data: row, error } = await supabase
+          .from("bean_messages")
+          .update({ body: text, edited_at: now, updated_at: now })
+          .eq("id", msg.id)
+          .select("*")
+          .single();
         if (error) throw error;
-        await touchConversationPreview(msg, msg.enc ? ENC_PREVIEW : patch.body.slice(0, 140));
+        await touchConversationPreview(msg, text.slice(0, 140));
         const [message] = await hydrateMessages([row]);
         return send(res, 200, { message });
       }
@@ -140,7 +125,7 @@ export default withUser(
         const now = new Date().toISOString();
         const { data: row, error } = await supabase
           .from("bean_messages")
-          .update({ body: null, attachment: null, enc: null, deleted_at: now, updated_at: now })
+          .update({ body: null, attachment: null, deleted_at: now, updated_at: now })
           .eq("id", msg.id)
           .select("*")
           .single();
@@ -155,22 +140,6 @@ export default withUser(
       case "react": {
         const msg = await ownMessage(body.messageId, me);
         if (msg.deleted_at) fail(400, "Message was deleted");
-        if (msg.enc || body.enc || body.remove) {
-          // encrypted reaction: the client knows its own current reaction and sends the new one (or remove)
-          if (body.remove) {
-            await supabase.from("bean_reactions").delete().eq("message_id", msg.id).eq("user_id", me.id);
-          } else {
-            const enc = cleanEnc(body.enc, 2000);
-            if (!enc) fail(400, "Bad encrypted reaction");
-            const { error } = await supabase
-              .from("bean_reactions")
-              .upsert({ message_id: msg.id, user_id: me.id, emoji: "🔒", enc }, { onConflict: "message_id,user_id" });
-            if (error) throw error;
-          }
-          const { data: row } = await supabase.from("bean_messages").update({ updated_at: new Date().toISOString() }).eq("id", msg.id).select("*").single();
-          const [message] = await hydrateMessages([row]);
-          return send(res, 200, { message });
-        }
         const emoji = String(body.emoji || "");
         if (!EMOJI_OK.test(emoji)) fail(400, "Unsupported reaction");
 

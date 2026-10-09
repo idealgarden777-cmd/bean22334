@@ -7,7 +7,6 @@ export default defineConfig({
       input: {
         portal: resolve(__dirname, "index.html"),
         chat: resolve(__dirname, "chat/index.html"),
-        security: resolve(__dirname, "security/index.html"),
       },
     },
   },

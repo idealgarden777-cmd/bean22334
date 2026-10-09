@@ -64,7 +64,29 @@ ok(r.code >= 400, "can't post into a chat you're not in");
 // message sent by the short-lived encrypted version still shows a clear label
 db.bean_messages.push({ id: "00000000-0000-4000-8000-0000000000e1", conversation_id: dm.id, sender_id: leo.user.id, kind: "text", body: null, enc: { v: 1 }, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), deleted_at: null });
 r = await call(messages, { cookie: sam.cookie, method: "GET", query: { conversationId: dm.id } });
-ok(r.body.messages.some((m) => /purane encrypted/.test(m.text)), "old encrypted message shows a label (not a blank bubble)");
+ok(r.body.messages.some((m) => /older encrypted version/.test(m.text)), "old encrypted message shows a label (not a blank bubble)");
+
+// profile: photo + about
+const tinyJpeg = "data:image/jpeg;base64," + Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]).toString("base64");
+r = await call(me, { cookie: sam.cookie, body: { action: "profile", avatar: "data:image/svg+xml;base64," + Buffer.from("<svg onload=alert(1)>").toString("base64") } });
+ok(r.code === 400, "profile photo: SVG / scripts rejected");
+r = await call(me, { cookie: sam.cookie, body: { action: "profile", avatar: "data:image/png;base64," + Buffer.from("<html>not a png</html>").toString("base64") } });
+ok(r.code === 400, "profile photo: fake image bytes rejected");
+r = await call(me, { cookie: sam.cookie, body: { action: "profile", avatar: "data:image/jpeg;base64," + Buffer.alloc(300 * 1024, 1).toString("base64") } });
+ok(r.code === 400, "profile photo: too large rejected");
+r = await call(me, { cookie: sam.cookie, body: { action: "profile", avatar: tinyJpeg, bio: "  Hello\u202e from Lahore \u0007 " } });
+ok(r.code === 200 && /^\/api\/me\?avatar=/.test(r.body.user.avatarUrl) && r.body.user.bio === "Hello from Lahore", "profile photo + about saved (cleaned)");
+const avatarQuery = Object.fromEntries(new URLSearchParams(r.body.user.avatarUrl.split("?")[1]));
+r = await call(me, { method: "GET", query: avatarQuery });
+ok(r.code === 401, "profile photo needs sign-in");
+r = await call(me, { method: "GET", cookie: leo.cookie, query: avatarQuery });
+ok(r.code === 200 && /image\/jpeg/.test(r.headers["content-type"]), "profile photo served as real image");
+r = await call(me, { method: "GET", cookie: leo.cookie, query: { avatar: "../../etc" } });
+ok(r.code === 404, "profile photo: bad id rejected");
+r = await call(conversations, { cookie: leo.cookie, method: "GET" });
+ok(r.body.conversations.some((c) => c.peer?.bio === "Hello from Lahore"), "chat partner sees about text");
+r = await call(me, { cookie: sam.cookie, body: { action: "profile", avatar: null } });
+ok(r.code === 200 && !r.body.user.avatarUrl, "profile photo removed");
 
 // calls: plain signalling works again
 r = await call(calls, { cookie: sam.cookie, body: { action: "start", conversationId: dm.id, video: false } });
@@ -97,10 +119,10 @@ r = await call(me, { cookie: sam.cookie, body: { action: "logout_all" } });
 r = await call(me, { method: "GET", cookie: sam.cookie });
 ok(r.body.authenticated === false, "log out all devices");
 r = await call(me, { method: "GET", cookie: leo.cookie });
-ok(r.body.authenticated === true && r.body.build?.version === "3.1.0", "other users unaffected; build 3.0.0");
+ok(r.body.authenticated === true && r.body.build?.version === "3.2.0", "other users unaffected; build 3.0.0");
 
 r = await call(me, { method: "GET", query: { health: "1" } });
-ok(r.code === 200 && r.body.ok && r.body.database === "ok" && r.body.version === "3.1.0" && r.body.serverKey, "health check");
+ok(r.code === 200 && r.body.ok && r.body.database === "ok" && r.body.version === "3.2.0" && r.body.serverKey, "health check");
 
 // brute force
 let blocked = false;

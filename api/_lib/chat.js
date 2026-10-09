@@ -95,7 +95,7 @@ export async function hydrateMessages(rows) {
       conversationId: r.conversation_id,
       senderId: r.sender_id,
       kind: deleted ? "text" : r.kind,
-      text: deleted ? "" : r.body || (r.enc ? "🔒 Ye message purane encrypted version mein bheja gaya tha" : ""),
+      text: deleted ? "" : r.body || (r.enc ? "🔒 This message was sent with an older encrypted version of Bean" : ""),
       attachment:
         !deleted && r.attachment
           ? {

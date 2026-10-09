@@ -70,8 +70,8 @@ export async function setGhost(me, { enabled, note, hours }) {
   } else if (enabled && !current.ghostEnabled) {
     await neyoSay(
       await neyoDmFor(me.id),
-      `👻 Ghost Mode on. Main aap ke direct messages sambhal raha hun: simple baaton ka jawab dunga, zaroori cheezein aap ke liye rakh dunga.${
-        row.ghost_until ? "" : " Wapas aa kar Ghost Mode off karein, handoff report mil jayegi."
+      `👻 Ghost Mode is on. I'll handle your direct messages: I'll answer simple things and save anything important for you.${
+        row.ghost_until ? "" : " Turn Ghost Mode off when you're back and I'll send you a handoff report."
       }`
     ).catch(() => {});
   }
@@ -104,7 +104,7 @@ ${note ? `What ${ownerName} told you (you may share this): "${note}"` : `${owner
 
 Rules:
 - Simple things (greetings, thanks, "kahan ho", "kab free ho", small talk, acknowledging info) -> short friendly reply, handled=true.
-- Anything about money, payments, promises, agreeing to plans or meetings, decisions, passwords/codes, private or sensitive info, or anything you can't answer from the note -> do NOT decide or promise. Reply with a short holding message (e.g. "${ownerName} abhi available nahi, main unhe bata dunga 👍"), handled=false.
+- Anything about money, payments, promises, agreeing to plans or meetings, decisions, passwords/codes, private or sensitive info, or anything you can't answer from the note -> do NOT decide or promise. Reply with a short holding message (e.g. "${ownerName} isn't available right now, I'll let them know 👍"), handled=false.
 - Urgent (emergency, health, hard deadline today, "urgent", "jaldi") -> priority "high".
 - If the latest messages need no reply (e.g. "ok", a sticker, an emoji) -> reply "" .
 - Reply in the same language/script the person wrote in. Max 2 short sentences. No markdown.
@@ -184,7 +184,7 @@ export async function handleGhostDm(conversationId) {
   if (!decision) {
     // no AI: one polite away note per chat, everything queued
     decision = {
-      reply: ghostRepliedBefore ? "" : profile.ghostNote ? `${ownerName} abhi available nahi: ${profile.ghostNote}` : `${ownerName} abhi available nahi. Message unhe mil jayega 👍`,
+      reply: ghostRepliedBefore ? "" : profile.ghostNote ? `${ownerName} isn't available right now: ${profile.ghostNote}` : `${ownerName} isn't available right now. They'll get your message 👍`,
       handled: false,
       priority: /urgent|jaldi|emergency|asap|zaroori/i.test(freshText) ? "high" : "normal",
       summary: freshText.slice(0, 120),
@@ -236,7 +236,7 @@ export async function handoffText(ownerId, sinceIso) {
   const { data: rows } = await q;
   const list = rows || [];
   const away = awayFor(sinceIso);
-  if (!list.length) return { text: `👻 Handoff report${away ? ` (${away})` : ""}\nAap ke away rehne mein koi direct message nahi aaya.`, ids: [] };
+  if (!list.length) return { text: `👻 Handoff report${away ? ` (${away})` : ""}\nNo direct messages came in while you were away.`, ids: [] };
 
   const names = await namesFor(list.map((r) => r.from_user_id));
   const who = (r) => names.get(r.from_user_id) || "Someone";
@@ -245,16 +245,16 @@ export async function handoffText(ownerId, sinceIso) {
   const handled = list.filter((r) => r.priority !== "high" && r.status === "handled");
   const people = new Set(list.map((r) => r.from_user_id)).size;
 
-  const out = [`👻 Handoff report${away ? ` (${away})` : ""}`, `${people} logon ke ${list.length} messages aaye. ${handled.length} Ghost ne sambhal liye, ${urgent.length + queued.length} aap ke liye.`];
+  const out = [`👻 Handoff report${away ? ` (${away})` : ""}`, `${list.length} message${list.length === 1 ? "" : "s"} from ${people} ${people === 1 ? "person" : "people"}. Ghost handled ${handled.length}, ${urgent.length + queued.length} need you.`];
   const section = (title, items, withReply) => {
     if (!items.length) return;
     out.push("", title);
     for (const r of items.slice(0, 8)) out.push(`• ${who(r)}: ${r.summary || r.incoming || "message"}${withReply && r.ghost_reply ? ` (Ghost: "${r.ghost_reply.slice(0, 60)}")` : ""}`);
-    if (items.length > 8) out.push(`• +${items.length - 8} aur`);
+    if (items.length > 8) out.push(`• +${items.length - 8} more`);
   };
-  section("🔴 Zaroori", urgent, false);
-  section("🟡 Aap ka jawab chahiye", queued, false);
-  section("✅ Ghost ne jawab de diya", handled, true);
+  section("🔴 Urgent", urgent, false);
+  section("🟡 Waiting for your reply", queued, false);
+  section("✅ Ghost replied", handled, true);
   return { text: out.join("\n").slice(0, 1990), ids: list.map((r) => r.id) };
 }
 

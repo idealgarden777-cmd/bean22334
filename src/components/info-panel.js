@@ -34,6 +34,7 @@ export function mountInfoPanel(container) {
           <h3 class="info-title">${escapeHtml(conv.title)}</h3>
           <p>${dm ? escapeHtml(conv.peer.beanId) : `Group · ${conv.members.length} members`}</p>
           ${dm ? `<p class="info-status ${conv.peer.online ? "online" : ""}">${escapeHtml(lastSeen(conv.peer))}</p>` : ""}
+          ${dm && conv.peer.bio ? `<p class="info-bio">${escapeHtml(conv.peer.bio)}</p>` : ""}
           ${!dm && admin ? `<button type="button" class="link-btn" data-action="rename">Rename group</button>` : ""}
         </div>
 

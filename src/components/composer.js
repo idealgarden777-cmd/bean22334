@@ -3,6 +3,7 @@ import { icons } from "./icons.js";
 import { escapeHtml, formatDuration } from "../core/utils.js";
 import { timerLabel } from "./settings-modal.js";
 import { EMOJIS } from "../core/emoji.js";
+import { emojiTag } from "../core/emoji-anim.js";
 
 const MAX_CHARS = 2000;
 
@@ -88,7 +89,7 @@ export function mountComposer(container) {
     const term = q.trim().toLowerCase();
     const list = term ? EMOJIS.filter(([, name]) => name.includes(term)) : EMOJIS;
     emojiGrid.innerHTML = list.length
-      ? list.map(([e, name]) => `<button type="button" data-emoji="${e}" title="${name}">${e}</button>`).join("")
+      ? list.map(([e, name]) => `<button type="button" data-emoji="${e}" title="${name}">${emojiTag(e, "pick")}</button>`).join("")
       : `<p class="emoji-empty">No emoji found</p>`;
   };
   const togglePicker = (open = picker.hidden) => {

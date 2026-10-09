@@ -1,10 +1,10 @@
 /* In-browser demo backend for local dev (no /api). Mirrors the real API shapes.
  * Data lives in localStorage; uploads use object URLs for this session only. */
-const KEY = "bean_demo_v2";
+const KEY = "bean_demo_v3";
 const ago = (m) => new Date(Date.now() - m * 60000).toISOString();
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
 
-const ME = { id: "me", username: "you", displayName: "You", beanId: "you@bean" };
+const ME = { id: "me", username: "you", displayName: "You", beanId: "you@bean", bio: "" };
 const PEOPLE = [
   { id: "u1", username: "ayesha", displayName: "Ayesha Khan", beanId: "ayesha@bean" },
   { id: "u2", username: "zain", displayName: "Zain Ahmed", beanId: "zain@bean" },
@@ -21,13 +21,13 @@ function seed() {
       { id: "c3", type: "group", title: "Signaturesi Team", memberIds: ["me", "u1", "u2", "u3"], admins: ["me"], muted: false, readAt: { me: ago(30), u1: ago(5), u2: ago(5), u3: ago(5) }, updatedAt: ago(20) },
     ],
     messages: [
-      { id: "m1", conversationId: "c1", senderId: "u1", kind: "text", text: "Hi! Bean ka naya design dekha?", createdAt: ago(6) },
-      { id: "m2", conversationId: "c1", senderId: "me", kind: "text", text: "Haan, bilkul Neyo jaisa clean 🔥", createdAt: ago(3), reactions: [{ emoji: "❤️", userIds: ["u1"] }] },
+      { id: "m1", conversationId: "c1", senderId: "u1", kind: "text", text: "Hi! Have you seen the new Bean design?", createdAt: ago(6) },
+      { id: "m2", conversationId: "c1", senderId: "me", kind: "text", text: "Yes, it looks so clean 🔥", createdAt: ago(3), reactions: [{ emoji: "❤️", userIds: ["u1"] }] },
       { id: "m3", conversationId: "c2", senderId: "u2", kind: "text", text: "Hey, are we still meeting?", createdAt: ago(140) },
       { id: "m4", conversationId: "c3", senderId: null, kind: "system", text: 'You created "Signaturesi Team"', createdAt: ago(60) },
       { id: "m5", conversationId: "c3", senderId: "u3", kind: "text", text: "Welcome everyone 👋", createdAt: ago(25) },
       { id: "m6", conversationId: "c3", senderId: "u2", kind: "call", text: "Missed voice call", createdAt: ago(21) },
-      { id: "m7", conversationId: "c3", senderId: "u1", kind: "text", text: "Launch Friday ko hai", createdAt: ago(20) },
+      { id: "m7", conversationId: "c3", senderId: "u1", kind: "text", text: "Launch is on Friday 🚀", createdAt: ago(20) },
     ].map((m) => ({ reactions: [], replyTo: null, attachment: null, editedAt: null, deletedAt: null, updatedAt: m.createdAt, ...m })),
   };
 }
@@ -121,7 +121,7 @@ function fakeReply(conversationId) {
   clearTimeout(pendingReplyTimer);
   typingUntil = { conversationId, userId: other, until: Date.now() + 2500 };
   pendingReplyTimer = setTimeout(() => {
-    const replies = ["Acha 👍", "Haan bilkul", "Theek hai, baad mein baat karte hain", "😂", "Nice!"];
+    const replies = ["Got it 👍", "Sounds good", "Okay, let's talk later", "😂", "Nice!"];
     addMessage({ conversationId, senderId: other, kind: "text", text: replies[Math.floor(Math.random() * replies.length)] });
     c.readAt[other] = new Date().toISOString();
     save();
@@ -134,7 +134,7 @@ const settings = () => ({ messageTimer: 0, wallpaper: "none", ...(db.settings ||
 const signedIn = () => localStorage.getItem(SKEY) === "1";
 
 export const demoApi = {
-  sessions: () => delay({ sessions: [{ id: "s1", device: "This browser", createdAt: new Date().toISOString(), current: true }] }),
+  sessions: () => delay({ sessions: [{ id: "s1", device: "Chrome · Mac", createdAt: new Date().toISOString(), current: true }] }),
   revokeSession: () => delay({ sessions: [] }),
   logoutAll: () => {
     localStorage.removeItem(SKEY);
@@ -156,6 +156,12 @@ export const demoApi = {
   },
   register: (username, password) => demoApi.login(username, password),
   checkUsername: (username) => delay({ available: !PEOPLE.some((p) => p.username === String(username).toLowerCase()) }),
+  updateProfile: (changes) => {
+    if (changes.bio !== undefined) ME.bio = String(changes.bio).slice(0, 160);
+    if (changes.avatar !== undefined) ME.avatarUrl = changes.avatar;
+    saveMe();
+    return delay({ success: true, user: { ...ME, online: true } });
+  },
   updateMe: (changes) => {
     if (changes.displayName) ME.displayName = changes.displayName.trim();
     saveMe();

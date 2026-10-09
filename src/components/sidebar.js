@@ -3,6 +3,87 @@ import { store } from "../core/store.js";
 import { icons } from "./icons.js";
 import { avatar, escapeHtml, formatListTime } from "../core/utils.js";
 import { notificationsSupported } from "../core/notify.js";
+import { logoMark } from "./logo.js";
+import { emojify } from "../core/emoji-anim.js";
+import { isDark, toggleTheme } from "../core/theme.js";
+
+/* ---------- profile menu (opens from the profile bar) ---------- */
+function closeProfileMenu() {
+  document.querySelector(".profile-menu")?.remove();
+  document.querySelector("[data-action=profile-menu]")?.setAttribute("aria-expanded", "false");
+}
+
+function openProfileMenu(anchor) {
+  closeProfileMenu();
+  const s = store.getState();
+  const me = s.me;
+  const menu = document.createElement("div");
+  menu.className = "profile-menu";
+  menu.setAttribute("role", "menu");
+  menu.innerHTML = `
+    <div class="pm-card">
+      ${avatar(me, "lg")}
+      <span class="pm-text">
+        <strong>${escapeHtml(me.displayName)}</strong>
+        <small>${escapeHtml(me.beanId)}</small>
+        ${me.bio ? `<span class="pm-bio">${escapeHtml(me.bio)}</span>` : ""}
+      </span>
+    </div>
+    ${s.settings.ghostEnabled ? `<div class="pm-status">👻 Ghost Mode is on</div>` : ""}
+    <div class="pm-items">
+      <button type="button" role="menuitem" data-pm="profile">${icons.user}<span>Edit profile</span></button>
+      <button type="button" role="menuitem" data-pm="settings">${icons.settings}<span>Settings</span></button>
+      <button type="button" role="menuitemcheckbox" aria-checked="${isDark()}" data-pm="theme">${icons.moon}<span>Dark mode</span><i class="switch ${isDark() ? "on" : ""}"></i></button>
+      <button type="button" role="menuitem" data-pm="ghost">${icons.ghost}<span>${s.settings.ghostEnabled ? "Turn off Ghost Mode" : "Neyo Ghost"}</span></button>
+    </div>
+    <div class="pm-items pm-danger">
+      <button type="button" role="menuitem" data-pm="logout">${icons.logout}<span>Sign out</span></button>
+    </div>`;
+  document.body.appendChild(menu);
+  const r = anchor.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, r.left)}px`;
+  menu.style.width = `${Math.max(260, Math.min(r.width + 44, 300))}px`;
+  menu.style.bottom = `${window.innerHeight - r.top + 8}px`;
+  anchor.setAttribute("aria-expanded", "true");
+  menu.querySelector("[data-pm]")?.focus({ preventScroll: true });
+
+  menu.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-pm]");
+    if (!b) return;
+    const act = b.dataset.pm;
+    if (act === "theme") {
+      toggleTheme();
+      b.querySelector(".switch").classList.toggle("on", isDark());
+      b.setAttribute("aria-checked", String(isDark()));
+      return;
+    }
+    closeProfileMenu();
+    if (act === "profile") store.openSettings("profile");
+    if (act === "settings") store.openSettings("account");
+    if (act === "ghost") {
+      if (store.getState().settings.ghostEnabled) store.setGhost({ ghostEnabled: false }).catch((err) => store.toast(err.message));
+      else store.openSettings("ghost");
+    }
+    if (act === "logout") store.logout();
+  });
+  const away = (e) => {
+    if (menu.contains(e.target) || anchor.contains(e.target)) return;
+    closeProfileMenu();
+    document.removeEventListener("pointerdown", away, true);
+    document.removeEventListener("keydown", esc, true);
+  };
+  const esc = (e) => {
+    if (e.key !== "Escape") return;
+    closeProfileMenu();
+    anchor.focus();
+    document.removeEventListener("pointerdown", away, true);
+    document.removeEventListener("keydown", esc, true);
+  };
+  setTimeout(() => {
+    document.addEventListener("pointerdown", away, true);
+    document.addEventListener("keydown", esc, true);
+  });
+}
 
 function chatRow(c, state) {
   const me = state.me.id;
@@ -23,7 +104,7 @@ function chatRow(c, state) {
           <time>${formatListTime(c.updatedAt)}</time>
         </span>
         <span class="chat-info-bottom">
-          <small>${preview}</small>
+          <small>${typing ? preview : emojify(preview)}</small>
           ${c.muted ? `<span class="muted-icon" title="Muted">${icons.bellOff}</span>` : ""}
           ${unread ? `<span class="unread-badge">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}
         </span>
@@ -36,40 +117,41 @@ function neyoRow(s) {
   if (s.view !== "home" || s.search || s.conversations.some((c) => c.peer?.username === "neyo")) return "";
   return `<button type="button" class="chat-item neyo-pin" data-neyo>
     ${avatar({ id: "neyo", displayName: "Neyo", avatarUrl: "/neyo-icon.png" }, "md", { online: true })}
-    <span class="chat-info"><strong>Neyo <span class="ai-tag">AI</span></strong><small>👻 Chat, reminders, Ghost Mode</small></span>
+    <span class="chat-info"><strong>Neyo <span class="ai-tag">AI</span></strong><small>Your AI: chat, reminders, Ghost Mode</small></span>
   </button>`;
 }
 
 export function mountSidebar(container) {
   container.innerHTML = `
     <div class="sidebar-header">
-      <button type="button" class="me-row" data-action="settings" title="Settings">
-        <span class="me-avatar"></span>
-        <span class="profile-text">
-          <strong class="me-name"></strong>
-          <small class="me-id"></small>
-        </span>
-      </button>
+      <div class="brand">${logoMark}<span class="brand-name">Bean</span></div>
       ${store.isDemo() ? `<span class="demo-badge" title="Local demo, no backend">Demo</span>` : ""}
-      <button type="button" class="icon-btn" data-action="settings" title="Settings" aria-label="Settings">${icons.settings}</button>
-      <button type="button" class="icon-btn icon-danger" data-action="logout" title="Sign out" aria-label="Sign out">${icons.power}</button>
+      <button type="button" class="icon-btn header-new" data-action="new" title="New chat" aria-label="New chat">${icons.compose}</button>
     </div>
 
     <div class="sidebar-nav">
       <label class="search-pill">
         ${icons.search}
-        <input type="search" placeholder="Search users..." aria-label="Search chats" />
+        <input type="search" placeholder="Search chats or Bean IDs" aria-label="Search chats or Bean IDs" />
       </label>
-      <button type="button" class="new-message-btn" data-action="new">${icons.compose}<span>New Message</span></button>
       <div class="view-tabs" role="tablist">
-        <button type="button" role="tab" data-view="home">Home</button>
-        <button type="button" role="tab" data-view="beanbox">Beanbox <span class="tab-count"></span></button>
+        <button type="button" role="tab" data-view="home">All chats</button>
+        <button type="button" role="tab" data-view="beanbox">Unread <span class="tab-count"></span></button>
       </div>
     </div>
 
     <div class="notif-slot"></div>
     <nav class="chat-list" aria-label="Chats"></nav>
-    <div class="people-results" hidden></div>`;
+    <div class="people-results" hidden></div>
+
+    <div class="sidebar-footer">
+      <button type="button" class="profile-bar" data-action="profile-menu" aria-haspopup="menu" aria-expanded="false">
+        <span class="me-avatar"></span>
+        <span class="profile-text"><strong class="me-name"></strong><small class="me-id"></small></span>
+        <span class="profile-chevron">${icons.chevronUp}</span>
+      </button>
+      <button type="button" class="icon-btn" data-action="settings" title="Settings" aria-label="Settings">${icons.settings}</button>
+    </div>`;
 
   const list = container.querySelector(".chat-list");
   const notifSlot = container.querySelector(".notif-slot");
@@ -77,9 +159,10 @@ export function mountSidebar(container) {
   const tabCount = container.querySelector(".tab-count");
 
   container.querySelector("[data-action=new]").onclick = () => store.openModal("new");
-  container.querySelectorAll("[data-action=settings]").forEach((b) => (b.onclick = () => store.openModal("settings")));
+  container.querySelector("[data-action=settings]").onclick = () => store.openSettings("profile");
   tabs.forEach((t) => (t.onclick = () => store.setView(t.dataset.view)));
-  container.querySelector("[data-action=logout]").onclick = () => store.logout();
+  const profileBtn = container.querySelector("[data-action=profile-menu]");
+  profileBtn.onclick = () => (document.querySelector(".profile-menu") ? closeProfileMenu() : openProfileMenu(profileBtn));
   const searchInput = container.querySelector(".search-pill input");
   const people = container.querySelector(".people-results");
 
@@ -144,10 +227,10 @@ export function mountSidebar(container) {
   let lastMe = "";
   const render = (s) => {
     const items = store.filteredConversations();
-    const meKey = [s.me.displayName, s.me.avatarUrl].join("|");
+    const meKey = [s.me.displayName, s.me.avatarUrl, s.me.bio].join("|");
     if (meKey !== lastMe) {
       lastMe = meKey;
-      container.querySelector(".me-avatar").innerHTML = avatar(s.me, "sm");
+      container.querySelector(".me-avatar").innerHTML = avatar(s.me, "sm", { online: true });
       container.querySelector(".me-name").textContent = s.me.displayName;
       container.querySelector(".me-id").textContent = s.me.beanId;
     }
@@ -179,7 +262,7 @@ export function mountSidebar(container) {
         s.search
           ? `<p>No chats match your search.</p>`
           : s.view === "beanbox"
-          ? "<p>Beanbox is clear. New messages you haven't read show up here.</p>"
+          ? "<p>You're all caught up. Unread chats show up here.</p>"
           : `<p>No chats yet.</p><button type="button" class="btn-primary btn-sm" data-empty-new>Start a chat</button>`
       }</div>`;
       const btn = list.querySelector("[data-empty-new]");

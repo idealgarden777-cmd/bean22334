@@ -72,14 +72,16 @@ export function readBody(req) {
   return req.body;
 }
 
-export function publicUser(user, presence, avatarUrl = null) {
+export function publicUser(user, presence, profile = null) {
   const lastSeenAt = presence?.last_seen_at || null;
+  const avatarUrl = typeof profile === "string" ? profile : profile?.url || null;
   return {
     id: user.id,
     username: user.username,
     displayName: user.display_name || user.username,
     beanId: `${user.username}@bean`,
     avatarUrl: avatarUrl || (user.username === "neyo" ? "/neyo-icon.png" : null),
+    bio: (typeof profile === "object" && profile?.bio) || (user.username === "neyo" ? "Your AI on Bean: chat, reminders and Ghost Mode." : ""),
     lastSeenAt,
     online: user.username === "neyo" || (lastSeenAt ? Date.now() - new Date(lastSeenAt).getTime() < ONLINE_WINDOW_MS : false),
     ...(user.username === "neyo" ? { isBot: true } : {}),
@@ -118,13 +120,21 @@ export async function getSessionUser(req) {
   return publicUser(user, { last_seen_at: new Date().toISOString() }, await getAvatars([user.id]).then((m) => m.get(user.id)));
 }
 
-/* Profile photos live in bean_profiles (accounts.signaturesi). Optional: never breaks a request. */
+/* Profile photo + bio (bean_profiles). Photos uploaded in Bean are stored in avatar_data
+ * and served by GET /api/me?avatar=<id>&v=<version>. Optional: never breaks a request.
+ * Returns Map(userId -> { url, bio }). */
 export async function getAvatars(ids) {
   const out = new Map();
   if (!ids?.length) return out;
   try {
-    const { data, error } = await supabase.from("bean_profiles").select("user_id, avatar_url").in("user_id", ids);
-    if (!error) for (const p of data || []) if (p.avatar_url) out.set(p.user_id, p.avatar_url);
+    let { data, error } = await supabase.from("bean_profiles").select("user_id, avatar_url, avatar_v, bio").in("user_id", ids);
+    if (error) ({ data, error } = await supabase.from("bean_profiles").select("user_id, avatar_url").in("user_id", ids));
+    if (!error) {
+      for (const p of data || []) {
+        const url = p.avatar_v ? `/api/me?avatar=${p.user_id}&v=${p.avatar_v}` : p.avatar_url || null;
+        out.set(p.user_id, { url, bio: p.bio || "" });
+      }
+    }
   } catch {}
   return out;
 }
@@ -179,7 +189,7 @@ export async function rateLimit(key, max, windowSeconds) {
       rateLimit.warned = true;
       return;
     }
-    if (data === false) fail(429, "Bahut zyada koshishen. Thori dair baad dobara try karein.");
+    if (data === false) fail(429, "Too many attempts. Please wait a moment and try again.");
   } catch (err) {
     if (err instanceof HttpError) throw err;
   }

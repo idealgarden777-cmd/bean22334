@@ -40,6 +40,7 @@ const qs = (params) =>
 const live = {
   me: () => request("/api/me"),
   logout: () => request("/api/me", { method: "POST", body: { action: "logout" } }),
+  updateProfile: (changes) => request("/api/me", { method: "POST", body: { action: "profile", ...changes } }),
   updateMe: (changes) => request("/api/me", { method: "POST", body: { action: "update", ...changes } }),
   login: (username, password) => request("/api/auth", { method: "POST", body: { action: "login", username, password } }),
   register: (username, password) => request("/api/auth", { method: "POST", body: { action: "register", username, password } }),

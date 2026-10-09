@@ -267,7 +267,7 @@ const TOOLS = [
       type: "OBJECT",
       properties: {
         on: { type: "BOOLEAN" },
-        note: { type: "STRING", description: "What Ghost may tell people, in the user's words (e.g. 'meeting mein hun, 6 baje free'). Optional." },
+        note: { type: "STRING", description: "What Ghost may tell people, in the user's words (e.g. 'In a meeting, free after 6'). Optional." },
         hours: { type: "NUMBER", description: "Turn off automatically after this many hours. Optional." },
       },
       required: ["on"],
@@ -447,6 +447,7 @@ You can also do background tasks: reminders, watching chats, daily digests.
 Style: text like a smart, warm friend. Short messages (usually 1-4 sentences), no markdown headings, no tables.
 Reply in the user's language: Roman Urdu if they write Roman Urdu, Urdu script if Urdu, otherwise English.
 Never pretend to have done something you did not do with a tool. Be honest that you are an AI.
+You are Neyo, made by Signaturesi. Never name the underlying model or company behind you (no "Gemini", "Google", "LLM provider"); if asked, say you are Neyo, Signaturesi's AI.
 When the user asks you to remember/remind, monitor/watch a chat, or send summaries, use the tools, then confirm in one line with the time or chat name.
 For a summary, translation or question about a chat, use read_chat first.
 If something needed is missing (like the time for a reminder), ask one short question.
@@ -483,7 +484,7 @@ export async function replyInChat(me, conversationId, tzRaw) {
   if (claim.error && claim.error.code === "23505") return { skipped: "already answering" };
 
   if (!geminiReady()) {
-    await neyoSay(conversationId, "Neyo abhi setup ho raha hai: Bean ke Vercel mein GEMINI_API_KEY lagani baqi hai.");
+    await neyoSay(conversationId, "Neyo isn't set up yet. The server's AI key is missing.");
     return { ok: false, error: "GEMINI_API_KEY missing" };
   }
 
@@ -526,11 +527,11 @@ export async function replyInChat(me, conversationId, tzRaw) {
     }
   } catch (err) {
     console.error("Neyo reply failed:", err);
-    answer = "Maaf kijiye, abhi jawab nahi de pa raha. Thori dair baad dobara likhein.";
+    answer = "Sorry, I can't answer right now. Please try again in a moment.";
   } finally {
     await setTyping(null);
   }
-  if (!answer) answer = "Ho gaya 👍";
+  if (!answer) answer = "Done 👍";
   await neyoSay(conversationId, answer);
   return { ok: true };
 }
@@ -637,10 +638,10 @@ async function digestFor(userId, sinceIso) {
     const lines = (await chatLines(c.id, 40, since)).filter((l) => l.senderId !== userId);
     if (lines.length) blocks.push(`# ${c.name}\n${lines.map((l) => l.line).join("\n")}`);
   }
-  if (!blocks.length) return "🌙 Daily digest: aaj aap ki chats mein koi naya message nahi aaya.";
-  if (!geminiReady()) return `🌙 Daily digest: ${blocks.length} chats mein naye messages hain.`;
+  if (!blocks.length) return "🌙 Daily digest: no new messages in your chats today.";
+  if (!geminiReady()) return `🌙 Daily digest: ${blocks.length} chat${blocks.length === 1 ? " has" : "s have"} new messages.`;
   const summary = await ask(
-    "You are Neyo Ghost. Write a short daily digest of the user's chats: one line per chat with what matters (questions waiting for the user first). Plain text, max 8 lines, Roman Urdu friendly tone.",
+    "You are Neyo Ghost. Write a short daily digest of the user's chats: one line per chat with what matters (questions waiting for the user first). Plain text, max 8 lines, friendly tone, in English unless the user's own messages are in another language.",
     blocks.join("\n\n").slice(0, 20000),
     500
   );

@@ -143,6 +143,7 @@ export function call(handler, { method = "POST", body = {}, cookie = "", host = 
       setHeader: (k, v) => (headers[k.toLowerCase()] = v),
       status(code) { this.code = code; return this; },
       json(b) { resolve({ code: this.code, body: b, headers }); },
+      end(b) { resolve({ code: this.statusCode || this.code, body: b, headers }); },
     };
     const reqHeaders = { host, cookie, "user-agent": "Mozilla/5.0 (Windows NT 10.0) Chrome/130", "x-real-ip": ip };
     if (origin) reqHeaders.origin = origin;

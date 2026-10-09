@@ -2,6 +2,8 @@ import { store } from "../core/store.js";
 import { mountChatHeader } from "./chat-header.js";
 import { mountMessageList } from "./message-list.js";
 import { mountComposer } from "./composer.js";
+import { icons } from "./icons.js";
+import { emojiTag } from "../core/emoji-anim.js";
 
 export function mountChatView(container) {
   let currentId;
@@ -16,10 +18,15 @@ export function mountChatView(container) {
     if (!currentId) {
       container.innerHTML = `
         <div class="chat-empty">
-          <img class="chat-empty-icon" src="/bean-icon.png" alt="" width="64" height="64">
-          <h2>Bean</h2>
-          <p>Select a contact to start, or message anyone with a Bean ID.</p>
-          <button type="button" class="btn-primary" data-action="new">New Message</button>
+          <div class="chat-empty-art">${emojiTag("👋", "big")}</div>
+          <h2>Welcome to Bean</h2>
+          <p>Pick a chat on the left, or start a new one with anyone's Bean ID.</p>
+          <button type="button" class="btn-primary" data-action="new">${icons.compose}<span>New chat</span></button>
+          <div class="chat-empty-features">
+            <span>${icons.phone}Voice &amp; video calls</span>
+            <span>${icons.mic}Voice notes</span>
+            <span>${icons.timer}Disappearing messages</span>
+          </div>
         </div>`;
       container.querySelector("[data-action=new]").onclick = () => store.openModal("new");
       return;

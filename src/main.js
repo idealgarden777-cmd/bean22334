@@ -7,6 +7,7 @@ import "@fontsource/sora/700.css";
 import "./core/theme.js";
 import { mountAppShell } from "./components/app-shell.js";
 import { store } from "./core/store.js";
+import { initAnimatedEmoji } from "./core/emoji-anim.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   let root = document.getElementById("app");
@@ -16,5 +17,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.appendChild(root);
   }
   mountAppShell(root);
+  initAnimatedEmoji();
   store.init();
 });

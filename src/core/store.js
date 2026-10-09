@@ -196,13 +196,13 @@ export const store = {
       }
       if (res.conversations) this.applyConversations(res.conversations);
       this.handleIncomingCall(res.incomingCall);
-      if (this.failures >= 2) this.toast("Wapas online ✓");
+      if (this.failures >= 2) this.toast("Back online ✓");
       this.failures = 0;
     } catch (err) {
       if (err.status === 401) this.set({ status: "signedOut" });
       else {
         this.failures = (this.failures || 0) + 1;
-        if (this.failures === 2) this.toast("Internet/connection masla: dobara jor raha hai…", 6000);
+        if (this.failures === 2) this.toast("Connection lost. Reconnecting…", 6000);
       }
     } finally {
       this.syncing = false;
@@ -371,6 +371,18 @@ export const store = {
     return res;
   },
 
+  async updateProfile(changes) {
+    const res = await api.updateProfile(changes);
+    if (res.user) this.set({ me: { ...this.state.me, ...res.user } });
+    return res;
+  },
+
+  /* open Settings on a given tab (profile, account, ghost, chats, appearance) */
+  openSettings(tab = "profile") {
+    this.set({ settingsTab: tab });
+    this.openModal("settings");
+  },
+
   async enableNotifications() {
     const p = await askNotificationPermission();
     this.set({ notifPermission: p });
@@ -507,7 +519,7 @@ export const store = {
     await this.updateSettings(changes);
     const on = this.state.settings.ghostEnabled;
     if (on && !wasOn) this.toast("👻 Ghost Mode on");
-    if (!on && wasOn) this.toast("Welcome back! Handoff report Neyo ki chat mein hai");
+    if (!on && wasOn) this.toast("Welcome back! Your handoff report is in your Neyo chat");
   },
 
   openNeyo() {

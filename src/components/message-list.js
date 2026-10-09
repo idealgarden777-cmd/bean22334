@@ -1,4 +1,5 @@
 import { patchList } from "../core/dom.js";
+import { emojify, emojiTag } from "../core/emoji-anim.js";
 import { store } from "../core/store.js";
 import { icons } from "./icons.js";
 import {
@@ -121,7 +122,7 @@ function messageHtml(m, ctx) {
     : "";
   const body = deleted
     ? `<span class="deleted-text">${own ? "You deleted this message" : "This message was deleted"}</span>`
-    : `${attachmentHtml(m, upload)}${m.text ? `<span class="bubble-text">${richText(m.text)}</span>` : ""}`;
+    : `${attachmentHtml(m, upload)}${m.text ? `<span class="bubble-text">${emojify(richText(m.text), emojiOnly ? "big" : "inline")}</span>` : ""}`;
 
   const reactions = m.reactions?.length
     ? `<div class="reactions">${m.reactions
@@ -129,7 +130,7 @@ function messageHtml(m, ctx) {
           (r) =>
             `<button type="button" class="reaction-chip ${r.userIds.includes(state.me.id) ? "mine" : ""}" data-react="${escapeHtml(r.emoji)}" title="${escapeHtml(
               r.userIds.map((u) => store.userName(u, conv)).join(", ")
-            )}">${r.emoji}${r.userIds.length > 1 ? `<span>${r.userIds.length}</span>` : ""}</button>`
+            )}">${emojiTag(r.emoji, "react")}${r.userIds.length > 1 ? `<span>${r.userIds.length}</span>` : ""}</button>`
         )
         .join("")}</div>`
     : "";
@@ -179,15 +180,15 @@ function openMenu(anchor, message, mode) {
   const menu = document.createElement("div");
   menu.className = "msg-menu";
   menu.innerHTML = `
-    <div class="menu-reactions">${QUICK_REACTIONS.map((e) => `<button type="button" data-emoji="${e}">${e}</button>`).join("")}</div>
+    <div class="menu-reactions">${QUICK_REACTIONS.map((e) => `<button type="button" data-emoji="${e}" aria-label="React ${e}">${emojiTag(e, "react")}</button>`).join("")}</div>
     ${
       mode === "more"
         ? `<div class="menu-items">
             <button type="button" data-item="reply">${icons.reply}<span>Reply</span></button>
             ${message.text ? `<button type="button" data-item="copy">${icons.copy}<span>Copy text</span></button>` : ""}
             ${message.attachment?.url ? `<a href="${escapeHtml(message.attachment.url)}" target="_blank" rel="noopener" download data-item="download">${icons.download}<span>Download</span></a>` : ""}
-            ${own && message.kind === "text" ? `<button type="button" data-item="edit">${icons.edit}<span>Edit Message</span></button>` : ""}
-            ${own ? `<button type="button" data-item="delete" class="danger">${icons.trash}<span>Unsend Message</span></button>` : ""}
+            ${own && message.kind === "text" ? `<button type="button" data-item="edit">${icons.edit}<span>Edit</span></button>` : ""}
+            ${own ? `<button type="button" data-item="delete" class="danger">${icons.trash}<span>Unsend</span></button>` : ""}
           </div>`
         : ""
     }`;

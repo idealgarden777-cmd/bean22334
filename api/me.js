@@ -6,7 +6,7 @@ import {
 import { setGhost } from "./_lib/ghost.js";
 
 const TIMERS = [0, 86400, 604800, 2592000]; // off, 24h, 7d, 30d (seconds)
-const VERSION = "3.1.0";
+const VERSION = "3.2.0";
 const build = () => ({
   version: VERSION,
   commit: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || null,
@@ -16,7 +16,7 @@ const build = () => ({
 });
 
 /* Which kind of Supabase key the server has (never the key itself).
- * Must be service_role / secret: bean_lockdown.sql blocks the public anon key. */
+ * Must be service_role / secret: bean_update_v32.sql blocks the public anon key. */
 function keyKind(key) {
   const k = String(key || "");
   if (!k) return "missing";
@@ -28,6 +28,71 @@ function keyKind(key) {
   } catch {
     return "unknown";
   }
+}
+
+/* ---------- profile: photo + about ---------- */
+const MAX_AVATAR_BYTES = 200 * 1024;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function imageType(buf) {
+  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+  if (buf.length > 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+  if (buf.length > 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+  return null;
+}
+
+function cleanBio(value) {
+  return String(value || "")
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, 160);
+}
+
+async function saveProfile(me, body) {
+  const row = { user_id: me.id, updated_at: new Date().toISOString() };
+  if (body.bio !== undefined) row.bio = cleanBio(body.bio);
+  if (body.avatar !== undefined) {
+    if (body.avatar === null) {
+      row.avatar_data = null;
+      row.avatar_v = null;
+      row.avatar_url = null;
+    } else {
+      const m = /^data:image\/(jpeg|png|webp);base64,([a-z0-9+/=]+)$/i.exec(String(body.avatar));
+      if (!m) throw new HttpError(400, "Please choose a JPG, PNG or WebP photo");
+      const buf = Buffer.from(m[2], "base64");
+      if (!buf.length || buf.length > MAX_AVATAR_BYTES) throw new HttpError(400, "Photo is too large (max 200 KB after resizing)");
+      const type = imageType(buf);
+      if (!type) throw new HttpError(400, "That file is not a valid image");
+      row.avatar_data = `data:${type};base64,${buf.toString("base64")}`;
+      row.avatar_v = Date.now();
+    }
+  }
+  const { error } = await supabase.from("bean_profiles").upsert(row, { onConflict: "user_id" });
+  if (error) {
+    if (/column|relation|schema cache/i.test(error.message || "")) {
+      throw new HttpError(503, "Profile editing needs the one-time database update (bean_update_v32.sql).");
+    }
+    throw error;
+  }
+}
+
+async function serveAvatar(req, res) {
+  const me = await getSessionUser(req);
+  if (!me) return send(res, 401, { error: "Not signed in" });
+  const id = String(req.query.avatar || "");
+  if (!UUID.test(id)) return send(res, 404, { error: "Not found" });
+  const { data } = await supabase.from("bean_profiles").select("avatar_data").eq("user_id", id).maybeSingle();
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(data?.avatar_data || "");
+  if (!m) return send(res, 404, { error: "Not found" });
+  const buf = Buffer.from(m[2], "base64");
+  res.statusCode = 200;
+  res.setHeader("Content-Type", m[1]);
+  res.setHeader("Content-Length", buf.length);
+  res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+  return res.end(buf);
 }
 
 function deviceName(ua) {
@@ -85,6 +150,7 @@ export default async function handler(req, res) {
         ...build(),
       });
     }
+    if (req.method === "GET" && req.query?.avatar) return serveAvatar(req, res);
     if (req.method === "GET") {
       const user = await getSessionUser(req);
       if (!user) return send(res, 200, { authenticated: false });
@@ -123,6 +189,14 @@ export default async function handler(req, res) {
       return send(res, 200, { success: true });
     }
 
+    if (body.action === "profile") {
+      const me = await getSessionUser(req);
+      if (!me) return send(res, 401, { error: "Not signed in" });
+      await rateLimit(`profile:${me.id}`, 20, 600);
+      await saveProfile(me, body);
+      return send(res, 200, { success: true, user: await getSessionUser(req) });
+    }
+
     if (body.action === "update") {
       const me = await getSessionUser(req);
       if (!me) return send(res, 401, { error: "Not signed in" });
@@ -143,7 +217,7 @@ export default async function handler(req, res) {
         try {
           ok = Boolean(cred?.password_hash) && (await argon2.verify(cred.password_hash, String(body.currentPassword || "")));
         } catch {}
-        if (!ok) return send(res, 403, { error: "Current password galat hai" });
+        if (!ok) return send(res, 403, { error: "Current password is incorrect" });
         const password_hash = await argon2.hash(password, { type: argon2.argon2id });
         const { error } = await supabase.from("bean_credentials").update({ password_hash }).eq("user_id", me.id);
         if (error) throw error;

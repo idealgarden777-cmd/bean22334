@@ -1,4 +1,4 @@
-import { supabase, send, withUser } from "./_lib/session.js";
+import { supabase, send, withUser, rateLimit } from "./_lib/session.js";
 import { loadUsers } from "./_lib/chat.js";
 
 /* GET /api/users?q=leo -> find Bean IDs */
@@ -10,6 +10,7 @@ export default withUser(async (req, res, me) => {
     .replace(/[^a-z0-9._-]/g, "")
     .slice(0, 32);
   if (q.length < 2) return send(res, 200, { users: [] });
+  await rateLimit(`search:${me.id}`, 90, 60); // slows down Bean ID enumeration
 
   const { data, error } = await supabase
     .from("bean_users")

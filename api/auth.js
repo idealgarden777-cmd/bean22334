@@ -8,7 +8,7 @@
  * ========================================================= */
 import crypto from "node:crypto";
 import argon2 from "argon2";
-import { supabase, send, readBody, hashToken, sessionCookie, cleanUsername, publicUser, getAvatars, HttpError } from "./_lib/session.js";
+import { supabase, send, readBody, hashToken, sessionCookie, cleanUsername, publicUser, getAvatars, HttpError, rateLimit, clientIp, sameOrigin } from "./_lib/session.js";
 
 const SESSION_DAYS = 7;
 const USERNAME_OK = /^[a-z0-9_]{3,20}$/;
@@ -25,6 +25,14 @@ async function startSession(req, res, user) {
   });
   if (error) throw error;
   res.setHeader("Set-Cookie", sessionCookie(req, raw, SESSION_DAYS * 86400));
+}
+
+let dummyHash = null;
+async function fakeVerify(password) {
+  try {
+    dummyHash ||= await argon2.hash("bean-dummy-password-for-timing", { type: argon2.argon2id });
+    await argon2.verify(dummyHash, password || "x");
+  } catch {}
 }
 
 async function findUser(username) {
@@ -46,19 +54,28 @@ export default async function handler(req, res) {
   const body = readBody(req);
   const username = cleanUsername(body.username);
   const password = String(body.password || "");
+  const ip = clientIp(req);
 
   try {
+    if (!sameOrigin(req)) return send(res, 403, { error: "Blocked: request did not come from Bean" });
     switch (body.action) {
       case "check": {
+        await rateLimit(`check:${ip}`, 120, 600);
         if (!USERNAME_OK.test(username)) return send(res, 200, { available: false, reason: "3–20 letters, numbers or _" });
         const user = await findUser(username);
         return send(res, 200, { available: !user, reason: user ? "This Bean ID is taken" : null });
       }
 
       case "login": {
-        if (!USERNAME_OK.test(username) || !password) return send(res, 401, { error: BAD_LOGIN });
+        // brute-force guard: per IP and per Bean ID
+        await rateLimit(`login-ip:${ip}`, 40, 900);
+        if (!USERNAME_OK.test(username) || !password || password.length > 200) return send(res, 401, { error: BAD_LOGIN });
+        await rateLimit(`login-user:${username}`, 10, 900);
         const user = await findUser(username);
-        if (!user || user.status !== "active") return send(res, 401, { error: BAD_LOGIN });
+        if (!user || user.status !== "active") {
+          await fakeVerify(password); // same timing as a real check: no Bean ID guessing by speed
+          return send(res, 401, { error: BAD_LOGIN });
+        }
 
         const { data: cred, error } = await supabase
           .from("bean_credentials")
@@ -80,7 +97,9 @@ export default async function handler(req, res) {
       }
 
       case "register": {
+        await rateLimit(`register:${ip}`, 6, 3600);
         if (!USERNAME_OK.test(username)) return send(res, 400, { error: "Bean ID must be 3–20 letters, numbers or _" });
+        if (username === "neyo" || /^(admin|support|security|bean|signaturesi)$/.test(username)) return send(res, 409, { error: "This Bean ID is taken" });
         if (password.length < MIN_PASSWORD || password.length > 100) return send(res, 400, { error: `Password must be at least ${MIN_PASSWORD} characters` });
         if (await findUser(username)) return send(res, 409, { error: "This Bean ID is taken" });
 

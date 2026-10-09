@@ -1,11 +1,13 @@
 /* One WebRTC call between two Bean IDs. Signalling goes through /api/calls (polling). */
 import { api } from "./api.js";
+import { e2ee } from "./e2ee.js";
 
 const POLL_MS = 900;
 
 export class CallSession {
-  constructor({ call, iceServers, onUpdate, onEnd }) {
+  constructor({ call, iceServers, onUpdate, onEnd, conversation }) {
     this.call = call; // { id, kind, role, peer, status }
+    this.conversation = conversation; // signalling is encrypted with this chat's E2EE key
     this.iceServers = iceServers?.length ? iceServers : [{ urls: "stun:stun.l.google.com:19302" }];
     this.onUpdate = onUpdate;
     this.onEnd = onEnd;
@@ -70,7 +72,8 @@ export class CallSession {
   async signal(type, payload) {
     if (this.ended) return;
     try {
-      await api.callAction("signal", { id: this.call.id, type, payload });
+      const enc = await e2ee.encryptSignal(this.conversation, this.call.id, type, payload);
+      await api.callAction("signal", { id: this.call.id, type, payload: { enc } });
     } catch {}
   }
 
@@ -92,9 +95,15 @@ export class CallSession {
     this.pollTimer = setTimeout(() => this.poll(), POLL_MS);
   }
 
-  async handleSignal({ type, payload }) {
+  async handleSignal({ type, payload: sealed }) {
     const pc = this.pc;
     if (!pc) return;
+    let payload;
+    try {
+      payload = await e2ee.decryptSignal(this.conversation.id, this.call.id, type, sealed?.enc);
+    } catch {
+      return; // not from the other person: ignore
+    }
     if (type === "offer" && this.call.role === "callee") {
       await pc.setRemoteDescription(payload);
       this.remoteSet = true;

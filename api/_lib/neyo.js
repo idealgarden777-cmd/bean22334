@@ -5,16 +5,16 @@
  *    daily digest). Runs on every "tick" (/api/neyo?action=tick),
  *    called by open Bean tabs every minute and by Supabase pg_cron.
  * ========================================================= */
-import { supabase } from "./session.js";
+import { supabase, NEYO_ID as SESSION_NEYO_ID } from "./session.js";
 import { insertMessage, notExpired } from "./chat.js";
 import { setGhost, ghostProfile } from "./ghost.js";
 
-export const NEYO_ID = "0e000000-0000-4000-8000-000000000001";
+export const NEYO_ID = SESSION_NEYO_ID;
 export const NEYO_USERNAME = "neyo";
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const MODELS = [process.env.NEYO_BEAN_MODEL, "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash"].filter(Boolean);
-const HISTORY = 30;
+const HISTORY = 20;
 const WATCH_EVERY_MS = 5 * 60 * 1000;
 const DEFAULT_TZ = "Asia/Karachi";
 
@@ -127,34 +127,71 @@ export async function neyoDmFor(userId) {
   return created.data.id;
 }
 
-/* ---------------- Gemini ---------------- */
+/* ---------------- Gemini (fast + stable) ----------------
+ * - one overall deadline per request (never runs past Vercel's limit)
+ * - short per-call timeout, one quick retry on 429/5xx, then the next model
+ * - models that answer 404/400 "not found" are skipped for 30 min (per instance)
+ * - the last model that worked is tried first next time                       */
+
+const badModels = new Map(); // model -> until (ms)
+let goodModel = null;
 
 export const geminiReady = () => Boolean(GEMINI_KEY);
 
-export async function gemini({ system, contents, tools, maxTokens = 900, json = false }) {
+function modelOrder() {
+  const now = Date.now();
+  const list = MODELS.filter((m) => (badModels.get(m) || 0) < now);
+  if (goodModel && list.includes(goodModel)) return [goodModel, ...list.filter((m) => m !== goodModel)];
+  return list.length ? list : MODELS;
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export async function gemini({ system, contents, tools, maxTokens = 700, json = false, deadlineMs = 40000 }) {
+  const deadline = Date.now() + deadlineMs;
   let lastErr;
-  for (const model of MODELS) {
-    const generationConfig = { temperature: 0.7, maxOutputTokens: maxTokens };
+  for (const model of modelOrder()) {
+    const generationConfig = { temperature: 0.6, maxOutputTokens: maxTokens };
     if (json) generationConfig.responseMimeType = "application/json";
     if (/gemini-3/i.test(model)) generationConfig.thinkingConfig = { thinkingLevel: "minimal" };
     else if (/gemini-2\.5/i.test(model)) generationConfig.thinkingConfig = { thinkingBudget: 0 };
     const body = { systemInstruction: { parts: [{ text: system }] }, contents, generationConfig };
     if (tools) body.tools = [{ functionDeclarations: tools }];
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(GEMINI_KEY)}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(25000) }
-      );
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) {
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const left = deadline - Date.now();
+      if (left < 2500) throw lastErr || new Error("Neyo took too long");
+      try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(Math.min(18000, left - 500)),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok) {
+          goodModel = model;
+          const content = data?.candidates?.[0]?.content || { role: "model", parts: [] };
+          return { content: { role: "model", parts: content.parts || [] }, model };
+        }
         lastErr = new Error(`Gemini ${model}: ${data?.error?.message || r.status}`);
-        if ([400, 404, 429, 500, 503].includes(r.status)) continue; // try the next model
-        throw lastErr;
+        if (r.status === 404 || (r.status === 400 && /not found|not supported|unknown name/i.test(data?.error?.message || ""))) {
+          badModels.set(model, Date.now() + 30 * 60000);
+          break; // next model
+        }
+        if ([429, 500, 502, 503, 504].includes(r.status)) {
+          if (attempt === 0) {
+            await sleep(400 + Math.random() * 400);
+            continue; // quick retry, same model
+          }
+          break;
+        }
+        throw lastErr; // 401/403 etc: config problem, no point trying other models
+      } catch (err) {
+        lastErr = err;
+        if (err?.name === "TimeoutError" || err?.name === "AbortError") break; // slow model -> next
+        if (String(err?.message || "").startsWith("Gemini ")) throw err;
       }
-      const content = data?.candidates?.[0]?.content || { role: "model", parts: [] };
-      return { content: { role: "model", parts: content.parts || [] } };
-    } catch (err) {
-      lastErr = err;
     }
   }
   throw lastErr || new Error("Gemini unavailable");
@@ -168,7 +205,7 @@ export const textOf = (content) =>
     .trim();
 
 export async function ask(system, prompt, maxTokens = 500, json = false) {
-  const { content } = await gemini({ system, contents: [{ role: "user", parts: [{ text: prompt }] }], maxTokens, json });
+  const { content } = await gemini({ system, contents: [{ role: "user", parts: [{ text: prompt }] }], maxTokens, json, deadlineMs: 25000 });
   return textOf(content);
 }
 
@@ -189,22 +226,8 @@ const TOOLS = [
     },
   },
   {
-    name: "watch_chat",
-    description:
-      "Neyo Ghost keeps watching a chat in the background and messages the user when something matching their request happens.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        chat_name: { type: "STRING", description: "Name of the chat or group to watch. Leave empty for the current chat." },
-        what: { type: "STRING", description: "What counts as important, in the user's words" },
-        hours: { type: "NUMBER", description: "How long to keep watching. Leave empty to watch until cancelled." },
-      },
-      required: ["what"],
-    },
-  },
-  {
     name: "daily_digest",
-    description: "Every day at a time, Neyo Ghost sends the user a short summary of what happened in their chats.",
+    description: "Every day at a time, Neyo sends the user a short digest of WHO messaged them and how many messages (chats are end-to-end encrypted, so never the content).",
     parameters: {
       type: "OBJECT",
       properties: { time: { type: "STRING", description: "Local time HH:MM, 24-hour" } },
@@ -212,25 +235,14 @@ const TOOLS = [
     },
   },
   {
-    name: "read_chat",
-    description: "Read the latest messages of one of the user's chats, to summarize, translate or answer about it.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        chat_name: { type: "STRING", description: "Chat or group name. Leave empty for the current chat." },
-        count: { type: "NUMBER", description: "How many latest messages, up to 100" },
-      },
-    },
-  },
-  {
     name: "ghost_mode",
     description:
-      "Turn Neyo Ghost (Delegated Presence) on or off. While on, Ghost answers simple direct messages on the user's behalf, queues important ones, and gives a handoff report when turned off.",
+      "Turn Ghost (Away Mode) on or off. While on, the user's contacts see that they are away with their short note. Ghost never reads or answers messages (chats are end-to-end encrypted). When turned off, the user gets a handoff report of who messaged and how many messages.",
     parameters: {
       type: "OBJECT",
       properties: {
         on: { type: "BOOLEAN" },
-        note: { type: "STRING", description: "What Ghost may tell people, in the user's words (e.g. 'meeting mein hun, 6 baje free'). Optional." },
+        note: { type: "STRING", description: "Short away note contacts will see, in the user's words (e.g. 'meeting mein hun, 6 baje free'). It is a status, not encrypted. Optional." },
         hours: { type: "NUMBER", description: "Turn off automatically after this many hours. Optional." },
       },
       required: ["on"],
@@ -283,7 +295,7 @@ async function chatLines(conversationId, count = 40, sinceIso = null) {
   let q = notExpired(
     supabase
       .from("bean_messages")
-      .select("sender_id, kind, body, attachment, created_at, deleted_at")
+      .select("id, sender_id, kind, body, attachment, created_at, deleted_at, enc")
       .eq("conversation_id", conversationId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -291,11 +303,12 @@ async function chatLines(conversationId, count = 40, sinceIso = null) {
   );
   if (sinceIso) q = q.gt("created_at", sinceIso);
   const { data } = await q;
-  const rows = (data || []).reverse();
+  const rows = (data || []).reverse().filter((r) => !r.enc); // encrypted messages are unreadable here, by design
   const ids = [...new Set(rows.map((r) => r.sender_id).filter(Boolean))];
   const { data: users } = ids.length ? await supabase.from("bean_users").select("id, username, display_name").in("id", ids) : { data: [] };
   const names = new Map((users || []).map((u) => [u.id, u.display_name || u.username]));
   return rows.map((r) => ({
+    id: r.id,
     senderId: r.sender_id,
     at: r.created_at,
     line: `${names.get(r.sender_id) || "System"}: ${r.body || (r.kind === "text" ? "" : `[${r.kind}${r.attachment?.name ? " " + r.attachment.name : ""}]`)}`,
@@ -319,22 +332,9 @@ async function runTool(name, args, ctx) {
       if (error) throw error;
       return { ok: true, remind_at_local: localTime(at, tz), repeat: args.repeat || "none" };
     }
-    case "watch_chat": {
-      const chat = findChat(chats.filter((c) => !c.isNeyo), args.chat_name, conversationId);
-      if (!chat) return { ok: false, error: "Chat not found", chats: chats.filter((c) => !c.isNeyo).map((c) => c.name) };
-      const hours = Number(args.hours) > 0 ? Number(args.hours) : null;
-      const { error } = await supabase.from("bean_ghost_tasks").insert({
-        user_id: me.id,
-        kind: "watch",
-        title: `Watch ${chat.name}`,
-        prompt: String(args.what || "anything important").slice(0, 500),
-        watch_conversation_id: chat.id,
-        until_at: hours ? new Date(Date.now() + hours * 3600000).toISOString() : null,
-        last_checked_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-      return { ok: true, watching: chat.name, until: hours ? `${hours} hours` : "until cancelled" };
-    }
+    case "watch_chat":
+    case "read_chat":
+      return { ok: false, error: "Bean chats are end-to-end encrypted. Neyo cannot read, watch or summarize them. Tell the user this honestly." };
     case "daily_digest": {
       const at = nextDailyTime(args.time, tz);
       if (!at) return { ok: false, error: "Time unclear" };
@@ -348,12 +348,6 @@ async function runTool(name, args, ctx) {
       });
       if (error) throw error;
       return { ok: true, first_digest_local: localTime(at, tz) };
-    }
-    case "read_chat": {
-      const chat = findChat(chats, args.chat_name, conversationId);
-      if (!chat) return { ok: false, error: "Chat not found", chats: chats.map((c) => c.name) };
-      const lines = await chatLines(chat.id, args.count || 40);
-      return { chat: chat.name, messages: lines.map((l) => l.line) };
     }
     case "ghost_mode": {
       const r = await setGhost(me, { enabled: Boolean(args.on), note: args.note, hours: args.hours });
@@ -403,47 +397,43 @@ async function activeTasks(userId) {
 
 function persona(me, tz, chat, chats, ghost) {
   return `You are Neyo, the AI of Signaturesi, living inside Bean (a chat app) as the contact neyo@bean.
-You also have "Neyo Ghost" (Delegated Presence): when the user is away, Ghost answers simple direct messages on their behalf (labelled 👻 Ghost), queues important ones for them, and gives a handoff report when they're back. Use the ghost_mode tool when they say they're busy/away or back.
-You can also do background tasks: reminders, watching chats, daily digests.
+Bean chats between people are END-TO-END ENCRYPTED: you cannot read, watch, summarize or answer them, and you must say so honestly if asked.
+Only this private chat with you is not end-to-end encrypted (an AI has to read it). Never ask for passwords, card numbers, bank details or codes; if the user shares one, tell them to delete it.
+You can: chat and help, set reminders, a daily digest of WHO messaged (metadata only), and turn Ghost (Away Mode) on/off: contacts see "away" + the user's short note, and a handoff report (who messaged, how many) comes when they're back. Ghost never reads or answers messages.
 
 Style: text like a smart, warm friend. Short messages (usually 1-4 sentences), no markdown headings, no tables.
 Reply in the user's language: Roman Urdu if they write Roman Urdu, Urdu script if Urdu, otherwise English.
 Never pretend to have done something you did not do with a tool. Be honest that you are an AI.
-When the user asks you to remember/remind, monitor/watch a chat, or send summaries, use the tools, then confirm in one line with the time or chat name.
-For a summary, translation or question about a chat, use read_chat first.
+When the user asks for a reminder, digest or away mode, use the tool, then confirm in one line with the time.
 If something needed is missing (like the time for a reminder), ask one short question.
 
 Now: ${localTime(new Date(), tz)} (user's time zone ${tz}).
-Ghost Mode: ${ghost?.ghostEnabled ? `ON${ghost.ghostUntil ? ` until ${localTime(new Date(ghost.ghostUntil), tz)}` : ""}` : "off"}.
-User: ${me.displayName} (@${me.username}).
-This chat: ${chat.type === "group" ? `group "${chat.name}" (you answer only because someone wrote @neyo)` : "private chat with the user"}.
-User's chats: ${chats.filter((c) => !c.isNeyo).map((c) => c.name).join(", ") || "none"}.`;
+Ghost (Away Mode): ${ghost?.ghostEnabled ? `ON${ghost.ghostUntil ? ` until ${localTime(new Date(ghost.ghostUntil), tz)}` : ""}` : "off"}.
+User: ${me.displayName} (@${me.username}).`;
 }
 
 export async function replyInChat(me, conversationId, tzRaw) {
   const tz = safeTz(tzRaw);
-  const chats = await userChats(me.id);
-  const chat = chats.find((c) => c.id === conversationId);
-  if (!chat) return { skipped: "not a member" };
-
-  const { data: neyoMember } = await supabase
-    .from("bean_conversation_members")
-    .select("user_id")
-    .eq("conversation_id", conversationId)
-    .eq("user_id", NEYO_ID)
-    .maybeSingle();
-  if (!neyoMember) return { skipped: "neyo not in chat" };
+  // Neyo only answers in its own (non-E2EE, clearly labelled) chat
+  const dmKey = [me.id, NEYO_ID].sort().join(":");
+  const { data: conv } = await supabase.from("bean_conversations").select("id, dm_key").eq("id", conversationId).maybeSingle();
+  if (!conv || conv.dm_key !== dmKey) return { skipped: "not the Neyo chat" };
 
   const lines = await chatLines(conversationId, HISTORY);
   const last = [...lines].reverse().find((l) => l.senderId && l.senderId !== NEYO_ID);
   if (!last || last.senderId !== me.id) return { skipped: "nothing new from user" };
   if (lines[lines.length - 1]?.senderId === NEYO_ID) return { skipped: "already answered" };
-  if (chat.type === "group" && !/@neyo\b/i.test(last.line)) return { skipped: "not mentioned" };
+
+  // exactly one answer per user message, even if the request is sent twice
+  const claim = await supabase.from("bean_neyo_jobs").insert({ message_id: last.id });
+  if (claim.error && claim.error.code === "23505") return { skipped: "already answering" };
 
   if (!geminiReady()) {
     await neyoSay(conversationId, "Neyo abhi setup ho raha hai: Bean ke Vercel mein GEMINI_API_KEY lagani baqi hai.");
     return { ok: false, error: "GEMINI_API_KEY missing" };
   }
+  const chat = { id: conversationId, type: "dm", name: "Neyo" };
+  const chats = [];
 
   await setTyping(conversationId);
   const contents = [];
@@ -462,7 +452,7 @@ export async function replyInChat(me, conversationId, tzRaw) {
   let answer = "";
   try {
     for (let step = 0; step < 4; step++) {
-      const { content } = await gemini({ system, contents, tools: TOOLS });
+      const { content } = await gemini({ system, contents, tools: TOOLS, deadlineMs: 48000 - step * 6000 });
       const calls = content.parts.filter((p) => p.functionCall);
       if (!calls.length) {
         answer = textOf(content);
@@ -509,67 +499,55 @@ export async function ghostTick() {
   const nowIso = new Date().toISOString();
   const done = { reminders: 0, digests: 0, watches: 0, alerts: 0 };
 
-  // expire finished watches
-  await supabase.from("bean_ghost_tasks").update({ status: "done" }).eq("status", "active").lt("until_at", nowIso);
+  // chat watching can't work on end-to-end encrypted chats: close old watch tasks once, with a note
+  const { data: oldWatches } = await supabase
+    .from("bean_ghost_tasks")
+    .update({ status: "done" })
+    .eq("status", "active")
+    .eq("kind", "watch")
+    .select("id, user_id, title");
+  for (const t of oldWatches || []) {
+    await neyoSay(
+      await neyoDmFor(t.user_id),
+      `🔒 "${t.title}" band kar diya: Bean chats ab end-to-end encrypted hain, is liye Neyo unhe parh ya watch nahi kar sakta.`
+    ).catch(() => {});
+  }
 
-  // due reminders + digests
+  // due reminders + digests: claim first (at-most-once), then send
   const { data: due } = await supabase
     .from("bean_ghost_tasks")
     .select("*")
     .eq("status", "active")
     .in("kind", ["remind", "digest"])
     .lte("run_at", nowIso)
-    .limit(25);
-  for (const t of due || []) {
-    try {
-      const dm = await neyoDmFor(t.user_id);
-      if (t.kind === "remind") {
-        await neyoSay(dm, `⏰ Reminder: ${t.title}`);
-        done.reminders++;
-      } else {
-        await neyoSay(dm, await digestFor(t.user_id, t.last_checked_at));
-        done.digests++;
+    .order("run_at", { ascending: true })
+    .limit(50);
+  await Promise.all(
+    (due || []).map(async (t) => {
+      try {
+        const next = t.repeat_seconds ? nextRun(t.run_at, t.repeat_seconds) : null;
+        const { data: claimed } = await supabase
+          .from("bean_ghost_tasks")
+          .update(next ? { run_at: next, last_checked_at: nowIso } : { status: "done", last_checked_at: nowIso })
+          .eq("id", t.id)
+          .eq("status", "active")
+          .eq("run_at", t.run_at)
+          .select("id");
+        if (!claimed?.length) return; // another run took it
+        const dm = await neyoDmFor(t.user_id);
+        if (t.kind === "remind") {
+          await neyoSay(dm, `⏰ Reminder: ${t.title}`);
+          done.reminders++;
+        } else {
+          await neyoSay(dm, await digestFor(t.user_id, t.last_checked_at));
+          done.digests++;
+        }
+      } catch (err) {
+        console.error("Ghost task failed:", t.id, err);
       }
-      const next = t.repeat_seconds ? nextRun(t.run_at, t.repeat_seconds) : null;
-      await supabase
-        .from("bean_ghost_tasks")
-        .update(next ? { run_at: next, last_checked_at: nowIso } : { status: "done", last_checked_at: nowIso })
-        .eq("id", t.id);
-    } catch (err) {
-      console.error("Ghost task failed:", t.id, err);
-    }
-  }
-
-  // watches: look at new messages every 5 minutes
-  const { data: watches } = await supabase
-    .from("bean_ghost_tasks")
-    .select("*")
-    .eq("status", "active")
-    .eq("kind", "watch")
-    .lt("last_checked_at", new Date(Date.now() - WATCH_EVERY_MS).toISOString())
-    .limit(15);
-  for (const t of watches || []) {
-    try {
-      done.watches++;
-      const lines = (await chatLines(t.watch_conversation_id, 60, t.last_checked_at)).filter(
-        (l) => l.senderId !== t.user_id && l.senderId !== NEYO_ID
-      );
-      await supabase.from("bean_ghost_tasks").update({ last_checked_at: nowIso }).eq("id", t.id);
-      if (!lines.length || !geminiReady()) continue;
-      const verdict = await ask(
-        `You are Neyo Ghost, quietly watching a chat for a user. Decide if the new messages contain what the user asked to be told about.
-If not, reply exactly NONE. If yes, write one short alert (max 2 sentences) for the user, in the same language the user used in their request, quoting who said what.`,
-        `User asked: "${t.prompt}"\nChat: ${t.title.replace(/^Watch /, "")}\nNew messages:\n${lines.map((l) => l.line).join("\n")}`,
-        200
-      );
-      if (verdict && !/^NONE\b/i.test(verdict.trim())) {
-        await neyoSay(await neyoDmFor(t.user_id), `👻 ${t.title.replace(/^Watch /, "")}: ${verdict}`);
-        done.alerts++;
-      }
-    } catch (err) {
-      console.error("Ghost watch failed:", t.id, err);
-    }
-  }
+    })
+  );
+  done.watchesClosed = (oldWatches || []).length;
   return done;
 }
 
@@ -580,20 +558,35 @@ function nextRun(runAt, every) {
   return new Date(t).toISOString();
 }
 
+/* Daily digest: who messaged and how many (metadata only: chats are end-to-end encrypted). */
 async function digestFor(userId, sinceIso) {
   const since = sinceIso || new Date(Date.now() - 86400000).toISOString();
-  const chats = (await userChats(userId)).filter((c) => !c.isNeyo);
-  const blocks = [];
-  for (const c of chats.slice(0, 20)) {
-    const lines = (await chatLines(c.id, 40, since)).filter((l) => l.senderId !== userId);
-    if (lines.length) blocks.push(`# ${c.name}\n${lines.map((l) => l.line).join("\n")}`);
+  const { data: mine } = await supabase.from("bean_conversation_members").select("conversation_id").eq("user_id", userId);
+  const ids = (mine || []).map((m) => m.conversation_id);
+  if (!ids.length) return "🌙 Daily digest: aaj koi naya message nahi aaya.";
+  const { data: rows } = await supabase
+    .from("bean_messages")
+    .select("conversation_id, sender_id, kind")
+    .in("conversation_id", ids)
+    .neq("sender_id", userId)
+    .neq("sender_id", NEYO_ID)
+    .is("deleted_at", null)
+    .gt("created_at", since)
+    .limit(3000);
+  const list = (rows || []).filter((r) => r.sender_id && !["system", "call"].includes(r.kind));
+  if (!list.length) return "🌙 Daily digest: aaj aap ki chats mein koi naya message nahi aaya.";
+  const [{ data: convs }, { data: users }] = await Promise.all([
+    supabase.from("bean_conversations").select("id, type, title").in("id", [...new Set(list.map((r) => r.conversation_id))]),
+    supabase.from("bean_users").select("id, username, display_name").in("id", [...new Set(list.map((r) => r.sender_id))]),
+  ]);
+  const convById = new Map((convs || []).map((c) => [c.id, c]));
+  const nameById = new Map((users || []).map((u) => [u.id, u.display_name || u.username]));
+  const per = new Map();
+  for (const r of list) {
+    const c = convById.get(r.conversation_id);
+    const label = c?.type === "group" ? `${c.title || "Group"} (group)` : nameById.get(r.sender_id) || "Someone";
+    per.set(r.conversation_id, { label, count: (per.get(r.conversation_id)?.count || 0) + 1 });
   }
-  if (!blocks.length) return "🌙 Daily digest: aaj aap ki chats mein koi naya message nahi aaya.";
-  if (!geminiReady()) return `🌙 Daily digest: ${blocks.length} chats mein naye messages hain.`;
-  const summary = await ask(
-    "You are Neyo Ghost. Write a short daily digest of the user's chats: one line per chat with what matters (questions waiting for the user first). Plain text, max 8 lines, Roman Urdu friendly tone.",
-    blocks.join("\n\n").slice(0, 20000),
-    500
-  );
-  return `🌙 Daily digest\n${summary}`;
+  const lines = [...per.values()].sort((a, b) => b.count - a.count).slice(0, 10).map((l) => `• ${l.label}: ${l.count}`);
+  return `🌙 Daily digest: ${list.length} naye messages\n${lines.join("\n")}\n🔒 Content encrypted hai, chats khol kar parhein.`;
 }

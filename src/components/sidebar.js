@@ -35,7 +35,7 @@ function neyoRow(s) {
   if (s.view !== "home" || s.search || s.conversations.some((c) => c.peer?.username === "neyo")) return "";
   return `<button type="button" class="chat-item neyo-pin" data-neyo>
     ${avatar({ id: "neyo", displayName: "Neyo", avatarUrl: "/neyo-icon.png" }, "md", { online: true })}
-    <span class="chat-info"><strong>Neyo <span class="ai-tag">AI</span></strong><small>👻 Chat, reminders, Ghost Mode</small></span>
+    <span class="chat-info"><strong>Neyo <span class="ai-tag">AI</span></strong><small>AI · reminders, Away Mode</small></span>
   </button>`;
 }
 
@@ -163,7 +163,7 @@ export function mountSidebar(container) {
 
     const until = s.settings.ghostUntil ? new Date(s.settings.ghostUntil) : null;
     notifSlot.innerHTML = s.settings.ghostEnabled
-      ? `<div class="ghost-banner"><span>👻 <strong>Ghost Mode on</strong><small>${until ? `Until ${until.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Ghost replies to your DMs"}</small></span><button type="button" class="btn-primary btn-sm" data-ghost-off>I'm back</button></div>`
+      ? `<div class="ghost-banner"><span>👻 <strong>Away Mode on</strong><small>${until ? `Until ${until.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Contacts see you're away"}</small></span><button type="button" class="btn-primary btn-sm" data-ghost-off>I'm back</button></div>`
       : notificationsSupported() && s.notifPermission === "default"
       ? `<button type="button" class="notif-banner">${icons.bell}<span>Turn on notifications</span></button>`
       : "";

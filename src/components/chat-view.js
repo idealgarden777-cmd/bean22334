@@ -2,6 +2,7 @@ import { store } from "../core/store.js";
 import { mountChatHeader } from "./chat-header.js";
 import { mountMessageList } from "./message-list.js";
 import { mountComposer } from "./composer.js";
+import { mountChatBanner } from "./chat-banner.js";
 
 export function mountChatView(container) {
   let currentId;
@@ -29,12 +30,14 @@ export function mountChatView(container) {
       <div class="chat-view-container">
         <div class="chat-header-slot"></div>
         <div class="message-list-slot"></div>
+        <div class="chat-banner-slot"></div>
         <div class="composer-slot"></div>
         <div class="drop-overlay"><div>Drop to send</div></div>
       </div>`;
 
     cleanups.push(mountChatHeader(container.querySelector(".chat-header-slot")));
     cleanups.push(mountMessageList(container.querySelector(".message-list-slot")));
+    cleanups.push(mountChatBanner(container.querySelector(".chat-banner-slot")));
     cleanups.push(mountComposer(container.querySelector(".composer-slot")));
 
     const view = container.querySelector(".chat-view-container");

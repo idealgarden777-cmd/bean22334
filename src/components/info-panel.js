@@ -2,6 +2,28 @@ import { store } from "../core/store.js";
 import { icons } from "./icons.js";
 import { avatar, escapeHtml, lastSeen, debounce } from "../core/utils.js";
 import { openLightbox } from "./lightbox.js";
+import { e2ee } from "../core/e2ee.js";
+
+function encryptionHtml(conv, s) {
+  if (conv.e2ee === false) {
+    return `<section class="info-section enc-section plain"><h4>🤖 Not end-to-end encrypted</h4>
+      <p class="muted-note">Neyo AI hai. Is chat ke messages jawab ke liye Google Gemini ko jaate hain. Passwords, card ya bank details yahan na likhein.</p></section>`;
+  }
+  if (conv.type === "group") {
+    return `<section class="info-section enc-section"><h4>${icons.lock} End-to-end encrypted</h4>
+      <p class="muted-note">Messages, photos, files aur voice notes sirf members ke devices par khulte hain. Koi member nikle ya naya aaye to key khud badal jaati hai. Kisi member ka safety number unki DM mein check karein.</p></section>`;
+  }
+  const peer = conv.peer;
+  const changed = e2ee.keyChanged(peer.id);
+  const verified = e2ee.isVerified(peer.id);
+  return `<section class="info-section enc-section">
+    <h4>${icons.lock} End-to-end encrypted ${verified ? `<span class="verified-tag">${icons.shield} Verified</span>` : ""}</h4>
+    ${changed ? `<p class="enc-warn">${icons.alert} ${escapeHtml(peer.displayName)} ki security key badal gayi. <button type="button" class="link-btn" data-accept="${escapeHtml(peer.id)}">Theek hai</button></p>` : ""}
+    <p class="muted-note">Safety number: ${escapeHtml(peer.displayName)} ke phone par bhi bilkul yahi number hona chahiye. Saamne mil kar ya call par milayein.</p>
+    <div class="safety-number" data-safety="${escapeHtml(peer.id)}"><small>…</small></div>
+    ${changed ? "" : `<button type="button" class="link-btn" data-verify="${escapeHtml(peer.id)}">${verified ? "Verified hata dein" : "Number mil gaya: Verified mark karein"}</button>`}
+  </section>`;
+}
 
 export function mountInfoPanel(container) {
   let lastKey = "";
@@ -9,9 +31,10 @@ export function mountInfoPanel(container) {
   const render = (s) => {
     const conv = store.conversation();
     const thread = store.thread();
-    const media = thread.items.filter((m) => m.kind === "image" && m.attachment?.url && !m.deletedAt).slice(-9).reverse();
+    const urlOf = (m) => s.media[m.id] || m.attachment?.url || null;
+    const media = thread.items.filter((m) => m.kind === "image" && urlOf(m) && !m.deletedAt).slice(-9).reverse();
     const files = thread.items.filter((m) => m.kind === "file" && m.attachment && !m.deletedAt).slice(-5).reverse();
-    const key = JSON.stringify([conv?.id, s.panelOpen, conv?.title, conv?.muted, conv?.members.map((m) => [m.id, m.role, m.online]), media.map((m) => m.id), files.map((m) => m.id)]);
+    const key = JSON.stringify([conv?.id, s.panelOpen, conv?.title, conv?.muted, conv?.members.map((m) => [m.id, m.role, m.online]), media.map((m) => m.id), files.map((m) => m.id), s.keyTick]);
     if (key === lastKey) return;
     lastKey = key;
     if (!conv || !s.panelOpen) {
@@ -38,22 +61,26 @@ export function mountInfoPanel(container) {
         </div>
 
         <div class="info-actions">
-          ${dm ? `<button type="button" data-action="audio">${icons.phone}<span>Call</span></button><button type="button" data-action="video">${icons.video}<span>Video</span></button>` : ""}
+          ${dm && !conv.peer.isBot ? `<button type="button" data-action="audio">${icons.phone}<span>Call</span></button><button type="button" data-action="video">${icons.video}<span>Video</span></button>` : ""}
           <button type="button" data-action="mute">${conv.muted ? icons.bell : icons.bellOff}<span>${conv.muted ? "Unmute" : "Mute"}</span></button>
           ${!dm && admin ? `<button type="button" data-action="add">${icons.userPlus}<span>Add</span></button>` : ""}
         </div>
 
+        ${encryptionHtml(conv, s)}
+
         ${
           media.length
             ? `<section class="info-section"><h4>Photos</h4><div class="media-grid">${media
-                .map((m) => `<button type="button" data-image="${escapeHtml(m.attachment.url)}"><img src="${escapeHtml(m.attachment.url)}" alt="" loading="lazy"/></button>`)
+                .map((m) => `<button type="button" data-image="${escapeHtml(urlOf(m))}"><img src="${escapeHtml(urlOf(m))}" alt="" loading="lazy"/></button>`)
                 .join("")}</div></section>`
             : ""
         }
         ${
           files.length
             ? `<section class="info-section"><h4>Files</h4><div class="info-list">${files
-                .map((m) => `<a class="info-file" href="${escapeHtml(m.attachment.url || "#")}" target="_blank" rel="noopener">${icons.file}<span>${escapeHtml(m.attachment.name)}</span></a>`)
+                .map((m) => m.attachment.encUrl
+                  ? `<button type="button" class="info-file" data-decfile="${escapeHtml(m.id)}">${icons.file}<span>${escapeHtml(m.attachment.name)}</span></button>`
+                  : `<a class="info-file" href="${escapeHtml(m.attachment.url || "#")}" target="_blank" rel="noopener">${icons.file}<span>${escapeHtml(m.attachment.name)}</span></a>`)
                 .join("")}</div></section>`
             : ""
         }
@@ -84,6 +111,20 @@ export function mountInfoPanel(container) {
       </div>`;
 
     container.querySelector("[data-action=close]").onclick = () => store.togglePanel(false);
+    container.querySelectorAll("[data-decfile]").forEach((b) => (b.onclick = () => store.downloadFile(b.dataset.decfile)));
+    const safety = container.querySelector("[data-safety]");
+    if (safety) {
+      e2ee.safetyNumber(safety.dataset.safety).then((groups) => {
+        safety.innerHTML = groups ? groups.map((g) => `<span>${g}</span>`).join("") : `<small>Abhi available nahi</small>`;
+      }).catch(() => (safety.innerHTML = `<small>Abhi available nahi</small>`));
+    }
+    container.querySelector("[data-verify]")?.addEventListener("click", (e) => {
+      const id = e.currentTarget.dataset.verify;
+      e2ee.setVerified(id, !e2ee.isVerified(id));
+      lastKey = "";
+      render(store.getState());
+    });
+    container.querySelector("[data-accept]")?.addEventListener("click", (e) => store.acceptKey(e.currentTarget.dataset.accept));
     container.querySelector("[data-action=mute]").onclick = () => store.toggleMute();
     container.querySelector("[data-action=audio]")?.addEventListener("click", () => store.startCall("audio"));
     container.querySelector("[data-action=video]")?.addEventListener("click", () => store.startCall("video"));

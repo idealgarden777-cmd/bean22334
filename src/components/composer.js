@@ -15,6 +15,7 @@ function pickMime() {
 
 export function mountComposer(container) {
   const convId = store.getState().activeId;
+  const plainChat = store.conversation(convId)?.e2ee === false;
 
   container.innerHTML = `
     <form class="composer-form" autocomplete="off">
@@ -30,7 +31,7 @@ export function mountComposer(container) {
           <button type="button" class="icon-btn attach-btn" title="Photo or file" aria-label="Attach">${icons.plus}</button>
           <input type="file" class="file-input" multiple hidden />
           <button type="button" class="icon-btn emoji-btn" title="Emoji" aria-label="Emoji">${icons.smile}</button>
-          <textarea rows="1" placeholder="Message" aria-label="Message" maxlength="${MAX_CHARS}"></textarea>
+          <textarea rows="1" placeholder="${plainChat ? "Neyo ko likhein · not encrypted" : "Message"}" aria-label="Message" maxlength="${MAX_CHARS}"></textarea>
           <div class="recording" hidden>
             <button type="button" class="icon-btn rec-cancel" aria-label="Cancel recording">${icons.trash}</button>
             <span class="rec-dot"></span><span class="rec-time">0:00</span>

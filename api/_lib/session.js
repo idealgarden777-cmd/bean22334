@@ -56,6 +56,7 @@ export const hashToken = (token) => crypto.createHash("sha256").update(token).di
 
 export function send(res, status, body) {
   res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   return res.status(status).json(body);
 }
 
@@ -144,16 +145,66 @@ export async function getSettings(userId) {
   return { messageTimer: 0, wallpaper: "none", ghostEnabled: false, ghostNote: "", ghostUntil: null };
 }
 
-/* Wraps a handler: method check, session check, error handling. */
-export function withUser(handler, { methods = ["GET"] } = {}) {
+/* ---------- security helpers ---------- */
+
+export const NEYO_ID = "0e000000-0000-4000-8000-000000000001";
+
+export function clientIp(req) {
+  return String(req.headers["x-real-ip"] || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown")
+    .split(",")[0]
+    .trim()
+    .slice(0, 64);
+}
+
+/* Cross-site request guard: a POST must come from our own pages. */
+export function sameOrigin(req) {
+  if (req.method === "GET" || req.method === "HEAD") return true;
+  const origin = req.headers.origin;
+  if (!origin) return true; // same-origin fetch from old browsers / server-to-server (cron)
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").toLowerCase();
+  try {
+    return new URL(origin).host.toLowerCase() === host;
+  } catch {
+    return false;
+  }
+}
+
+/* Fixed-window rate limit backed by public.bean_rate_hit (bean_e2ee.sql).
+ * If the SQL function is not installed yet the request is allowed (logged). */
+export async function rateLimit(key, max, windowSeconds) {
+  try {
+    const { data, error } = await supabase.rpc("bean_rate_hit", { p_key: key, p_window: windowSeconds, p_max: max });
+    if (error) {
+      if (!rateLimit.warned) console.warn("Rate limit unavailable (run supabase/bean_e2ee.sql):", error.message);
+      rateLimit.warned = true;
+      return;
+    }
+    if (data === false) fail(429, "Bahut zyada koshishen. Thori dair baad dobara try karein.");
+  } catch (err) {
+    if (err instanceof HttpError) throw err;
+  }
+}
+
+/* Every chat is end-to-end encrypted except a DM with Neyo (an AI has to read it). */
+export async function chatInfo(conversationId) {
+  const { data, error } = await supabase.from("bean_conversations").select("id, type, dm_key").eq("id", conversationId).maybeSingle();
+  if (error) throw error;
+  if (!data) fail(404, "Chat not found");
+  return { ...data, plain: data.type === "dm" && String(data.dm_key || "").includes(NEYO_ID) };
+}
+
+/* Wraps a handler: method check, origin check, session check, rate limit, error handling. */
+export function withUser(handler, { methods = ["GET"], limit = [240, 60], name = "api" } = {}) {
   return async (req, res) => {
     if (!methods.includes(req.method)) {
       res.setHeader("Allow", methods.join(", "));
       return send(res, 405, { error: "Method not allowed" });
     }
     try {
+      if (!sameOrigin(req)) return send(res, 403, { error: "Blocked: request did not come from Bean" });
       const me = await getSessionUser(req);
       if (!me) return send(res, 401, { error: "Not signed in" });
+      if (limit && req.method !== "GET") await rateLimit(`${name}:${me.id}`, limit[0], limit[1]);
       return await handler(req, res, me);
     } catch (err) {
       if (err instanceof HttpError) return send(res, err.status, { error: err.message });

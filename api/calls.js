@@ -1,5 +1,5 @@
 import { supabase, send, withUser, readBody, fail, getMembership } from "./_lib/session.js";
-import { insertMessage, loadUsers } from "./_lib/chat.js";
+import { insertMessage, loadUsers, cleanEnc } from "./_lib/chat.js";
 
 function iceServers() {
   const servers = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
@@ -147,9 +147,13 @@ export default withUser(
         if (!["offer", "answer", "ice"].includes(body.type)) fail(400, "Bad signal");
         if (["ended", "declined", "missed"].includes(call.status)) fail(409, "Call ended");
         const to = call.caller_id === me.id ? call.callee_id : call.caller_id;
+        // Signalling is end-to-end encrypted with the chat key, so the server can't swap the
+        // call's DTLS fingerprint (no man-in-the-middle on voice/video).
+        const enc = cleanEnc(body.payload?.enc, 30000);
+        if (!enc) fail(400, "Call signalling must be end-to-end encrypted. Refresh Bean.");
         const { error } = await supabase
           .from("bean_call_signals")
-          .insert({ call_id: call.id, from_user: me.id, to_user: to, type: body.type, payload: body.payload || {} });
+          .insert({ call_id: call.id, from_user: me.id, to_user: to, type: body.type, payload: { enc } });
         if (error) throw error;
         return send(res, 200, { ok: true });
       }
@@ -158,5 +162,5 @@ export default withUser(
         fail(400, "Unknown action");
     }
   },
-  { methods: ["GET", "POST"] }
+  { methods: ["GET", "POST"], limit: [900, 60], name: "calls" }
 );

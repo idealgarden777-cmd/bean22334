@@ -1,3 +1,9 @@
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
+import "@fontsource/sora/500.css";
+import "@fontsource/sora/600.css";
+import "@fontsource/sora/700.css";
 /* =========================================================
  * Bean — login screen (bean.signaturesi.com)
  * Same layout as the original Bean: Username or @bean ID,

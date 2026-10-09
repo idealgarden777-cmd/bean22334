@@ -47,9 +47,10 @@ function toggleVoice(root, id, url) {
 
 const BARS = [4, 9, 14, 8, 12, 18, 10, 6, 13, 17, 9, 5, 11, 15, 8, 12, 6, 10, 14, 7, 4, 9, 12, 6];
 
-function attachmentHtml(m, upload) {
-  const a = m.attachment;
-  if (!a) return "";
+function attachmentHtml(m, upload, state) {
+  const src = m.attachment;
+  if (!src) return "";
+  const a = { ...src, url: state.media[m.id] || src.url || null };
   const progress = upload
     ? `<span class="upload-progress"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" pathLength="100" style="stroke-dashoffset:${100 - Math.round(upload.progress * 100)}"/></svg></span>`
     : "";
@@ -67,6 +68,13 @@ function attachmentHtml(m, upload) {
       <span class="voice-time">${formatDuration(a.duration)}</span>
       ${progress}
     </div>`;
+  }
+  if (a.encUrl && !m.pending) {
+    return `<button type="button" class="file-card" data-decfile="${escapeHtml(m.id)}">
+    <span class="file-icon">${icons.file}</span>
+    <span class="file-meta"><strong>${escapeHtml(a.name || "File")}</strong><small>${formatBytes(a.size)} · 🔒</small></span>
+    <span class="file-dl">${icons.download}</span>
+  </button>`;
   }
   return `<a class="file-card" ${a.url && !m.pending ? `href="${escapeHtml(a.url)}" target="_blank" rel="noopener" download="${escapeHtml(a.name)}"` : ""}>
     <span class="file-icon">${icons.file}</span>
@@ -120,7 +128,10 @@ function messageHtml(m, ctx) {
     : "";
   const body = deleted
     ? `<span class="deleted-text">${own ? "You deleted this message" : "This message was deleted"}</span>`
-    : `${attachmentHtml(m, upload)}${m.text ? `<span class="bubble-text">${richText(m.text)}</span>` : ""}`;
+    : m.decryptError
+      ? `<span class="deleted-text locked-text">🔒 ${m.decryptError === "nokey" ? "Ye message is device par nahi khul saka (purani key)" : "Ye message verify nahi ho saka"}</span>`
+      : `${attachmentHtml(m, upload, state)}${m.text ? `<span class="bubble-text">${richText(m.text)}</span>` : ""}`;
+  const plain = conv.e2ee !== false && !m.encrypted && !deleted && !m.pending && !m.failed;
 
   const reactions = m.reactions?.length
     ? `<div class="reactions">${m.reactions
@@ -148,7 +159,7 @@ function messageHtml(m, ctx) {
         <div class="bubble-wrap">
           <div class="message-bubble">
             ${reply}${body}
-            <span class="bubble-meta">${m.ghost ? `<span class="ghost-tag" title="Sent by Neyo Ghost while ${own ? "you were" : "they were"} away">👻 Ghost</span>` : ""}${m.expiresAt && !deleted ? `<span class="meta-timer" title="Disappears ${escapeHtml(new Date(m.expiresAt).toLocaleString())}">${icons.timer}</span>` : ""}${m.editedAt && !deleted ? "<span>edited</span>" : ""}<time>${formatTime(m.createdAt)}</time>${statusHtml(m, state, conv, m.id === lastOwnId)}</span>
+            <span class="bubble-meta">${plain ? `<span class="plain-tag" title="Bean v2.0 se pehle bheja gaya: end-to-end encrypted nahi">Not encrypted</span>` : ""}${m.ghost ? `<span class="ghost-tag" title="Sent by Neyo Ghost while ${own ? "you were" : "they were"} away">👻 Ghost</span>` : ""}${m.expiresAt && !deleted ? `<span class="meta-timer" title="Disappears ${escapeHtml(new Date(m.expiresAt).toLocaleString())}">${icons.timer}</span>` : ""}${m.editedAt && !deleted ? "<span>edited</span>" : ""}<time>${formatTime(m.createdAt)}</time>${statusHtml(m, state, conv, m.id === lastOwnId)}</span>
           </div>
           ${
             !deleted && !m.pending && !m.failed
@@ -184,8 +195,8 @@ function openMenu(anchor, message, mode) {
         ? `<div class="menu-items">
             <button type="button" data-item="reply">${icons.reply}<span>Reply</span></button>
             ${message.text ? `<button type="button" data-item="copy">${icons.copy}<span>Copy text</span></button>` : ""}
-            ${message.attachment?.url ? `<a href="${escapeHtml(message.attachment.url)}" target="_blank" rel="noopener" download data-item="download">${icons.download}<span>Download</span></a>` : ""}
-            ${own && message.kind === "text" ? `<button type="button" data-item="edit">${icons.edit}<span>Edit Message</span></button>` : ""}
+            ${message.attachment?.encUrl ? `<button type="button" data-item="decdownload">${icons.download}<span>Download</span></button>` : message.attachment?.url ? `<a href="${escapeHtml(message.attachment.url)}" target="_blank" rel="noopener" download data-item="download">${icons.download}<span>Download</span></a>` : ""}
+            ${own && message.kind === "text" && !message.decryptError && (message.encrypted || store.conversation()?.e2ee === false) ? `<button type="button" data-item="edit">${icons.edit}<span>Edit Message</span></button>` : ""}
             ${own ? `<button type="button" data-item="delete" class="danger">${icons.trash}<span>Unsend Message</span></button>` : ""}
           </div>`
         : ""
@@ -210,6 +221,7 @@ function openMenu(anchor, message, mode) {
     if (item === "edit") store.setEditing(message);
     if (item === "copy") navigator.clipboard?.writeText(message.text).then(() => store.toast("Copied"));
     if (item === "delete") store.unsend(message.id);
+    if (item === "decdownload") store.downloadFile(message.id);
     if (emoji || item) closeMenu();
   });
   setTimeout(() => {
@@ -252,7 +264,7 @@ export function mountMessageList(container) {
       conv.id, thread.loaded, thread.hasMore, thread.loading,
       thread.items.map((m) => [m.id, m.updatedAt, m.pending, m.failed, m.reactions?.length]),
       state.uploads.map((u) => [u.id, Math.round(u.progress * 20)]),
-      typing, reads, conv.members.length, Object.keys(state.unsending),
+      typing, reads, conv.members.length, Object.keys(state.unsending), Object.keys(state.media).length, conv.e2ee,
       thread.items.filter((m) => m.expiresAt && m.expiresAt <= new Date().toISOString()).length,
     ]);
     scroller.dataset.wallpaper = state.settings.wallpaper || "none";
@@ -273,6 +285,11 @@ export function mountMessageList(container) {
     const items = thread.items.filter((m) => !state.unsending[m.id] && !(m.expiresAt && m.expiresAt <= now));
     const lastOwn = [...items].reverse().find((m) => m.senderId === state.me.id && !m.pending && !m.deletedAt && !["system", "call"].includes(m.kind));
     let html = thread.hasMore ? `<div class="load-older">${thread.loading ? `<div class="spinner"></div>` : `<button type="button" data-older>Load earlier messages</button>`}</div>` : "";
+    if (!thread.hasMore) {
+      html += conv.e2ee === false
+        ? `<div class="e2ee-notice plain"><strong>🤖 Neyo AI hai.</strong> Ye chat end-to-end encrypted nahi: aap ke messages jawab banane ke liye Google Gemini ko bheje jaate hain. Passwords, card number, bank details ya codes yahan kabhi na likhein.</div>`
+        : `<button type="button" class="e2ee-notice" data-action="safety">${icons.lock} Messages aur calls end-to-end encrypted hain. Bean, Neyo ya koi aur inhe nahi parh sakta. <u>Safety number</u></button>`;
+    }
     if (!items.length) {
       html += `<div class="message-empty">
         ${avatar(conv.type === "dm" ? conv.peer : conv, "lg")}
@@ -338,6 +355,7 @@ export function mountMessageList(container) {
     const retry = target.closest("[data-retry]");
     if (retry) return store.retry(retry.dataset.retry);
 
+    if (target.closest("[data-action=safety]")) return store.togglePanel(true);
     const row = target.closest("[data-mid]");
     if (!row) return;
     const msg = store.thread().items.find((m) => m.id === row.dataset.mid);
@@ -353,6 +371,8 @@ export function mountMessageList(container) {
       } else store.toast("That message is further up");
       return;
     }
+    const decfile = target.closest("[data-decfile]");
+    if (decfile) return store.downloadFile(decfile.dataset.decfile);
     const img = target.closest("[data-image]");
     if (img && img.dataset.image) return openLightbox(img.dataset.image, msg.attachment?.name);
 

@@ -22,5 +22,5 @@ export default withUser(
 
     return send(res, 200, { path, signedUrl: data.signedUrl, token: data.token, mime: mime || "application/octet-stream" });
   },
-  { methods: ["POST"] }
+  { methods: ["POST"], limit: [40, 60], name: "upload" }
 );

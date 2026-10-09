@@ -75,6 +75,18 @@ const live = {
     return { path: sign.path, name: file.name, size: file.size, mime: file.type || "application/octet-stream" };
   },
 
+  keysMe: () => request("/api/keys?scope=me"),
+  keys: (ids) => request(`/api/keys?${qs({ users: ids.join(",") })}`),
+  keyWraps: () => request("/api/keys?scope=wraps"),
+  convKeys: (conversationId) => request(`/api/keys?${qs({ conversationId })}`),
+  keysPublish: (payload) => request("/api/keys", { method: "POST", body: { action: "publish", ...payload } }),
+  keysBackup: (payload) => request("/api/keys", { method: "POST", body: { action: "backup", ...payload } }),
+  rekey: (payload) => request("/api/keys", { method: "POST", body: { action: "rekey", ...payload } }),
+
+  sessions: () => request("/api/me", { method: "POST", body: { action: "sessions" } }),
+  revokeSession: (sessionId) => request("/api/me", { method: "POST", body: { action: "revoke_session", sessionId } }),
+  logoutAll: () => request("/api/me", { method: "POST", body: { action: "logout_all" } }),
+
   neyoReply: (conversationId, tz) => request("/api/neyo", { method: "POST", body: { action: "reply", conversationId, tz } }),
   neyoGhost: (conversationId) => request("/api/neyo", { method: "POST", body: { action: "ghost", conversationId } }),
   neyoTick: () => request("/api/neyo?action=tick", { method: "POST", body: { action: "tick" } }),

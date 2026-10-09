@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bean · Security &amp; Privacy</title>
+  <meta name="description" content="How Bean protects your chats: end-to-end encryption, what the server can and cannot see.">
+  <link rel="icon" href="/bean-icon.png" type="image/png">
+  <link rel="stylesheet" href="/src/styles/security.css">
+</head>
+<body>
+  <main class="sec">
+    <a class="back" href="/chat">← Bean</a>
+    <h1>Security &amp; Privacy</h1>
+    <p class="lead">Seedhi baat: Bean par aap ki chats end-to-end encrypted hain. Is ka matlab hai ke message sirf aap aur jin ko aap ne bheja, unke devices par khulta hai. Bean ka server, Neyo, ya koi aur unhe nahi parh sakta.</p>
+
+    <section>
+      <h2>🔒 Kya end-to-end encrypted hai</h2>
+      <ul>
+        <li>Har direct chat aur har group: text, edits aur reactions</li>
+        <li>Photos, files aur voice notes (har file ki apni alag key)</li>
+        <li>Voice/video call ka setup (is liye server call ke beech mein nahi aa sakta). Call ki awaaz aur video WebRTC se seedha encrypted jaati hai.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>👀 Server kya dekh sakta hai (metadata)</h2>
+      <p>Encryption message ke andar ki baat chhupati hai, ye cheezein nahi:</p>
+      <ul>
+        <li>Aap kis se baat karte hain, kab, aur kitne messages</li>
+        <li>File ka size, group ka naam aur members</li>
+        <li>Aap ka naam, photo, online status aur Away note</li>
+        <li>Aap ka IP address (hosting logs mein)</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>⚠️ Kya encrypted nahi</h2>
+      <ul>
+        <li><strong>Neyo chat:</strong> Neyo AI hai. Us ki chat ke messages jawab ke liye Google Gemini ko jaate hain. App mein is par saaf label hai. Passwords, card ya bank details Neyo ko kabhi na likhein.</li>
+        <li><strong>Purane messages:</strong> Bean v2.0 se pehle wale messages par "Not encrypted" likha hota hai.</li>
+        <li><strong>Away note (Ghost):</strong> ye status ki tarah contacts ko dikhta hai. Ghost aap ke messages kabhi nahi parhta aur na jawab deta hai.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>🗝️ Chat Lock</h2>
+      <p>Aap ki encryption key ek Chat Lock se band hoti hai jo sirf aap jaante hain. Ye aap ke browser se bahar kabhi nahi jaata (Argon2id + AES-256-GCM). Naye device par Chat Lock likh kar chats khulti hain.</p>
+      <p><strong>Chat Lock bhool gaye to purani encrypted chats wapas nahi aa saktin.</strong> Bean ke paas koi "master key" ya backdoor nahi hai. Yahi asli encryption hai.</p>
+    </section>
+
+    <section>
+      <h2>✅ Khud check karein</h2>
+      <ul>
+        <li><strong>Safety number:</strong> kisi bhi chat ki info mein 60 digits ka number hai. Dono logon ke phone par same ho to koi beech mein nahi.</li>
+        <li><strong>Key change warning:</strong> kisi contact ki key badle to Bean foran batata hai.</li>
+        <li><strong>Build number:</strong> Settings mein Bean ka version aur build dikhta hai.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>🛡️ Account ki hifazat</h2>
+      <ul>
+        <li>Passwords Argon2id se hash hote hain; login par koshishon ki had (rate limit) hai</li>
+        <li>Session cookie HttpOnly + Secure; "Log out all devices" Settings mein</li>
+        <li>Password badalne par baaqi devices se sign out</li>
+        <li>Koi ads, trackers ya bahar ke scripts nahi; fonts bhi Bean khud serve karta hai; sakht Content-Security-Policy</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Imandari se: limits</h2>
+      <ul>
+        <li>Bean web app hai: aap us code par bharosa karte hain jo bean.signaturesi.com bhejta hai.</li>
+        <li>Agar aap ke phone/computer mein virus ho, ya koi screenshot le, to encryption us se nahi bacha sakti.</li>
+        <li>Bean ka independent security audit abhi nahi hua.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Masla report karein</h2>
+      <p>Security ka koi masla mile to <a href="/.well-known/security.txt">security.txt</a> mein diye gaye raste se batayein. Agar kabhi data ka masla hua to hum users ko jald az jald aur saaf batayenge.</p>
+    </section>
+
+    <p class="foot">Bean · Signaturesi · v2.0</p>
+  </main>
+</body>
+</html>

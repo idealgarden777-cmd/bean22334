@@ -83,6 +83,7 @@ const live = {
   keysBackup: (payload) => request("/api/keys", { method: "POST", body: { action: "backup", ...payload } }),
   rekey: (payload) => request("/api/keys", { method: "POST", body: { action: "rekey", ...payload } }),
 
+  verifyPassword: (password) => request("/api/me", { method: "POST", body: { action: "verify_password", password } }),
   sessions: () => request("/api/me", { method: "POST", body: { action: "sessions" } }),
   revokeSession: (sessionId) => request("/api/me", { method: "POST", body: { action: "revoke_session", sessionId } }),
   logoutAll: () => request("/api/me", { method: "POST", body: { action: "logout_all" } }),

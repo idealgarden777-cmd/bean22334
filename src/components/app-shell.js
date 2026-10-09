@@ -13,46 +13,43 @@ import { mountToast } from "./toast.js";
 import { mountLightbox } from "./lightbox.js";
 
 const LOCK_COPY = {
-  setup: {
-    title: "Chat Lock banayein",
-    text: "Bean ab end-to-end encrypted hai. Chat Lock aap ki chats ki chaabi ko lock karta hai. Ye sirf aap ke paas rehta hai: Bean ke server par kabhi nahi jaata.",
-    button: "Chat Lock set karein",
-    confirm: true,
-    check: "Main samajhta hun: Chat Lock bhool gaya to purani encrypted chats wapas nahi aa saktin. Bean bhi recover nahi kar sakta.",
+  password: {
+    title: "Apna Bean password likhein",
+    text: "Bas ek baar, is device par apni encrypted chats kholne ke liye. Wahi password jo login mein lagta hai.",
+    placeholder: "Bean password",
+    button: "Chats kholein",
   },
-  unlock: {
-    title: "Chats unlock karein",
-    text: "Is device par pehli baar? Apna Chat Lock likhein. Login password nahi: Chat Lock.",
+  oldlock: {
+    title: "Purana Chat Lock likhein",
+    text: "Aap ne pehle alag Chat Lock banaya tha. Ek dafa likh dein, phir aage se sirf Bean password kaafi hoga.",
+    placeholder: "Purana Chat Lock",
     button: "Unlock",
-    confirm: false,
   },
   reset: {
-    title: "Naya Chat Lock",
-    text: "Reset se nayi key banegi. Purane encrypted messages is account par nahi khulenge, aur aap ke contacts ko \"security key badal gayi\" dikhega.",
-    button: "Reset karke naya Chat Lock",
-    confirm: true,
-    check: "Haan, mujhe purani encrypted chats kho jaane ka pata hai. Reset karo.",
+    title: "Naye sire se shuru karein",
+    text: "Nayi key banegi. Purane encrypted messages is account par nahi khulenge, nayi chats theek chalengi.",
+    placeholder: "Bean password",
+    button: "Naya shuru karein",
+    check: "Haan, purani encrypted chats chhod kar naya shuru karo.",
     danger: true,
   },
 };
 
 function renderLock(root, state) {
-  const mode = state.lockMode || "unlock";
+  const mode = LOCK_COPY[state.lockMode] ? state.lockMode : "password";
   const c = LOCK_COPY[mode];
   root.innerHTML = `
     <div class="gate"><form class="gate-card lock-card" autocomplete="off">
       <div class="lock-icon">${icons.lockLg}</div>
       <h1 class="gate-title">${c.title}</h1>
       <p>${escapeHtml(c.text)}</p>
-      <input class="set-input" type="password" name="pass" placeholder="${mode === "unlock" ? "Chat Lock" : "Chat Lock (kam az kam 10 characters)"}" autocomplete="${mode === "unlock" ? "current-password" : "new-password"}" maxlength="200" required>
-      ${c.confirm ? `<input class="set-input" type="password" name="again" placeholder="Dobara likhein" autocomplete="new-password" maxlength="200" required>
-      <small class="set-note">Lamba jumla behtar hai, jaise "meri chai mein do cheeni 2026". Login password se alag rakhein.</small>` : ""}
+      <input class="set-input" type="password" name="pass" placeholder="${c.placeholder}" autocomplete="current-password" maxlength="200" required>
       ${c.check ? `<label class="lock-check"><input type="checkbox" name="ok"> <span>${escapeHtml(c.check)}</span></label>` : ""}
       <p class="modal-error" hidden></p>
       <button type="submit" class="btn-primary ${c.danger ? "btn-danger" : ""}">${c.button}</button>
       <div class="lock-links">
-        ${mode === "unlock" ? `<button type="button" class="link-btn" data-mode="reset">Chat Lock bhool gaye?</button>` : ""}
-        ${mode === "reset" ? `<button type="button" class="link-btn" data-mode="unlock">Wapas</button>` : ""}
+        ${mode === "oldlock" ? `<button type="button" class="link-btn" data-mode="reset">Yaad nahi?</button>` : ""}
+        ${mode === "reset" ? `<button type="button" class="link-btn" data-mode="password">Wapas</button>` : ""}
         <button type="button" class="link-btn" data-action="logout">Sign out</button>
       </div>
     </form></div>`;
@@ -66,19 +63,16 @@ function renderLock(root, state) {
     e.preventDefault();
     error.hidden = true;
     const pass = f.pass.value;
-    if (c.confirm) {
-      if (pass.length < 10) return show("Chat Lock kam az kam 10 characters ka ho");
-      if (pass !== f.again.value) return show("Dono Chat Lock match nahi karte");
-      if (!f.ok.checked) return show("Pehle checkbox par tick karein");
-    }
+    if (c.check && !f.ok.checked) return show("Pehle checkbox par tick karein");
     const btn = form.querySelector("button[type=submit]");
     btn.disabled = true;
-    btn.textContent = "Securing…";
+    btn.textContent = "Kholi ja rahi hain…";
     try {
-      if (mode === "setup") await store.setupLock(pass);
-      else if (mode === "reset") await store.resetLock(pass);
-      else await store.unlock(pass);
+      if (mode === "oldlock") await store.unlockOldLock(pass);
+      else if (mode === "reset") await store.resetWithPassword(pass);
+      else await store.unlockWithPassword(pass);
     } catch (err) {
+      if (err.code === "SWITCHED") return; // screen moves to "Purana Chat Lock"
       show(err.code === "WRONG_PASSPHRASE" ? "Chat Lock galat hai" : err.message || "Kuch ghalat ho gaya");
       btn.disabled = false;
       btn.textContent = c.button;

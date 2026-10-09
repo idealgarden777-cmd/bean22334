@@ -16,7 +16,7 @@ export function mountChatBanner(container) {
     lastKey = key;
     let html = "";
     for (const m of changed) {
-      html += `<div class="chat-banner warn">${icons.alert}<span><strong>${escapeHtml(m.displayName)} ki security key badal gayi.</strong> Naya device ya Chat Lock reset ho sakta hai. Shak ho to unse safety number milayein.</span>
+      html += `<div class="chat-banner warn">${icons.alert}<span><strong>${escapeHtml(m.displayName)} ki security key badal gayi.</strong> Aap ne inhe verify kiya tha. Unse safety number dobara milayein, phir bhejein.</span>
         <button type="button" class="btn-primary btn-sm" data-accept="${escapeHtml(m.id)}">Theek hai</button></div>`;
     }
     if (away) {

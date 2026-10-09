@@ -342,6 +342,7 @@ export const demoApi = {
     save();
     return delay({ ok: true, epoch });
   },
+  verifyPassword: () => delay({ ok: true }),
   sessions: () => delay({ sessions: [{ id: "s1", device: "This browser", createdAt: new Date().toISOString(), current: true }] }),
   revokeSession: () => delay({ sessions: [] }),
   logoutAll: () => {

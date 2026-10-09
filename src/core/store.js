@@ -21,7 +21,7 @@ const tempId = () => `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 7)
 export const store = {
   state: {
     status: "loading", // loading | signedOut | locked | ready | error
-    lockMode: null, // setup | unlock | reset (Chat Lock screen)
+    lockMode: null, // password | oldlock | reset (unlock screen)
     build: null,
     media: {}, // messageId -> decrypted blob URL (photos, voice notes, files)
     keyTick: 0, // bumps when a contact key / safety number state changes
@@ -109,9 +109,27 @@ export const store = {
     this.set({ me: res.user, settings: { ...this.state.settings, ...(res.settings || {}) }, build: res.build || null });
     e2ee.onChange(() => this.set({ keyTick: this.state.keyTick + 1 }));
 
+    // One password for everything: the login password also unlocks the encryption key (no extra screen).
+    let once = null;
+    try {
+      once = sessionStorage.getItem("bean_unlock_once");
+      sessionStorage.removeItem("bean_unlock_once");
+    } catch {}
     try {
       const lock = await e2ee.status(res.user);
-      if (lock !== "ready") return this.set({ status: "locked", lockMode: lock });
+      if (lock !== "ready") {
+        if (once) {
+          this.set({ status: "loading" });
+          try {
+            await this.unlockWithPassword(once, { verified: true });
+            return;
+          } catch (err) {
+            if (err.code !== "SWITCHED") throw err; // backup still uses an older separate Chat Lock: ask once
+            return this.set({ status: "locked", lockMode: "oldlock" });
+          }
+        }
+        return this.set({ status: "locked", lockMode: "password" });
+      }
     } catch (err) {
       return this.set({ status: "error", error: err.message });
     }
@@ -119,6 +137,66 @@ export const store = {
   },
 
   /* ---------------- Chat Lock ---------------- */
+
+  /* Unlock (or first-time set up) this device's chats with the Bean password. */
+  async unlockWithPassword(password, { verified = false } = {}) {
+    if (!e2ee.record) {
+      if (!verified) {
+        const { ok } = await api.verifyPassword(password);
+        if (!ok) throw Object.assign(new Error("Password galat hai"), { code: "BAD_PASSWORD" });
+      }
+      await e2ee.setup(password);
+      return this.boot();
+    }
+    try {
+      await e2ee.unlock(password);
+    } catch (err) {
+      if (err.code !== "WRONG_PASSPHRASE") throw err;
+      // right Bean password but the backup still uses an older separate Chat Lock?
+      const ok = verified || (await api.verifyPassword(password)).ok;
+      if (!ok) throw Object.assign(new Error("Password galat hai"), { code: "BAD_PASSWORD" });
+      this.loginPassword = password;
+      this.set({ lockMode: "oldlock" });
+      throw Object.assign(new Error(""), { code: "SWITCHED" });
+    }
+    return this.boot();
+  },
+  /* Older separate Chat Lock: open with it once, then move the backup onto the Bean password. */
+  async unlockOldLock(oldLock) {
+    await e2ee.unlock(oldLock);
+    if (this.loginPassword) {
+      try {
+        await e2ee.saveBackup(await e2ee.resealBackup(oldLock, this.loginPassword));
+      } catch {}
+      this.loginPassword = null;
+    }
+    return this.boot();
+  },
+  /* Bean password change keeps the same key: the backup is re-sealed with the new password. */
+  async changePassword({ displayName, currentPassword, password }) {
+    let resealed = null;
+    try {
+      resealed = await e2ee.resealBackup(currentPassword, password);
+    } catch (err) {
+      if (!["WRONG_PASSPHRASE", "NO_KEY"].includes(err.code)) throw err;
+    }
+    const res = await this.updateSettings({ displayName, password, currentPassword });
+    if (resealed) {
+      try {
+        await e2ee.saveBackup(resealed);
+      } catch {
+        this.toast("Password badal gaya, lekin chat backup update nahi hua. Dobara try karein.");
+      }
+    }
+    return res;
+  },
+
+  async resetWithPassword(password) {
+    const { ok } = await api.verifyPassword(password);
+    if (!ok) throw Object.assign(new Error("Password galat hai"), { code: "BAD_PASSWORD" });
+    await e2ee.setup(password, { reset: true });
+    return this.boot();
+  },
 
   async setupLock(passphrase) {
     await e2ee.setup(passphrase);
@@ -137,7 +215,7 @@ export const store = {
   },
   async changeLock(oldPass, newPass) {
     await e2ee.changeLock(oldPass, newPass);
-    this.toast("Chat Lock badal gaya");
+    this.toast("Updated");
   },
   async lockThisDevice() {
     await e2ee.lockDevice();

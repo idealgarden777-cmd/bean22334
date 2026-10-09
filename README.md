@@ -63,7 +63,7 @@ vercel dev         # real API locally
 | `GET/POST /api/sync` | poll every 2.5 s: new/changed messages, typing, seen, chat list, incoming call · POST typing |
 | `POST /api/upload` | signed upload URL into `bean-media` |
 | `GET/POST /api/calls` | ICE config, signal polling · `start`, `accept`, `decline`, `end`, `signal` (encrypted only) |
-| `GET/POST /api/keys` | public keys, encrypted Chat Lock backup, wrapped chat keys · `publish`, `backup`, `rekey` |
+| `GET/POST /api/keys` | public keys, password-sealed key backup, wrapped chat keys · `publish`, `backup`, `rekey` |
 | `POST /api/neyo` | Neyo reply (Neyo chat only) · `tick` (reminders, digest, Away Mode auto-off) |
 
 ## Notes
@@ -80,7 +80,7 @@ Every chat between people is end-to-end encrypted by default: DMs, groups, text,
 | Piece | How |
 |---|---|
 | Identity key | ECDH P-256, one per Bean ID, same on all your devices |
-| Chat Lock | your passphrase → Argon2id (64 MB, 3 passes) → AES-256-GCM seals the private key. Never leaves the browser. Forget it = old chats are gone (no backdoor) |
+| Key backup | the Bean login password → Argon2id (64 MB, 3 passes, own salt) → AES-256-GCM seals the private key in the browser. Login passes the password to /chat once (sessionStorage, same tab) so chats unlock with no extra screen. Caveat: the server sees the password at login, so a compromised server could capture it; a DB leak alone cannot open backups. Password change re-seals the backup. Users who set a separate Chat Lock in early v2.0 type it once and it is moved onto the password |
 | Device | unlocked key kept in IndexedDB as a non-extractable CryptoKey; wiped on Sign out |
 | Chat keys | random AES-256 key per chat "epoch", wrapped for each member with ECDH + HKDF. New epoch automatically when a member joins/leaves or changes key |
 | Messages | AES-256-GCM; AAD binds chat + sender + epoch (no tampering, no re-labelling) |
@@ -102,7 +102,7 @@ Every chat between people is end-to-end encrypted by default: DMs, groups, text,
 
 1. Push this code to the GitHub repo (Vercel redeploys).
 2. Supabase → SQL Editor → run `supabase/bean_e2ee.sql` (after `bean_chat.sql`, `bean_fix_old_tables.sql`, `bean_neyo.sql`).
-3. Everyone opens Bean once and creates a **Chat Lock**. A message to someone who hasn't done this yet waits with a clear note.
+3. Everyone just logs in once on the new Bean: the key is created automatically. A message to someone who hasn't opened it yet waits with a clear note.
 4. Optional for trust: make the GitHub repo public (it holds no secrets) and put a real inbox behind `security@signaturesi.com` or change it in `public/.well-known/security.txt`.
 
 ### Honest limits

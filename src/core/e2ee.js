@@ -96,6 +96,20 @@ export const e2ee = {
     pkcs8.fill(0);
   },
 
+  /* password changed: same key, backup sealed with the new password */
+  async resealBackup(oldPass, newPass) {
+    const { key } = await api.keysMe();
+    if (!key) return null;
+    const pkcs8 = await C.openBackup(key.backup, oldPass);
+    const backup = await C.sealBackup(pkcs8, newPass);
+    pkcs8.fill(0);
+    return { backup, fingerprint: key.fingerprint };
+  },
+  async saveBackup({ backup, fingerprint }) {
+    await api.keysBackup({ backup, fingerprint });
+    if (this.record) this.record = { ...this.record, backup };
+  },
+
   async changeLock(oldPass, newPass) {
     const { key } = await api.keysMe();
     const pkcs8 = await C.openBackup(key.backup, oldPass);
@@ -141,8 +155,11 @@ export const e2ee = {
         if (k.userId === this.me.id) continue;
         const pin = this.pins[k.userId];
         if (!pin) this.pins[k.userId] = { fp, verified: false, tofu: true, history: [] };
-        else if (pin.fp !== fp) this.changed.add(k.userId);
-        else this.changed.delete(k.userId);
+        else if (pin.fp !== fp) {
+          // New phone / new browser is normal. Only a contact you VERIFIED needs your OK before sending.
+          if (pin.verified) this.changed.add(k.userId);
+          else this.pins[k.userId] = { fp, verified: false, tofu: pin.tofu, history: [...new Set([...(pin.history || []), pin.fp])] };
+        } else this.changed.delete(k.userId);
       }
       for (const id of need) if (!found.has(id)) this.users.delete(id);
       this.savePins();
@@ -255,13 +272,13 @@ export const e2ee = {
 
   /* The key to SEND with: a fresh epoch whenever members or their keys changed. */
   async sendKey(conv) {
-    if (!this.priv) throw new E2EEError("LOCKED", "Chat Lock khulna baqi hai");
+    if (!this.priv) throw new E2EEError("LOCKED", "Chats abhi unlock nahi hui");
     const ids = conv.members.map((m) => m.id);
     if (conv.members.some((m) => m.isBot)) throw new E2EEError("BOT", "Neyo chat is not end-to-end encrypted");
     await this.keysFor(ids);
     const missing = conv.members.filter((m) => !this.users.get(m.id));
     if (missing.length) {
-      throw new E2EEError("NO_KEY", `${missing.map((m) => m.displayName).join(", ")} ne abhi Bean v2 khol kar Chat Lock set nahi kiya. Unke aane ke baad message ja sakega.`, { users: missing });
+      throw new E2EEError("NO_KEY", `${missing.map((m) => m.displayName).join(", ")} ne abhi naya Bean nahi khola. Jaise hi woh Bean kholenge, message ja sakega.`, { users: missing });
     }
     const changed = ids.filter((id) => id !== this.me.id && this.changed.has(id));
     if (changed.length) {

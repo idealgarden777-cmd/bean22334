@@ -85,20 +85,12 @@ export function mountSettings(container) {
               <span class="set-label">${icons.lock} Security</span>
               <div class="sec-status"><strong>End-to-end encryption: On</strong><small>Aap ki key: <code>${escapeHtml(fpGroups(e2ee.fp))}</code></small></div>
               <div class="set-rows">
-                <button type="button" class="set-row" data-action="change-lock"><span>${icons.lockLg}</span><span>Chat Lock badlein</span></button>
-                <form class="change-lock" hidden autocomplete="off">
-                  <input class="set-input" type="password" name="old" placeholder="Purana Chat Lock" autocomplete="current-password" required>
-                  <input class="set-input" type="password" name="next" placeholder="Naya Chat Lock (10+ characters)" autocomplete="new-password" required>
-                  <input class="set-input" type="password" name="again" placeholder="Naya Chat Lock dobara" autocomplete="new-password" required>
-                  <p class="modal-error" hidden></p>
-                  <button type="submit" class="btn-primary btn-sm">Save</button>
-                </form>
-                <button type="button" class="set-row" data-action="lock-device"><span>${icons.shield}</span><span>Is device se key hatayein</span><small>Agli baar Chat Lock lagega</small></button>
+                <button type="button" class="set-row" data-action="lock-device"><span>${icons.shield}</span><span>Is device se key hatayein</span><small>Agli baar password se unlock hoga</small></button>
               </div>
               <span class="set-label">Devices</span>
               <div class="device-list"><small class="set-note">Loading…</small></div>
               <button type="button" class="set-row danger" data-action="logout-all"><span>${icons.logout}</span><span>Log out all devices</span></button>
-              <small class="set-note">${escapeHtml(`Bean v${state.build?.version || "2.0.0"}${state.build?.commit ? ` · build ${state.build.commit}` : ""}`)} · <a href="/security" target="_blank" rel="noopener">Security &amp; privacy</a>${state.build?.repo ? ` · <a href="${escapeHtml(state.build.repo)}" target="_blank" rel="noopener">Source code</a>` : ""}</small>
+              <small class="set-note">${escapeHtml(`Bean v${state.build?.version || "2.1.0"}${state.build?.commit ? ` · build ${state.build.commit}` : ""}`)} · <a href="/security" target="_blank" rel="noopener">Security &amp; privacy</a>${state.build?.repo ? ` · <a href="${escapeHtml(state.build.repo)}" target="_blank" rel="noopener">Source code</a>` : ""}</small>
             </div>
 
             <div class="set-section ghost-section">
@@ -157,7 +149,7 @@ export function mountSettings(container) {
       if (password && !currentPassword) return Object.assign(error, { hidden: false, textContent: "Current password likhein" });
       btn.disabled = true;
       try {
-        await store.updateSettings({ displayName, ...(password ? { password, currentPassword } : {}) });
+        await (password ? store.changePassword({ displayName, password, currentPassword }) : store.updateSettings({ displayName }));
         $("#editPassword").value = "";
         $("#currentPassword").value = "";
         $(".current-pass").hidden = true;
@@ -259,29 +251,8 @@ export function mountSettings(container) {
     $("#editPassword").addEventListener("input", (e) => ($(".current-pass").hidden = !e.target.value));
 
     // ---- security ----
-    const lockForm = $(".change-lock");
-    $("[data-action=change-lock]").onclick = () => (lockForm.hidden = !lockForm.hidden);
-    lockForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const err = lockForm.querySelector(".modal-error");
-      err.hidden = true;
-      const f = lockForm.elements;
-      if (f.next.value.length < 10) return Object.assign(err, { hidden: false, textContent: "Naya Chat Lock kam az kam 10 characters" });
-      if (f.next.value !== f.again.value) return Object.assign(err, { hidden: false, textContent: "Naye Chat Lock match nahi karte" });
-      const b = lockForm.querySelector("button");
-      b.disabled = true;
-      try {
-        await store.changeLock(f.old.value, f.next.value);
-        lockForm.reset();
-        lockForm.hidden = true;
-      } catch (ex) {
-        Object.assign(err, { hidden: false, textContent: ex.code === "WRONG_PASSPHRASE" ? "Purana Chat Lock galat hai" : ex.message });
-      } finally {
-        b.disabled = false;
-      }
-    });
     $("[data-action=lock-device]").onclick = () => {
-      if (confirm("Is device se encryption key hata dein? Bean dobara kholne par Chat Lock likhna hoga.")) store.lockThisDevice();
+      if (confirm("Is device se encryption key hata dein? Bean dobara kholne par password likhna hoga.")) store.lockThisDevice();
     };
     $("[data-action=logout-all]").onclick = () => {
       if (confirm("Har device se sign out karein (ye device bhi)?")) store.logoutAll();

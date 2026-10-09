@@ -44,9 +44,10 @@
     </section>
 
     <section>
-      <h2>🗝️ Chat Lock</h2>
-      <p>Aap ki encryption key ek Chat Lock se band hoti hai jo sirf aap jaante hain. Ye aap ke browser se bahar kabhi nahi jaata (Argon2id + AES-256-GCM). Naye device par Chat Lock likh kar chats khulti hain.</p>
-      <p><strong>Chat Lock bhool gaye to purani encrypted chats wapas nahi aa saktin.</strong> Bean ke paas koi "master key" ya backdoor nahi hai. Yahi asli encryption hai.</p>
+      <h2>🗝️ Aik password, sab kuch</h2>
+      <p>Aap ka Bean password hi aap ki encryption key ka lock hai. Login karte hi chats khud khul jaati hain, koi alag lock yaad nahi rakhna. Key ka backup aap ke browser mein hi password se lock hota hai (Argon2id + AES-256-GCM), aur server par sirf lock shuda backup jaata hai.</p>
+      <p><strong>Imandari se:</strong> login ke waqt server aap ka password check karta hai, is liye nazariyati taur par agar koi Bean ka server hi qabze mein le kar login ke waqt passwords chura le, to woh backup khol sakta hai. Database leak hone par bhi messages nahi khulte. Lamba, alag password rakhein.</p>
+      <p>Password bhool gaye to purani encrypted chats wapas nahi aa saktin. Bean ke paas koi "master key" nahi hai.</p>
     </section>
 
     <section>

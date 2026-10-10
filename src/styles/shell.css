@@ -70,7 +70,7 @@ select { display: none !important; } /* never shown: Bean dropdowns replace them
   .sidebar, .chat-view, .chat-view-container { height: 100%; min-height: 0; }
   .chat-header-slot, .composer-slot { flex: 0 0 auto; }
   .message-list-slot { flex: 1 1 auto; min-height: 0; }
-  .message-list { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .message-scroll { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .chat-list { overscroll-behavior: contain; }
 
   /* iOS zooms into any field under 16px: every field is 16px on phones */

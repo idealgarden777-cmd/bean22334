@@ -6,10 +6,35 @@ const KEYBOARD_THRESHOLD = 120;
 let frame = null;
 let keyboardOpen = false;
 
-function atBottom() {
-  const list = document.querySelector(".message-list");
-  return list ? list.scrollHeight - list.scrollTop - list.clientHeight < 80 : false;
-}
+// remembered from the last real scroll: when the screen shrinks (keyboard) the
+// browser clamps the list and fires its own scroll, which must not count
+let wasAtBottom = true;
+let lastListH = 0;
+const ro = typeof ResizeObserver !== "undefined"
+  ? new ResizeObserver(([entry]) => {
+      const l = entry.target;
+      if (wasAtBottom && l.clientHeight !== lastListH) l.scrollTop = l.scrollHeight;
+      lastListH = l.clientHeight;
+    })
+  : null;
+let observed = null;
+document.addEventListener(
+  "scroll",
+  (e) => {
+    const l = e.target;
+    if (!l?.classList?.contains("message-scroll")) return;
+    if (observed !== l && ro) {
+      if (observed) ro.unobserve(observed);
+      ro.observe(l);
+      observed = l;
+      lastListH = l.clientHeight;
+    }
+    if (l.clientHeight !== lastListH) return; // resize-driven scroll
+    wasAtBottom = l.scrollHeight - l.scrollTop - l.clientHeight < 80;
+  },
+  { capture: true, passive: true }
+);
+const atBottom = () => wasAtBottom && !!document.querySelector(".message-scroll");
 
 function update(source = "viewport") {
   const vv = window.visualViewport;
@@ -34,7 +59,7 @@ function update(source = "viewport") {
   // keep the newest message in view when the keyboard opens or the screen resizes
   if (stick || (keyboardOpen && !wasOpen)) {
     requestAnimationFrame(() => {
-      const list = document.querySelector(".message-list");
+      const list = document.querySelector(".message-scroll");
       if (list && (stick || keyboardOpen)) list.scrollTop = list.scrollHeight;
     });
   }

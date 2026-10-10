@@ -6,7 +6,7 @@ import {
 import { setGhost } from "./_lib/ghost.js";
 
 const TIMERS = [0, 86400, 604800, 2592000]; // off, 24h, 7d, 30d (seconds)
-const VERSION = "3.3.0";
+const VERSION = "3.4.0";
 const build = () => ({
   version: VERSION,
   commit: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || null,
@@ -135,7 +135,8 @@ const WALLPAPERS = ["none", "dots", "grid", "sand", "mist", "night"];
 /* GET  /api/me                                        -> { authenticated, user, settings }
  * POST /api/me {action:"logout"}
  * POST /api/me {action:"update", displayName?, password?, messageTimer?, wallpaper?}  ("Update Identity")
- * POST /api/me {action:"update", ghostEnabled?, ghostNote?, ghostHours?}  (Neyo Ghost: Delegated Presence) */
+ * POST /api/me {action:"update", ghostEnabled?, ghostNote?, ghostHours?, ghostCharacter?}  (Neyo Ghost: Delegated Presence;
+ *   ghostCharacter = neyo | zadi | wizi | crony, the NEYO character that writes Ghost replies) */
 export default async function handler(req, res) {
   try {
     if (req.method === "GET" && req.query?.health) {
@@ -236,11 +237,12 @@ export default async function handler(req, res) {
         if (error) throw error;
       }
 
-      if (body.ghostEnabled !== undefined || body.ghostNote !== undefined) {
+      if (body.ghostEnabled !== undefined || body.ghostNote !== undefined || body.ghostCharacter !== undefined) {
         await setGhost(me, {
           enabled: body.ghostEnabled === undefined ? undefined : Boolean(body.ghostEnabled),
           note: body.ghostNote,
           hours: body.ghostHours,
+          character: body.ghostCharacter,
         });
       }
 
@@ -251,6 +253,7 @@ export default async function handler(req, res) {
     return send(res, 400, { error: "Unknown action" });
   } catch (err) {
     if (err instanceof HttpError) return send(res, err.status, { error: err.message });
+    if ([400, 409].includes(err?.status)) return send(res, err.status, { error: err.message });
     console.error("me error:", err);
     return send(res, 500, { error: "Something went wrong", detail: [err?.message, err?.details, err?.hint].filter(Boolean).join(" | ") || undefined, code: err?.code });
   }

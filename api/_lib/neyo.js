@@ -8,6 +8,7 @@
 import { supabase } from "./session.js";
 import { insertMessage, notExpired } from "./chat.js";
 import { setGhost, ghostProfile } from "./ghost.js";
+import { CHARACTERS, CHARACTER_IDS } from "./characters.js";
 
 export const NEYO_ID = "0e000000-0000-4000-8000-000000000001";
 export const NEYO_USERNAME = "neyo";
@@ -269,6 +270,11 @@ const TOOLS = [
         on: { type: "BOOLEAN" },
         note: { type: "STRING", description: "What Ghost may tell people, in the user's words (e.g. 'In a meeting, free after 6'). Optional." },
         hours: { type: "NUMBER", description: "Turn off automatically after this many hours. Optional." },
+        character: {
+          type: "STRING",
+          enum: [...CHARACTER_IDS],
+          description: `Which NEYO character writes the Ghost replies. One of: ${CHARACTER_IDS.map((id) => CHARACTERS[id].name).join(", ")}. Only when the user names one.`,
+        },
       },
       required: ["on"],
     },
@@ -394,11 +400,12 @@ async function runTool(name, args, ctx) {
       return { chat: chat.name, messages: lines.map((l) => l.line) };
     }
     case "ghost_mode": {
-      const r = await setGhost(me, { enabled: Boolean(args.on), note: args.note, hours: args.hours });
+      const r = await setGhost(me, { enabled: Boolean(args.on), note: args.note, hours: args.hours, character: args.character || undefined });
       return {
         ok: true,
         ghost: r.ghostEnabled ? "on" : "off",
         until: r.ghostUntil ? localTime(new Date(r.ghostUntil), tz) : undefined,
+        ghost_character: r.ghostCharacter,
         handoff_report_sent: !r.ghostEnabled,
       };
     }
@@ -453,7 +460,7 @@ For a summary, translation or question about a chat, use read_chat first.
 If something needed is missing (like the time for a reminder), ask one short question.
 
 Now: ${localTime(new Date(), tz)} (user's time zone ${tz}).
-Ghost Mode: ${ghost?.ghostEnabled ? `ON${ghost.ghostUntil ? ` until ${localTime(new Date(ghost.ghostUntil), tz)}` : ""}` : "off"}.
+Ghost Mode: ${ghost?.ghostEnabled ? `ON${ghost.ghostUntil ? ` until ${localTime(new Date(ghost.ghostUntil), tz)}` : ""}` : "off"}. Ghost character: ${ghost?.ghostCharacter || "neyo"}.
 User: ${me.displayName} (@${me.username}).
 This chat: ${chat.type === "group" ? `group "${chat.name}" (you answer only because someone wrote @neyo)` : "private chat with the user"}.
 User's chats: ${chats.filter((c) => !c.isNeyo).map((c) => c.name).join(", ") || "none"}.`;

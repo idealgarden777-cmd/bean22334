@@ -37,7 +37,7 @@ export const store = {
     status: "loading", // loading | signedOut | ready | error
     error: null,
     me: null,
-    settings: { messageTimer: 0, wallpaper: "none", ghostEnabled: false, ghostNote: "", ghostUntil: null },
+    settings: { messageTimer: 0, wallpaper: "none", ghostEnabled: false, ghostNote: "", ghostUntil: null, ghostCharacter: "neyo" },
     view: "home", // home | beanbox (unread)
     conversations: [],
     threads: {}, // convId -> { items, hasMore, loaded, loading }

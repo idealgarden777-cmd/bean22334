@@ -24,6 +24,7 @@ function seed() {
       { id: "m1", conversationId: "c1", senderId: "u1", kind: "text", text: "Hi! Have you seen the new Bean design?", createdAt: ago(6) },
       { id: "m2", conversationId: "c1", senderId: "me", kind: "text", text: "Yes, it looks so clean 🔥", createdAt: ago(3), reactions: [{ emoji: "❤️", userIds: ["u1"] }] },
       { id: "m3", conversationId: "c2", senderId: "u2", kind: "text", text: "Hey, are we still meeting?", createdAt: ago(140) },
+      { id: "m3g", conversationId: "c2", senderId: "me", kind: "text", text: "They're in a meeting right now, free after 6! I'll make sure they see this first thing 🚀", ghost: true, ghostCharacter: "zadi", createdAt: ago(139) },
       { id: "m4", conversationId: "c3", senderId: null, kind: "system", text: 'You created "Signaturesi Team"', createdAt: ago(60) },
       { id: "m5", conversationId: "c3", senderId: "u3", kind: "text", text: "Welcome everyone 👋", createdAt: ago(25) },
       { id: "m6", conversationId: "c3", senderId: "u2", kind: "call", text: "Missed voice call", createdAt: ago(21) },
@@ -130,7 +131,7 @@ function fakeReply(conversationId) {
 let typingUntil = null;
 
 const SKEY = "bean_demo_session";
-const settings = () => ({ messageTimer: 0, wallpaper: "none", ...(db.settings || {}) });
+const settings = () => ({ messageTimer: 0, wallpaper: "none", ghostCharacter: "neyo", ...(db.settings || {}) });
 const signedIn = () => localStorage.getItem(SKEY) === "1";
 
 export const demoApi = {
@@ -165,7 +166,7 @@ export const demoApi = {
   updateMe: (changes) => {
     if (changes.displayName) ME.displayName = changes.displayName.trim();
     saveMe();
-    db.settings = { ...settings(), ...(changes.messageTimer !== undefined ? { messageTimer: Number(changes.messageTimer) } : {}), ...(changes.wallpaper ? { wallpaper: changes.wallpaper } : {}), ...(changes.ghostEnabled !== undefined ? { ghostEnabled: Boolean(changes.ghostEnabled), ghostUntil: changes.ghostEnabled && changes.ghostHours ? new Date(Date.now() + changes.ghostHours * 3600000).toISOString() : null } : {}), ...(changes.ghostNote !== undefined ? { ghostNote: changes.ghostNote } : {}) };
+    db.settings = { ...settings(), ...(changes.messageTimer !== undefined ? { messageTimer: Number(changes.messageTimer) } : {}), ...(changes.wallpaper ? { wallpaper: changes.wallpaper } : {}), ...(changes.ghostEnabled !== undefined ? { ghostEnabled: Boolean(changes.ghostEnabled), ghostUntil: changes.ghostEnabled && changes.ghostHours ? new Date(Date.now() + changes.ghostHours * 3600000).toISOString() : null } : {}), ...(changes.ghostNote !== undefined ? { ghostNote: changes.ghostNote } : {}), ...(changes.ghostCharacter ? { ghostCharacter: changes.ghostCharacter } : {}) };
     save();
     return delay({ success: true, user: { ...ME, online: true }, settings: settings() });
   },

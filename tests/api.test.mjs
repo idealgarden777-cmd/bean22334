@@ -15,7 +15,8 @@ const { setGhost, handleGhostDm } = await import(`${base}/_lib/ghost.js`);
 const keepAlive = setInterval(() => {}, 1000);
 
 let geminiReply = { reply: "Sam meeting mein hain, 6 baje free 👍", handled: true, priority: "normal", summary: "puch rahe hain kahan ho" };
-globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(geminiReply) }] } }] }) });
+let lastGeminiBody = "";
+globalThis.fetch = async (_url, init) => (lastGeminiBody = String(init?.body || ""), { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(geminiReply) }] } }] }) });
 
 let pass = 0, failN = 0;
 const ok = (c, l) => { c ? pass++ : failN++; console.log((c ? "PASS " : "FAIL ") + l); };
@@ -113,6 +114,26 @@ const g2 = await handleGhostDm(dm.id);
 const ghostMsgs = db.bean_messages.filter((m) => m.ghost);
 ok(ghostMsgs.length === 1 && ghostMsgs[0].body.includes("6 baje") && g2.skipped, "Ghost replies once with 👻 label");
 
+// NEYO characters for Ghost: default Neyo, pick Zadi, Zadi writes the next reply
+ok(ghostMsgs[0].ghost_character === "neyo" && lastGeminiBody.includes("you are Neyo, one of NEYO's characters"), "default Ghost character is Neyo");
+r = await call(me, { cookie: sam.cookie, body: { action: "update", ghostCharacter: "batman" } });
+ok(r.code === 400, "unknown Ghost character rejected");
+r = await call(me, { cookie: sam.cookie, body: { action: "update", ghostCharacter: "zadi" } });
+ok(r.code === 200 && r.body.settings.ghostCharacter === "zadi" && r.body.settings.ghostEnabled, "Ghost character saved, Ghost stays on");
+geminiReply = { reply: "Sam is busy right now, free at 6! Let's lock it in then 🚀", handled: true, priority: "normal", summary: "wants to meet" };
+await new Promise((x) => setTimeout(x, 5));
+await call(messages, { cookie: leo.cookie, body: { action: "send", conversationId: dm.id, text: "chalo milte hain?" } });
+await handleGhostDm(dm.id);
+const zadiMsg = db.bean_messages.filter((m) => m.ghost).pop();
+ok(zadiMsg.ghost_character === "zadi" && lastGeminiBody.includes("you are Zadi, one of NEYO's characters") && lastGeminiBody.includes("Never introduce yourself as Neyo"), "Zadi persona writes the Ghost reply");
+r = await call(me, { cookie: sam.cookie, body: { action: "update", ghostCharacter: "yumi" } });
+ok(r.code === 200 && r.body.settings.ghostCharacter === "yumi", "new NEYO characters (Yumi) work too");
+r = await call(messages, { method: "GET", cookie: leo.cookie, query: { conversationId: dm.id } });
+const seen = JSON.stringify(r.body);
+ok(seen.includes('"ghostCharacter":"zadi"'), "peer sees which character replied");
+const { missingColumn } = await import(`${base}/_lib/chat.js`);
+ok(missingColumn({ code: "PGRST204", message: "Could not find the 'ghost_character' column" }, "ghost_character") && !missingColumn({ code: "23505", message: "dup" }, "ghost_character"), "missing-column fallback detects old database");
+
 // password change needs current password, signs out other devices
 const second = await call(auth, { body: { action: "login", username: "samuel", password: "very-long-password-1" }, ip: "9.9.9.9" });
 const secondCookie = `bean_session=${second.headers["set-cookie"].match(/bean_session=([^;]+)/)[1]}`;
@@ -128,10 +149,10 @@ r = await call(me, { cookie: sam.cookie, body: { action: "logout_all" } });
 r = await call(me, { method: "GET", cookie: sam.cookie });
 ok(r.body.authenticated === false, "log out all devices");
 r = await call(me, { method: "GET", cookie: leo.cookie });
-ok(r.body.authenticated === true && r.body.build?.version === "3.3.0", "other users unaffected; build 3.3.0");
+ok(r.body.authenticated === true && r.body.build?.version === "3.4.0", "other users unaffected; build 3.4.0");
 
 r = await call(me, { method: "GET", query: { health: "1" } });
-ok(r.code === 200 && r.body.ok && r.body.database === "ok" && r.body.version === "3.3.0" && r.body.serverKey, "health check");
+ok(r.code === 200 && r.body.ok && r.body.database === "ok" && r.body.version === "3.4.0" && r.body.serverKey, "health check");
 
 // brute force
 let blocked = false;

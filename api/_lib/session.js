@@ -3,6 +3,7 @@
  * Same Supabase project + `bean_session` cookie that
  * accounts.signaturesi.com sets on .signaturesi.com
  * ========================================================= */
+import { normCharacter } from "./characters.js";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
 
@@ -150,9 +151,10 @@ export async function getSettings(userId) {
         ghostEnabled: Boolean(data.ghost_enabled),
         ghostNote: data.ghost_note || "",
         ghostUntil: data.ghost_until || null,
+        ghostCharacter: normCharacter(data.ghost_character),
       };
   } catch {}
-  return { messageTimer: 0, wallpaper: "none", ghostEnabled: false, ghostNote: "", ghostUntil: null };
+  return { messageTimer: 0, wallpaper: "none", ghostEnabled: false, ghostNote: "", ghostUntil: null, ghostCharacter: "neyo" };
 }
 
 /* ---------- security helpers ---------- */

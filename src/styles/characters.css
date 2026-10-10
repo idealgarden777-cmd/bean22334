@@ -1,0 +1,382 @@
+/* =========================================================
+ * NEYO characters in Bean (Neyo Ghost).
+ * Avatar styles copied from NEYO css/components/roster.css
+ * (faceless 3D body /characters/<id>.webp + live face on top;
+ * Zadi, Wizi, Crony keep their classic CSS bodies).
+ * ========================================================= */
+
+.nr-avatar {
+  --nr-size: 40px;
+  --ex: 0;
+  --ey: 0;
+  --nr-ink: #121212;
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: var(--nr-size);
+  height: var(--nr-size);
+  font-size: var(--nr-size);
+  line-height: 0;
+  container-type: size;
+  vertical-align: middle;
+}
+
+/* Image characters never take the old square body styles */
+.nr-avatar[data-kind="image"] {
+  background: none !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+  border-radius: 0 !important;
+  gap: 0 !important;
+}
+
+.nr-art,
+.nr-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.nr-avatar .nr-art img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: none !important;
+  cursor: inherit !important;
+  object-fit: contain;
+  filter: var(--nr-filter, none);
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.nr-face {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ---------- eyes ---------- */
+
+.nr-avatar .nr-eye {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background: var(--nr-ink);
+  transform:
+    translate(-50%, -50%)
+    translate(
+      calc(var(--ex) * 1.7cqw + var(--eye-x, 0px) * 0.45 + var(--life-gx, 0px) * 0.3),
+      calc(var(--ey) * 1.5cqw + var(--eye-y, 0px) * 0.45 + var(--life-gy, 0px) * 0.3)
+    )
+    scaleY(var(--blink, 1));
+  transition: transform 0.16s ease-out;
+}
+
+.nr-avatar .nr-eye.is-square {
+  border-radius: 24%;
+}
+
+/* tiny highlight makes the eyes feel alive */
+.nr-avatar[data-kind="image"] .nr-eye::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  left: 22%;
+  width: 30%;
+  height: 24%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.nr-avatar.is-blinking,
+.nr-avatar .is-blinking {
+  --blink: 0.1;
+}
+
+/* ---------- mouth ---------- */
+
+.nr-avatar[data-kind="image"] .nr-mouth {
+  --mt: 2cqw;
+  position: absolute;
+  display: block;
+  height: var(--mt);
+  border-radius: 99px;
+  background: var(--nr-ink);
+  transform:
+    translate(-50%, -50%)
+    translate(calc(var(--ex) * 1cqw), calc(var(--ey) * 0.8cqw));
+  transition: height 0.2s ease, border-radius 0.2s ease, background 0.2s ease, transform 0.16s ease-out;
+}
+
+/* smile: a curved line instead of a flat one */
+.nr-avatar.is-smiling .nr-mouth,
+.is-active > .nr-avatar .nr-mouth,
+:hover > .nr-avatar:not(.is-static) .nr-mouth,
+#neyoMascot:is([data-mouth="smile"], [data-mouth="grin"], [data-mouth="open-smile"]) .nr-mouth {
+  height: calc(var(--mt) * 3.4);
+  background: transparent;
+  border-bottom: var(--mt) solid var(--nr-ink);
+  border-radius: 0 0 999px 999px;
+}
+
+/* talking */
+.nr-avatar.is-talking .nr-mouth,
+#neyoMascot[data-phase="speaking"] .nr-mouth {
+  border-bottom: 0;
+  background: var(--nr-ink);
+  animation: nr-talk 0.36s ease-in-out infinite alternate;
+}
+
+@keyframes nr-talk {
+  0% { height: var(--mt); border-radius: 99px; }
+  40% { height: calc(var(--mt) * 3.6); border-radius: 45%; }
+  100% { height: calc(var(--mt) * 2.2); border-radius: 50%; }
+}
+
+/* ---------- classic CSS bodies (Zadi, Wizi, Crony) ---------- */
+
+.nr-avatar[data-kind="css"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nr-css-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4cqw;
+  width: 76%;
+  height: 76%;
+  border-radius: 26%;
+  background: var(--nr-tint, #0d0d0d);
+  box-shadow: 0 0.12em 0.26em rgba(0, 0, 0, 0.14);
+  filter: var(--nr-filter, none);
+}
+
+.nr-css-eyes {
+  display: flex;
+  gap: 11.5cqw;
+}
+
+.nr-avatar[data-kind="css"] .nr-eye {
+  position: relative;
+  width: 10.5cqw;
+  height: 13cqw;
+  background: #fff;
+  transform:
+    translate(
+      calc(var(--ex) * 4cqw + var(--eye-x, 0px) * 0.6 + var(--life-gx, 0px) * 0.3),
+      calc(var(--ey) * 3cqw + var(--eye-y, 0px) * 0.6 + var(--life-gy, 0px) * 0.3)
+    )
+    scaleY(var(--blink, 1));
+}
+
+.nr-avatar[data-kind="css"] .nr-mouth {
+  display: block;
+  width: 15cqw;
+  height: 7cqw;
+  border: max(1.5px, 3cqw) solid #fff;
+  border-top: 0;
+  border-radius: 0 0 99px 99px;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.5, 0.64, 1);
+}
+
+.nr-avatar[data-kind="css"].is-smiling .nr-mouth,
+.is-active > .nr-avatar[data-kind="css"] .nr-mouth,
+:hover > .nr-avatar[data-kind="css"]:not(.is-static) .nr-mouth {
+  opacity: 1;
+  transform: none;
+}
+
+.nr-avatar[data-character="zadi"] .nr-css-body {
+  border-radius: 22%;
+  clip-path: polygon(50% 2%, 95% 28%, 98% 66%, 72% 95%, 31% 98%, 4% 72%, 3% 31%, 29% 5%);
+  box-shadow: none;
+}
+
+.nr-avatar[data-character="wizi"] .nr-css-body {
+  border-radius: 50%;
+}
+
+.nr-avatar[data-character="crony"] .nr-css-body {
+  width: 50%;
+  border-radius: 999px;
+  gap: 4cqw;
+  background: var(--nr-tint, linear-gradient(160deg, #9fd2ff 0%, #4fa3f7 45%, #1f6fd6 100%));
+  box-shadow: 0 0.12em 0.26em rgba(31, 111, 214, 0.28), inset 0 0.04em 0 rgba(255, 255, 255, 0.35);
+}
+
+.nr-avatar[data-character="crony"] .nr-css-eyes { gap: 7cqw; }
+.nr-avatar[data-character="crony"] .nr-eye { width: 8.5cqw; height: 10.5cqw; background: #0d2a4d; }
+.nr-avatar[data-character="crony"] .nr-mouth { border-color: #0d2a4d; }
+
+.nr-avatar { transform-origin: 50% 100%; }
+
+/* dark mode (forced or system) */
+:root[data-theme="dark"] .nr-avatar[data-kind="css"]:not([data-character="crony"]) .nr-css-body {
+  background: var(--nr-tint, #f2f2f2);
+}
+:root[data-theme="dark"] .nr-avatar[data-kind="css"]:not([data-character="crony"]) .nr-eye {
+  background: #111;
+}
+:root[data-theme="dark"] .nr-avatar[data-kind="css"]:not([data-character="crony"]) .nr-mouth {
+  border-color: #111;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .nr-avatar[data-kind="css"]:not([data-character="crony"]) .nr-css-body {
+  background: var(--nr-tint, #f2f2f2);
+}
+  :root:not([data-theme="light"]) .nr-avatar[data-kind="css"]:not([data-character="crony"]) .nr-eye {
+  background: #111;
+}
+  :root:not([data-theme="light"]) .nr-avatar[data-kind="css"]:not([data-character="crony"]) .nr-mouth {
+  border-color: #111;
+}
+}
+
+@keyframes nr-blink {
+  0%, 40%, 100% { --blink: 1; }
+  50% { --blink: 0.12; }
+}
+
+@property --blink {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+/* ---------- Ghost character picker (Settings › Neyo Ghost) ---------- */
+.ghost-char-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ghost-char {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center;
+  min-height: 62px; padding: 10px 12px; border-radius: var(--r-md, 16px);
+  background: var(--surface); color: var(--text); text-align: left; cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--border);
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+.ghost-char > .nr-avatar { grid-row: 1 / span 2; justify-self: center; }
+.ghost-char strong { align-self: end; font-size: 13.5px; font-weight: 600; }
+.ghost-char small { align-self: start; font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ghost-char:hover { background: var(--hover); }
+.ghost-char > .nr-avatar:not(.nr-live) { transition: transform 0.35s cubic-bezier(0.34, 1.5, 0.64, 1); }
+.ghost-char:hover > .nr-avatar:not(.nr-live) { transform: translateY(-2px) scale(1.06); }
+.ghost-char:hover > .nr-avatar .nr-eye { animation: nr-blink 0.9s ease; }
+.ghost-char[aria-checked="true"] { box-shadow: inset 0 0 0 1.5px var(--text); }
+.ghost-char:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (max-width: 720px) { .ghost-char-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 340px) { .ghost-char-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Ghost tag on messages ---------- */
+.ghost-tag.has-char { gap: 4px; padding: 1px 6px 1px 2px; }
+.ghost-tag .nr-avatar { --nr-size: 16px; margin: -2px 0; }
+/* on my own (dark) bubble the classic bodies flip so they never disappear */
+.message-row.own .ghost-tag .nr-avatar[data-kind="css"]:not([data-character="crony"]) .nr-css-body { background: var(--bubble-own-text, #fff); }
+.message-row.own .ghost-tag .nr-avatar[data-kind="css"]:not([data-character="crony"]) .nr-eye { background: var(--bubble-own, #171717); }
+
+/* =========================================================
+   LIFE (character-life.js): sleep, wake, work, yawn
+   ========================================================= */
+
+/* the engine moves eyes every frame: no CSS lag on top */
+.nr-avatar.nr-live .nr-eye {
+  transition: none;
+}
+
+/* image appears only when ready: no half-drawn characters */
+.nr-avatar[data-kind="image"] .nr-art img {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.nr-avatar[data-kind="image"].is-ready .nr-art img {
+  opacity: 1;
+}
+
+.nr-avatar[data-kind="image"]:not(.is-ready) .nr-face {
+  opacity: 0;
+}
+
+.nr-avatar.is-smiling-life .nr-mouth {
+  height: calc(var(--mt) * 3.4);
+  background: transparent;
+  border-bottom: var(--mt) solid var(--nr-ink);
+  border-radius: 0 0 999px 999px;
+}
+
+.nr-avatar[data-kind="css"].is-smiling-life .nr-mouth {
+  opacity: 1;
+  transform: none;
+}
+
+/* yawn: a big round "o" */
+.nr-avatar.nr-avatar.is-yawning .nr-mouth {
+  height: calc(var(--mt) * 6);
+  background: var(--nr-ink);
+  border-bottom: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -35%) scaleX(0.42);
+}
+
+.nr-avatar[data-kind="css"].is-yawning .nr-mouth {
+  width: 12cqw;
+  height: 12cqw;
+  border: max(1.5px, 3cqw) solid #fff;
+  border-radius: 50%;
+  opacity: 1;
+  transform: none;
+}
+
+/* sleeping: closed eyes, tiny relaxed mouth, no shine */
+.nr-avatar.is-asleep .nr-eye::after,
+.nr-avatar.is-drowsy .nr-eye::after {
+  opacity: 0.35;
+}
+
+.nr-avatar.is-asleep .nr-eye::after {
+  display: none;
+}
+
+.nr-avatar.is-asleep:not(.is-yawning) .nr-mouth {
+  transform: translate(-50%, -50%) scaleX(0.4);
+}
+
+/* working: focused, tight mouth */
+.nr-avatar.is-working:not(.is-smiling-life) .nr-mouth {
+  transform: translate(-50%, -50%) scaleX(0.6);
+}
+
+/* floating z's while asleep */
+.nr-z {
+  position: absolute;
+  top: 2%;
+  right: 4%;
+  z-index: 3;
+  font: 800 calc(14px * var(--zs, 1)) / 1 ui-rounded, system-ui, sans-serif;
+  color: #8f8fa3;
+  pointer-events: none;
+  animation: nr-z 2.6s ease-out forwards;
+}
+
+@keyframes nr-z {
+  0% { opacity: 0; transform: translate(0, 4px) scale(0.6); }
+  20% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(var(--zx, 6px), -26px) scale(1.25) rotate(-12deg); }
+}
+
+:root[data-theme="dark"] .nr-z { color: #a3a3a8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .nr-z { color: #a3a3a8; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .nr-avatar *, .nr-avatar { animation: none !important; transition: none !important; }
+}

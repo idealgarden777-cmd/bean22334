@@ -8,6 +8,8 @@ import { confirmDialog } from "./dialog.js";
 import { avatar, escapeHtml } from "../core/utils.js";
 import { isDark, toggleTheme } from "../core/theme.js";
 import { notificationsSupported } from "../core/notify.js";
+import { CHARACTERS, characterOf, mascotHtml, preloadCharacters } from "../core/characters.js";
+import { NeyoLife } from "../core/character-life.js";
 
 export const TIMERS = [
   { value: 0, label: "Off (keep forever)", short: "Off" },
@@ -50,7 +52,7 @@ const TAB_ICONS = {
 
 const ghostNoteText = (s) =>
   s.ghostEnabled
-    ? `On${s.ghostUntil ? ` until ${new Date(s.ghostUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}. Simple messages get a 👻 Ghost reply; money, plans and private things wait for you.`
+    ? `On${s.ghostUntil ? ` until ${new Date(s.ghostUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}. ${characterOf(s.ghostCharacter).name} replies to simple messages; money, plans and private things wait for you.`
     : "When you turn it off, Neyo sends you a handoff report.";
 
 export function timerLabel(seconds) {
@@ -146,6 +148,15 @@ const ghostTab = (settings) => `
       </button>
     </div>
     <div class="card">
+      <span class="field-label">Ghost character</span>
+      <div class="ghost-char-grid" role="radiogroup" aria-label="Ghost character">
+        ${CHARACTERS.map((c) => {
+          const on = characterOf(settings.ghostCharacter).id === c.id;
+          return `<button type="button" class="ghost-char" role="radio" aria-checked="${on}" data-ghost-char="${c.id}">${mascotHtml(c.id, 40)}<strong>${c.name}</strong><small>${c.tag}</small></button>`;
+        }).join("")}
+      </div>
+    </div>
+    <div class="card">
       <label class="field">
         <span class="field-label">What Ghost can tell people</span>
         <textarea id="ghostNote" class="field-input" rows="2" maxlength="500" placeholder="e.g. In a meeting, free after 6 pm">${escapeHtml(settings.ghostNote || "")}</textarea>
@@ -155,7 +166,7 @@ const ghostTab = (settings) => `
         ${GHOST_HOURS.map((h) => `<button type="button" role="radio" data-hours="${h.value}" class="${h.value === 0 ? "on" : ""}" aria-checked="${h.value === 0}">${h.label}</button>`).join("")}
       </div>
     </div>
-    <p class="fine-print">While Ghost Mode is on, Neyo reads the direct messages you receive and replies on your behalf. Every Ghost reply is labelled 👻 Ghost.</p>
+    <p class="fine-print">While Ghost Mode is on, Neyo reads the direct messages you receive and replies on your behalf. Your Ghost character writes in its own NEYO personality, and every Ghost reply is labelled with its name and 👻 Ghost.</p>
   </section>`;
 
 const chatsTab = (settings) => `
@@ -420,6 +431,35 @@ export function mountSettings(container) {
         refreshGhost();
       }
     };
+    /* Ghost character: same NEYO characters, active one comes alive */
+    let stopLife = () => {};
+    const charBtns = $$("[data-ghost-char]");
+    const markChar = (id) => {
+      stopLife();
+      charBtns.forEach((b) => b.setAttribute("aria-checked", String(b.dataset.ghostChar === id)));
+      stopLife = NeyoLife.attach($(`[data-ghost-char="${id}"] .nr-avatar`));
+    };
+    preloadCharacters(characterOf(store.getState().settings.ghostCharacter).id);
+    markChar(characterOf(store.getState().settings.ghostCharacter).id);
+    charBtns.forEach((b) => {
+      b.onclick = async () => {
+        const id = b.dataset.ghostChar;
+        const before = characterOf(store.getState().settings.ghostCharacter).id;
+        if (id === before) return;
+        markChar(id);
+        const a = b.querySelector(".nr-avatar");
+        setTimeout(() => { NeyoLife.hop(a, 1.3); NeyoLife.smile(a, 1400); }, 60);
+        try {
+          await store.updateSettings({ ghostCharacter: id });
+          refreshGhost();
+          store.toast(`${characterOf(id).name} is your Ghost now`);
+        } catch (err) {
+          markChar(before);
+          store.toast(err.message);
+        }
+      };
+    });
+
     $("#ghostNote").addEventListener("change", async (e) => {
       try {
         await store.updateSettings({ ghostNote: e.target.value });

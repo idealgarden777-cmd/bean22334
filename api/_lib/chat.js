@@ -1,4 +1,5 @@
 /* Shared chat logic: shaping messages and conversations. */
+import { isCharacter } from "./characters.js";
 import { supabase, publicUser, MEDIA_BUCKET, getAvatars } from "./session.js";
 import { ghostFlags } from "./ghost.js";
 
@@ -14,18 +15,25 @@ export function previewFor(kind, body, attachment) {
   return (body || "").slice(0, 140);
 }
 
+/* PostgREST / Postgres "column does not exist" (an SQL update not run yet) */
+export const missingColumn = (error, column) =>
+  ["42703", "PGRST204"].includes(error?.code) || new RegExp(column).test(String(error?.message || ""));
+
 /* Hide messages whose disappearing timer ran out. */
 export const notExpired = (query) => query.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
 
-export async function insertMessage({ conversationId, senderId, kind = "text", body = null, attachment = null, replyTo = null, expiresAt = null, ghost = false }) {
+export async function insertMessage({ conversationId, senderId, kind = "text", body = null, attachment = null, replyTo = null, expiresAt = null, ghost = false, ghostCharacter = null }) {
   const row = { conversation_id: conversationId, sender_id: senderId, kind, body, attachment, reply_to: replyTo };
   if (expiresAt) row.expires_at = expiresAt;
   if (ghost) row.ghost = true;
-  const { data: message, error } = await supabase
-    .from("bean_messages")
-    .insert(row)
-    .select("*")
-    .single();
+  if (ghost && ghostCharacter) row.ghost_character = ghostCharacter;
+  const insert = (r) => supabase.from("bean_messages").insert(r).select("*").single();
+  let { data: message, error } = await insert(row);
+  if (error && row.ghost_character && missingColumn(error, "ghost_character")) {
+    // SQL update not run yet: still send the Ghost reply, just without the character tag
+    delete row.ghost_character;
+    ({ data: message, error } = await insert(row));
+  }
   if (error) throw error;
 
   await supabase
@@ -127,6 +135,7 @@ export async function hydrateMessages(rows) {
       reactions: deleted ? [] : Object.entries(grouped).map(([emoji, userIds]) => ({ emoji, userIds })),
       expiresAt: r.expires_at || null,
       ghost: Boolean(r.ghost) && !deleted,
+      ghostCharacter: r.ghost && !deleted && isCharacter(r.ghost_character) ? r.ghost_character : null,
       editedAt: r.edited_at,
       deletedAt: r.deleted_at,
       createdAt: r.created_at,

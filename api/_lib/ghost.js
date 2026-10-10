@@ -11,7 +11,8 @@
  * Groups are never answered by Ghost.
  * ========================================================= */
 import { supabase } from "./session.js";
-import { insertMessage, notExpired } from "./chat.js";
+import { insertMessage, notExpired, missingColumn } from "./chat.js";
+import { CHARACTER_NAMES, normCharacter, isCharacter, ghostCharacterBlock } from "./characters.js";
 import { NEYO_ID, neyoSay, neyoDmFor, geminiReady, ask } from "./neyo.js";
 
 const MAX_NOTE = 500;
@@ -28,10 +29,11 @@ export async function ghostProfile(userId) {
         ghostNote: data.ghost_note || "",
         ghostSince: data.ghost_since || null,
         ghostUntil: data.ghost_until || null,
+        ghostCharacter: normCharacter(data.ghost_character),
       };
     }
   } catch {}
-  return { ghostEnabled: false, ghostNote: "", ghostSince: null, ghostUntil: null };
+  return { ghostEnabled: false, ghostNote: "", ghostSince: null, ghostUntil: null, ghostCharacter: "neyo" };
 }
 
 /* user ids -> Set of ids with Ghost Mode on (used to show "Away · Ghost" to others) */
@@ -46,11 +48,15 @@ export async function ghostFlags(ids) {
 }
 
 /* Turn Ghost Mode on/off. Off => handoff report. me = { id, displayName } */
-export async function setGhost(me, { enabled, note, hours }) {
+export async function setGhost(me, { enabled, note, hours, character }) {
   const current = await ghostProfile(me.id);
   const now = new Date().toISOString();
   const row = { user_id: me.id, updated_at: now };
   if (note !== undefined && note !== null) row.ghost_note = String(note).trim().slice(0, MAX_NOTE) || null;
+  if (character !== undefined && character !== null && character !== "") {
+    if (!isCharacter(character)) throw Object.assign(new Error("Unknown Ghost character"), { status: 400 });
+    row.ghost_character = normCharacter(character);
+  }
 
   if (enabled) {
     row.ghost_enabled = true;
@@ -62,15 +68,22 @@ export async function setGhost(me, { enabled, note, hours }) {
     row.ghost_until = null;
   }
 
-  const { error } = await supabase.from("bean_settings").upsert(row, { onConflict: "user_id" });
+  let { error } = await supabase.from("bean_settings").upsert(row, { onConflict: "user_id" });
+  if (error && row.ghost_character && missingColumn(error, "ghost_character")) {
+    // SQL update (bean_update_v34.sql) not run yet: keep Ghost working, character can't be saved
+    delete row.ghost_character;
+    ({ error } = await supabase.from("bean_settings").upsert(row, { onConflict: "user_id" }));
+    if (!error && Object.keys(row).length <= 2) throw Object.assign(new Error("Ghost characters need the Bean database update first"), { status: 409 });
+  }
   if (error) throw error;
 
   if (enabled === false && current.ghostEnabled) {
     await sendHandoff(me.id, current.ghostSince).catch((err) => console.error("Handoff failed:", err));
   } else if (enabled && !current.ghostEnabled) {
+    const who = CHARACTER_NAMES[normCharacter(row.ghost_character || current.ghostCharacter)];
     await neyoSay(
       await neyoDmFor(me.id),
-      `👻 Ghost Mode is on. I'll handle your direct messages: I'll answer simple things and save anything important for you.${
+      `👻 Ghost Mode is on. ${who === "Neyo" ? "I'll" : `${who} will`} handle your direct messages: answer simple things and save anything important for you.${
         row.ghost_until ? "" : " Turn Ghost Mode off when you're back and I'll send you a handoff report."
       }`
     ).catch(() => {});
@@ -96,8 +109,10 @@ function cleanJson(text) {
   return null;
 }
 
-function decisionPrompt(ownerName, note) {
-  return `You are Neyo Ghost, the delegated presence of ${ownerName} inside Bean (a chat app). ${ownerName} is away and allowed you to handle simple direct messages for them.
+function decisionPrompt(ownerName, note, character = "neyo") {
+  return `${ghostCharacterBlock(character, ownerName)}
+
+You are Neyo Ghost, the delegated presence of ${ownerName} inside Bean (a chat app). ${ownerName} is away and allowed you to handle simple direct messages for them.
 Every reply you write is shown to the other person with a "👻 Ghost" label, so they know it's you, not ${ownerName}. Never pretend to be ${ownerName}.
 
 ${note ? `What ${ownerName} told you (you may share this): "${note}"` : `${ownerName} left no note. Say they are away and will see the message later.`}
@@ -169,7 +184,7 @@ export async function handleGhostDm(conversationId) {
     try {
       decision = cleanJson(
         await ask(
-          decisionPrompt(ownerName, profile.ghostNote),
+          decisionPrompt(ownerName, profile.ghostNote, profile.ghostCharacter),
           `Conversation (oldest first):\n${recent.map(line).join("\n")}\n\nNew messages from ${peerName} that need handling:\n${fresh.map(line).join("\n")}`,
           300,
           true
@@ -195,7 +210,7 @@ export async function handleGhostDm(conversationId) {
   const priority = ["high", "normal", "low"].includes(decision.priority) ? decision.priority : "normal";
   const handled = Boolean(decision.handled);
 
-  if (reply) await insertMessage({ conversationId, senderId: ownerId, kind: "text", body: reply, ghost: true });
+  if (reply) await insertMessage({ conversationId, senderId: ownerId, kind: "text", body: reply, ghost: true, ghostCharacter: profile.ghostCharacter });
 
   await supabase
     .from("bean_ghost_log")

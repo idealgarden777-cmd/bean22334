@@ -8,6 +8,15 @@ import {
 import { openLightbox } from "./lightbox.js";
 import { toggleVoice, voiceStatus, onVoicePaint, seekVoice, cycleRate } from "../core/voice-player.js";
 import { downloadFile } from "../core/media.js";
+import { characterOf, mascotHtml } from "../core/characters.js";
+
+/* "👻 Ghost" tag; newer Ghost replies also show the NEYO character that wrote them */
+const ghostTag = (m, own) => {
+  const away = own ? "you were" : "they were";
+  if (!m.ghostCharacter) return `<span class="ghost-tag" data-tip="Sent by Neyo Ghost while ${away} away">👻 Ghost</span>`;
+  const c = characterOf(m.ghostCharacter);
+  return `<span class="ghost-tag has-char" data-tip="${c.name} (Neyo Ghost) replied while ${away} away">${mascotHtml(c.id, 16)}${c.name} · Ghost</span>`;
+};
 
 export const QUICK_REACTIONS = ["❤️", "😂", "😮", "😢", "👍", "🔥"];
 const GROUP_GAP_MS = 5 * 60 * 1000;
@@ -178,7 +187,7 @@ function messageHtml(m, ctx) {
         <div class="bubble-wrap">
           <div class="message-bubble">
             ${reply}${body}
-            <span class="bubble-meta">${m.ghost ? `<span class="ghost-tag" data-tip="Sent by Neyo Ghost while ${own ? "you were" : "they were"} away">👻 Ghost</span>` : ""}${m.expiresAt && !deleted ? `<span class="meta-timer" data-tip="Disappears ${escapeHtml(new Date(m.expiresAt).toLocaleString())}">${icons.timer}</span>` : ""}${m.editedAt && !deleted ? "<span>edited</span>" : ""}<time>${formatTime(m.createdAt)}</time>${statusHtml(m, state, conv, m.id === lastOwnId)}</span>
+            <span class="bubble-meta">${m.ghost ? ghostTag(m, own) : ""}${m.expiresAt && !deleted ? `<span class="meta-timer" data-tip="Disappears ${escapeHtml(new Date(m.expiresAt).toLocaleString())}">${icons.timer}</span>` : ""}${m.editedAt && !deleted ? "<span>edited</span>" : ""}<time>${formatTime(m.createdAt)}</time>${statusHtml(m, state, conv, m.id === lastOwnId)}</span>
           </div>
           ${
             !deleted && !m.pending && !m.failed

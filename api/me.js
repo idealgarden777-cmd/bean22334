@@ -6,7 +6,7 @@ import {
 import { setGhost } from "./_lib/ghost.js";
 
 const TIMERS = [0, 86400, 604800, 2592000]; // off, 24h, 7d, 30d (seconds)
-const VERSION = "3.5.0";
+const VERSION = "3.5.1";
 const build = () => ({
   version: VERSION,
   commit: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || null,

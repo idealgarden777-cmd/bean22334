@@ -103,7 +103,7 @@ const profileTab = (me) => `
     <form class="set-form" data-form="profile" autocomplete="off">
       <label class="field">
         <span class="field-label">Display name</span>
-        <input class="field-input" name="displayName" type="text" maxlength="40" value="${escapeHtml(me.displayName)}" required>
+        <input autocomplete="off" autocorrect="off" enterkeyhint="done" class="field-input" name="displayName" type="text" maxlength="40" value="${escapeHtml(me.displayName)}" required>
       </label>
       <label class="field">
         <span class="field-label">About <small class="field-count" data-bio-count>${(me.bio || "").length}/160</small></span>

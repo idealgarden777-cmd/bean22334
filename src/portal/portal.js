@@ -14,6 +14,7 @@ import { api } from "../core/api.js";
 import { debounce } from "../core/utils.js";
 import "../core/theme.js";
 import { INK_PATH } from "../components/logo.js";
+import { initViewport } from "../core/mobile-viewport.js";
 import { initBrandInk } from "../core/brand-ink.js";
 
 const APP_URL = "/chat";
@@ -149,4 +150,7 @@ async function boot() {
 }
 
 document.addEventListener("DOMContentLoaded", boot);
-document.addEventListener("DOMContentLoaded", () => initBrandInk());
+document.addEventListener("DOMContentLoaded", () => {
+  initBrandInk();
+  initViewport();
+});

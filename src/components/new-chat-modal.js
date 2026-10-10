@@ -29,9 +29,9 @@ export function mountNewChat(container) {
             <button type="button" data-mode="group">New group</button>
           </div>
           <form class="modal-form">
-            <input class="group-name" type="text" placeholder="Group name" maxlength="60" hidden />
+            <input autocomplete="off" autocorrect="off" enterkeyhint="done" class="group-name" type="text" placeholder="Group name" maxlength="60" hidden />
             <div class="picked" hidden></div>
-            <label class="modal-input">${icons.search}<input class="who" type="text" placeholder="Search a Bean ID, e.g. leo11" autocapitalize="none" spellcheck="false" /></label>
+            <label class="modal-input">${icons.search}<input autocomplete="off" autocorrect="off" enterkeyhint="done" class="who" type="text" placeholder="Search a Bean ID, e.g. leo11" autocapitalize="none" spellcheck="false" /></label>
             <div class="modal-results"></div>
             <p class="modal-error" hidden></p>
             <button type="submit" class="btn-primary submit-btn">Start chat</button>

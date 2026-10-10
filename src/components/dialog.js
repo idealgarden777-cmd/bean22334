@@ -10,7 +10,7 @@ function open({ title, text = "", input = null, confirm = "OK", cancel = "Cancel
       <div class="bean-dialog" role="alertdialog" aria-modal="true" aria-labelledby="bd-title" ${text ? 'aria-describedby="bd-text"' : ""}>
         <h3 id="bd-title">${escapeHtml(title)}</h3>
         ${text ? `<p id="bd-text">${escapeHtml(text)}</p>` : ""}
-        ${input ? `<label class="bd-field"><input type="text" value="${escapeHtml(input.value || "")}" maxlength="${input.maxLength || 80}" placeholder="${escapeHtml(input.placeholder || "")}" aria-label="${escapeHtml(title)}" /></label>` : ""}
+        ${input ? `<label class="bd-field"><input autocomplete="off" autocorrect="off" enterkeyhint="done" type="text" value="${escapeHtml(input.value || "")}" maxlength="${input.maxLength || 80}" placeholder="${escapeHtml(input.placeholder || "")}" aria-label="${escapeHtml(title)}" /></label>` : ""}
         <div class="bd-actions">
           <button type="button" class="bd-btn ghost" data-r="cancel">${escapeHtml(cancel)}</button>
           <button type="button" class="bd-btn ${danger ? "danger" : "primary"}" data-r="ok">${escapeHtml(confirm)}</button>

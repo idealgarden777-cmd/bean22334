@@ -11,6 +11,7 @@ import { initAnimatedEmoji } from "./core/emoji-anim.js";
 import { mountTooltips } from "./components/tooltip.js";
 import { stopVoice } from "./core/voice-player.js";
 import { initBrandInk } from "./core/brand-ink.js";
+import { initViewport } from "./core/mobile-viewport.js";
 import { looksLikeBean } from "./core/utils.js";
 import { confirmDialog } from "./components/dialog.js";
 
@@ -42,6 +43,7 @@ function guardLinks() {
 
 document.addEventListener("DOMContentLoaded", () => {
   initBrandInk();
+  initViewport();
   guardLinks();
   let root = document.getElementById("app");
   if (!root) {

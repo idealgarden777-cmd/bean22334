@@ -105,3 +105,11 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 }
 .auth-icon { display: grid; place-items: center; background: #fff; color: #111; }
 .auth-icon svg { width: 40px; height: 40px; display: block; }
+
+/* phones: fixed size, no zoom into fields (iOS zooms under 16px) */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+@media (max-width: 767px) {
+  input, textarea { font-size: 16px !important; }
+  .auth-screen { min-height: var(--app-height, 100dvh); }
+}

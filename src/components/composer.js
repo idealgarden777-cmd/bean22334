@@ -25,7 +25,7 @@ export function mountComposer(container) {
         <div class="timer-banner" hidden></div>
         <div class="compose-banner" hidden></div>
         <div class="emoji-picker" hidden>
-          <label class="emoji-search">${icons.search}<input type="search" placeholder="Search emoji" aria-label="Search emoji"></label>
+          <label class="emoji-search">${icons.search}<input autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" type="search" placeholder="Search emoji" aria-label="Search emoji"></label>
           <div class="emoji-grid"></div>
         </div>
         <div class="composer-pill-container">

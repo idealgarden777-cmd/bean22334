@@ -6,6 +6,7 @@ import { icons } from "./icons.js";
 import { avatar, escapeHtml } from "../core/utils.js";
 import { captionsSupported, screenShareSupported, CAPTION_LANGS, captionLang } from "../core/meet.js";
 import { confirmDialog } from "./dialog.js";
+import { selectHtml, bindSelect, closeSelect } from "./select.js";
 
 const MEET_HOST = "bean.signaturesi.com";
 const meetUrl = (code) => `https://${location.host === "localhost:4173" ? MEET_HOST : location.host}/meet/${code}`;
@@ -337,6 +338,7 @@ export function mountMeetView(container) {
     const key = JSON.stringify([s.muted, s.cameraOff, Boolean(s.screenStream), s.hand, s.meeting.transcribing, s.meeting.locked, panel, menuOpen, waiting.length, host, s.peers.length]);
     if (key === barKey) return;
     barKey = key;
+    closeSelect();
     const bar = container.querySelector(".meet-bar");
     bar.innerHTML = `
       <div class="meet-bar-left"><span class="meet-bar-code">${escapeHtml(s.meeting.code)}</span></div>
@@ -356,7 +358,7 @@ export function mountMeetView(container) {
                   <button type="button" data-m="hand" class="m-only">${icons.hand}<span>${s.hand ? "Lower hand" : "Raise hand"}</span></button>
                   <button type="button" data-m="copy">${icons.link}<span>Copy meeting link</span></button>
                   ${host ? `<button type="button" data-m="lock">${s.meeting.locked ? icons.unlock : icons.lock}<span>${s.meeting.locked ? "Unlock meeting" : "Lock meeting (no new requests)"}</span></button>` : ""}
-                  ${captionsSupported ? `<label class="meet-menu-row">${icons.captions}<span>Caption language</span><select data-m="lang">${CAPTION_LANGS.map(([c, n]) => `<option value="${c}" ${c === captionLang() ? "selected" : ""}>${n}</option>`).join("")}</select></label>` : ""}
+                  ${captionsSupported ? `<div class="meet-menu-row">${icons.captions}<span>Caption language</span>${selectHtml("lang", CAPTION_LANGS, captionLang(), { label: "Caption language" })}</div>` : ""}
                   ${host ? `<button type="button" data-m="end" class="danger">${icons.phoneOff}<span>End meeting for everyone</span></button>` : ""}
                 </div>`
               : ""
@@ -398,7 +400,6 @@ export function mountMeetView(container) {
         const ses = store.meetSession;
         if (!ses) return;
         const m = b.dataset.m;
-        if (m === "lang") return ses.changeCaptionLang(b.value);
         menuOpen = false;
         barKey = "";
         if (m === "copy") copy(meetUrl(ses.meeting.code));
@@ -412,9 +413,9 @@ export function mountMeetView(container) {
         }
         renderBar(ses);
       };
-      if (b.tagName === "SELECT") b.onchange = act;
-      else b.onclick = act;
+      b.onclick = act;
     });
+    bindSelect(bar.querySelector('[data-select="lang"]'), CAPTION_LANGS, (v) => store.meetSession?.changeCaptionLang(v));
   }
 
   function renderPanel(s) {
@@ -539,7 +540,7 @@ export function mountMeetView(container) {
   setInterval(() => phase === "live" && store.meetSession && renderCaptions(store.meetSession), 1500);
 
   document.addEventListener("click", (e) => {
-    if (menuOpen && !e.target.closest?.(".meet-more-wrap")) {
+    if (menuOpen && !e.target.closest?.(".meet-more-wrap, .bean-select-menu")) {
       menuOpen = false;
       barKey = "";
       store.meetSession && renderBar(store.meetSession);

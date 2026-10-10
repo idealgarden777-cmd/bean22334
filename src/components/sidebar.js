@@ -191,7 +191,7 @@ export function mountSidebar(container) {
     <div class="sidebar-nav">
       <label class="search-pill">
         ${icons.search}
-        <input type="search" placeholder="Search chats or Bean IDs" aria-label="Search chats or Bean IDs" />
+        <input autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" type="search" placeholder="Search chats or Bean IDs" aria-label="Search chats or Bean IDs" />
       </label>
       <div class="view-tabs" role="tablist">
         <button type="button" role="tab" data-view="home">All chats</button>

@@ -66,7 +66,7 @@ export function mountInfoPanel(container) {
             ? `<section class="info-section">
                 <h4>${conv.members.length} members</h4>
                 <div class="add-member" hidden>
-                  <label class="search-pill">${icons.search}<input type="text" placeholder="Add a Bean ID" /></label>
+                  <label class="search-pill">${icons.search}<input autocomplete="off" autocorrect="off" enterkeyhint="done" type="text" placeholder="Add a Bean ID" /></label>
                   <div class="add-results"></div>
                 </div>
                 <div class="info-list">${conv.members

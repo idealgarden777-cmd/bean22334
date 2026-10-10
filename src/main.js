@@ -10,8 +10,10 @@ import { store } from "./core/store.js";
 import { initAnimatedEmoji } from "./core/emoji-anim.js";
 import { mountTooltips } from "./components/tooltip.js";
 import { stopVoice } from "./core/voice-player.js";
+import { initBrandInk } from "./core/brand-ink.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+  initBrandInk();
   let root = document.getElementById("app");
   if (!root) {
     root = document.createElement("div");

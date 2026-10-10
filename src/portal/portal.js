@@ -13,6 +13,8 @@ import "@fontsource/sora/700.css";
 import { api } from "../core/api.js";
 import { debounce } from "../core/utils.js";
 import "../core/theme.js";
+import { INK_PATH } from "../components/logo.js";
+import { initBrandInk } from "../core/brand-ink.js";
 
 const APP_URL = "/chat";
 let mode = "login"; // login | register
@@ -28,7 +30,7 @@ function render(root) {
     <main class="auth-screen">
       <div class="auth-card">
         <div class="auth-head">
-          <img class="auth-icon" src="/bean-icon.png" alt="" width="64" height="64">
+          <span class="auth-icon" aria-hidden="true"><svg data-ink viewBox="30 50 710 710" fill="currentColor" focusable="false"><path d="${INK_PATH}"/></svg></span>
           <h1>Bean</h1>
           <p class="auth-brand">Signaturesi</p>
         </div>
@@ -147,3 +149,4 @@ async function boot() {
 }
 
 document.addEventListener("DOMContentLoaded", boot);
+document.addEventListener("DOMContentLoaded", () => initBrandInk());

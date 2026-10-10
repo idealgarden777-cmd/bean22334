@@ -103,3 +103,5 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   .auth-card { padding: 30px 20px 22px; border-radius: 28px; }
   .auth-head h1 { font-size: 40px; }
 }
+.auth-icon { display: grid; place-items: center; background: #fff; color: #111; }
+.auth-icon svg { width: 40px; height: 40px; display: block; }

@@ -1,6 +1,6 @@
 {
   "name": "bean22334",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "Bean — warm minimal chat for the Signaturesi ecosystem (Bean ID login)",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/api.test.mjs && node tests/neyo.test.mjs",
+    "test": "node tests/api.test.mjs && node tests/neyo.test.mjs && node tests/meet.test.mjs",
     "smoke": "node tests/smoke-live.mjs"
   },
   "dependencies": {

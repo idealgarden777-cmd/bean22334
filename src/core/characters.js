@@ -58,6 +58,47 @@ export const characterOf = (id) => BY_ID[String(id || "").toLowerCase()] || BY_I
 const pct = (v) => `${v}%`;
 const imageUrl = (id) => `/characters/${id}.webp?v=1`;
 
+/* Crisp vector mouth (NEYO roster vectorMouth): real curves with round
+ * ends, an open mouth with a tongue for talking, laughing and yawning.
+ * Every shape is drawn once; CSS only fades/scales them. */
+/* Bean: the two clip shapes live once in a tiny shared <svg> on the page, so a
+ * mouth's markup is identical on every render (message rows never re-paint). */
+const MOUTH_CLIP = "nr-mclip";
+function ensureMouthDefs() {
+  if (typeof document === "undefined" || document.getElementById(MOUTH_CLIP)) return;
+  const holder = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  holder.setAttribute("aria-hidden", "true");
+  holder.setAttribute("width", "0");
+  holder.setAttribute("height", "0");
+  holder.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;pointer-events:none";
+  holder.innerHTML = `<defs><clipPath id="${MOUTH_CLIP}"><path d="M15 14 Q50 19 85 14 Q83 52 50 56 Q17 52 15 14Z"/></clipPath><clipPath id="${MOUTH_CLIP}y"><ellipse cx="50" cy="32" rx="19" ry="25"/></clipPath></defs>`;
+  (document.body || document.documentElement).appendChild(holder);
+}
+function vectorMouth(mx = 0, my = 0, mw = 0, mh = 0) {
+  ensureMouthDefs();
+  const id = MOUTH_CLIP;
+  const sw = mw ? Math.max(7, Math.min(15, (mh / mw) * 100 * 0.9)).toFixed(1) : "12";
+  const style = mw ? ` style="left:${pct(mx)};top:${pct(my)};width:${pct(+(mw * 1.12).toFixed(2))}"` : "";
+  return `<i class="nr-mouth nr-vmouth"${style}>` +
+    `<svg viewBox="0 0 100 64" aria-hidden="true" focusable="false">` +
+      `<g fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">` +
+        `<path class="m-rest" d="M25 20 Q50 29 75 20"/>` +
+        `<path class="m-smile" d="M15 13 Q50 47 85 13"/>` +
+      `</g>` +
+      `<g class="m-open">` +
+        `<path d="M15 14 Q50 19 85 14 Q83 52 50 56 Q17 52 15 14Z" fill="#2a1015"/>` +
+        `<g clip-path="url(#${id})"><ellipse cx="50" cy="54" rx="24" ry="13" fill="#ff7d95"/>` +
+        `<path d="M24 15 Q50 20 76 15 L74 22 Q50 26 26 22Z" fill="#fff" opacity=".92"/></g>` +
+        `<path d="M15 14 Q50 19 85 14 Q83 52 50 56 Q17 52 15 14Z" fill="none" stroke="currentColor" stroke-width="${(sw * 0.7).toFixed(1)}" stroke-linejoin="round"/>` +
+      `</g>` +
+      `<g class="m-yawn">` +
+        `<ellipse cx="50" cy="32" rx="19" ry="25" fill="#2a1015"/>` +
+        `<g clip-path="url(#${id}y)"><ellipse cx="50" cy="56" rx="17" ry="11" fill="#ff7d95"/></g>` +
+        `<ellipse cx="50" cy="32" rx="19" ry="25" fill="none" stroke="currentColor" stroke-width="${(sw * 0.7).toFixed(1)}"/>` +
+      `</g>` +
+    `</svg></i>`;
+}
+
 /* Avatar markup, same structure as NEYO's roster avatar():
  * image characters = faceless body + live face; Zadi/Wizi/Crony = CSS body. */
 export function mascotHtml(id, size = 40, className = "") {
@@ -65,13 +106,13 @@ export function mascotHtml(id, size = 40, className = "") {
   const cls = `nr-avatar ${className}`.trim();
   const open = `<span class="${cls}" data-character="${ch.id}" data-kind="${ch.kind}" aria-hidden="true" style="--nr-size:${size}px;--nr-color:${ch.color}">`;
   if (ch.kind !== "image") {
-    return `${open}<span class="nr-css-body"><span class="nr-css-eyes"><i class="nr-eye"></i><i class="nr-eye"></i></span><i class="nr-mouth"></i></span></span>`;
+    return `${open}<span class="nr-css-body"><span class="nr-css-eyes"><i class="nr-eye"></i><i class="nr-eye"></i></span>${vectorMouth()}</span></span>`;
   }
   const eyes = ch.face.eyes
     .map(([x, y, w, h]) => `<i class="nr-eye${ch.eyeShape === "square" ? " is-square" : ""}" style="left:${pct(x)};top:${pct(y)};width:${pct(w)};height:${pct(h)}"></i>`)
     .join("");
   const [mx, my, mw, mh] = ch.face.mouth;
-  return `${open}<span class="nr-art"><img src="${imageUrl(ch.id)}" alt="" draggable="false" decoding="async"></span><span class="nr-face">${eyes}<i class="nr-mouth" style="left:${pct(mx)};top:${pct(my)};width:${pct(mw)};--mt:${mh}cqw"></i></span></span>`;
+  return `${open}<span class="nr-art"><img src="${imageUrl(ch.id)}" alt="" draggable="false" decoding="async"></span><span class="nr-face">${eyes}${vectorMouth(mx, my, mw, mh)}</span></span>`;
 }
 
 /* The character you use is fetched first, the rest quietly after

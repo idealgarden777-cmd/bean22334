@@ -7,15 +7,38 @@ export function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-/* Escaped text with clickable links. */
+export const BEAN_HOSTS = ["bean.signaturesi.com"];
+
+/* Escaped text with clickable links. Bean meeting links open inside Bean; every
+ * other link is marked external and asks before leaving (anti-phishing). */
 export function richText(value) {
   return escapeHtml(value).replace(
     /\b((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]'"])/gi,
     (url) => {
       const href = url.startsWith("http") ? url : `https://${url}`;
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      let host = "";
+      let path = "";
+      try {
+        const u = new URL(href.replace(/&amp;/g, "&"));
+        host = u.hostname.toLowerCase();
+        path = u.pathname;
+      } catch {
+        return url;
+      }
+      const ours = BEAN_HOSTS.includes(host) || (typeof location !== "undefined" && host === location.hostname);
+      const meet = ours && /^\/meet\/([a-z]{3}-[a-z]{4}-[a-z]{3})\/?$/.exec(path);
+      if (meet) return `<a href="${href}" class="meet-link" data-meet-link="${meet[1]}">${url}</a>`;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" ${ours ? "" : `data-ext="${escapeHtml(host)}"`}>${url}</a>`;
     }
   );
+}
+
+/* "bean-signaturesi.co", "beam.signaturesi.com", "xn--…" and friends */
+export function looksLikeBean(host) {
+  const h = String(host || "").toLowerCase();
+  if (BEAN_HOSTS.includes(h) || h.endsWith(".signaturesi.com") || h === "signaturesi.com") return false;
+  const flat = h.replace(/[^a-z0-9]/g, "");
+  return h.startsWith("xn--") || h.includes(".xn--") || /signatur|bean(chat|meet|login|verify|id)|beanapp/.test(flat);
 }
 
 export function isEmojiOnly(text) {

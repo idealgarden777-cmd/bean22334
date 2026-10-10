@@ -23,12 +23,12 @@ export function mountChatHeader(container) {
   const render = (state) => {
     const conv = store.conversation();
     if (!conv) return;
-    const key = JSON.stringify([conv.id, conv.title, conv.members.length, conv.peer?.online, conv.peer?.lastSeenAt, conv.peer?.ghost, state.typing[conv.id], state.call?.id, conv.muted]);
+    const key = JSON.stringify([conv.id, conv.title, conv.members.length, conv.peer?.online, conv.peer?.lastSeenAt, conv.peer?.ghost, state.typing[conv.id], state.call?.id, Boolean(state.meet), conv.muted]);
     if (key === lastKey) return;
     lastKey = key;
 
     const dm = conv.type === "dm";
-    const inCall = Boolean(state.call);
+    const inCall = Boolean(state.call || state.meet);
     container.innerHTML = `
       <header class="chat-header-container">
         <button type="button" class="icon-btn back-btn" data-action="back" aria-label="Back to chats">${icons.arrowLeft}</button>
@@ -44,7 +44,7 @@ export function mountChatHeader(container) {
             dm
               ? `<button type="button" class="icon-btn" data-action="audio" ${inCall ? "disabled" : ""} data-tip="Voice call" aria-label="Voice call">${icons.phone}</button>
                  <button type="button" class="icon-btn" data-action="video" ${inCall ? "disabled" : ""} data-tip="Video call" aria-label="Video call">${icons.video}</button>`
-              : ""
+              : `<button type="button" class="icon-btn meet-start-btn" data-action="meet" ${inCall ? "disabled" : ""} data-tip="Start a meeting" aria-label="Start a meeting">${icons.meet}</button>`
           }
           <button type="button" class="icon-btn" data-action="info" data-tip="${dm ? "Contact info" : "Group info"}" aria-label="Info">${icons.info}</button>
         </div>
@@ -54,6 +54,7 @@ export function mountChatHeader(container) {
     container.querySelectorAll("[data-action=info]").forEach((b) => (b.onclick = () => store.togglePanel()));
     container.querySelector("[data-action=audio]")?.addEventListener("click", () => store.startCall("audio"));
     container.querySelector("[data-action=video]")?.addEventListener("click", () => store.startCall("video"));
+    container.querySelector("[data-action=meet]")?.addEventListener("click", () => store.startMeeting(conv.id));
   };
 
   const unsub = store.subscribe(render);

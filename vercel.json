@@ -6,6 +6,9 @@
   "functions": {
     "api/neyo.js": {
       "maxDuration": 60
+    },
+    "api/meet.js": {
+      "maxDuration": 60
     }
   },
   "headers": [
@@ -42,7 +45,7 @@
         },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()"
+          "value": "camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=(), interest-cohort=()"
         }
       ]
     },
@@ -58,5 +61,11 @@
   ],
   "regions": [
     "syd1"
+  ],
+  "rewrites": [
+    {
+      "source": "/meet/:code",
+      "destination": "/chat"
+    }
   ]
 }

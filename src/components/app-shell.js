@@ -7,6 +7,7 @@ import { mountChatView } from "./chat-view.js";
 import { mountInfoPanel } from "./info-panel.js";
 import { mountNewChat } from "./new-chat-modal.js";
 import { mountSettings } from "./settings-modal.js";
+import { mountMeetView } from "./meet-view.js";
 import { mountCallOverlay } from "./call-overlay.js";
 import { mountToast } from "./toast.js";
 import { mountLightbox } from "./lightbox.js";
@@ -40,6 +41,7 @@ function mountApp(root) {
       <div class="modal-slot"></div>
       <div class="settings-slot"></div>
       <div class="call-slot"></div>
+      <div class="meet-slot"></div>
       <div class="lightbox-slot"></div>
       <div class="toast-slot"></div>
     </div>`;
@@ -51,6 +53,7 @@ function mountApp(root) {
   mountNewChat(shell.querySelector(".modal-slot"));
   mountSettings(shell.querySelector(".settings-slot"));
   mountCallOverlay(shell.querySelector(".call-slot"));
+  mountMeetView(shell.querySelector(".meet-slot"));
   mountLightbox(shell.querySelector(".lightbox-slot"));
   mountToast(shell.querySelector(".toast-slot"));
 

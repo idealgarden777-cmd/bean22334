@@ -296,6 +296,10 @@ export const demoApi = {
   },
 
   callConfig: () => Promise.resolve({ iceServers: [] }),
+  meetLookup: () => Promise.reject(new Error("Meetings need the live server")),
+  meetPoll: () => Promise.reject(new Error("Meetings need the live server")),
+  meetTranscript: () => Promise.reject(new Error("Meetings need the live server")),
+  meetAction: () => Promise.reject(new Error("Meetings need the live server (deploy to Vercel)")),
   callPoll: () => Promise.reject(new Error("Calls need the live server")),
   callAction: () => Promise.reject(new Error("Calls need the live server (deploy to Vercel)")),
 };

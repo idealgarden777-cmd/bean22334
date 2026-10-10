@@ -8,6 +8,7 @@ import {
 import { openLightbox } from "./lightbox.js";
 import { toggleVoice, voiceStatus, onVoicePaint, seekVoice, cycleRate } from "../core/voice-player.js";
 import { downloadFile } from "../core/media.js";
+import { api } from "../core/api.js";
 import { characterOf, mascotHtml } from "../core/characters.js";
 
 /* "👻 Ghost" tag; newer Ghost replies also show the NEYO character that wrote them */
@@ -126,6 +127,64 @@ function statusHtml(m, state, conv, isLastOwn) {
   }`;
 }
 
+/* Meeting cards are written by the server only, so they can't be faked by a typed message. */
+function meetingHtml(m, ctx) {
+  const mt = m.meeting;
+  const who = escapeHtml(store.userName(m.senderId, ctx.conv).split(" ")[0] || "Someone");
+  if (mt.kind === "notes") {
+    return `<div class="meet-card-row" data-mid="${escapeHtml(m.id)}">
+      <div class="meet-notes-card">
+        <div class="mnc-head">${mascotHtml("neyo", 28)}<span><strong>Meeting notes</strong><small>${escapeHtml(mt.title || "Bean meeting")}${mt.duration ? ` · ${escapeHtml(mt.duration)}` : ""}${mt.people ? ` · ${mt.people} ${mt.people === 1 ? "person" : "people"}` : ""}</small></span></div>
+        ${mt.notes ? `<div class="mnc-body">${richText(mt.notes)}</div>` : `<div class="mnc-body muted">The transcript is ready. Neyo couldn't write notes this time.</div>`}
+        ${mt.lines ? `<button type="button" class="mnc-btn" data-transcript="${escapeHtml(mt.id)}">${icons.transcript}<span>Full transcript</span></button>` : ""}
+        <time>${formatTime(m.createdAt)}</time>
+      </div>
+    </div>`;
+  }
+  if (mt.status === "live") {
+    return `<div class="meet-card-row" data-mid="${escapeHtml(m.id)}">
+      <div class="meet-live-card">
+        <span class="mlc-icon">${icons.meet}</span>
+        <span class="mlc-text"><strong>${escapeHtml(mt.title || "Bean meeting")}</strong><small>${who} started a meeting · ${formatTime(m.createdAt)}</small></span>
+        <button type="button" class="mlc-join" data-meet="${escapeHtml(mt.code)}">Join</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="system-row call-row" data-mid="${escapeHtml(m.id)}">
+    <span>${icons.meet} Meeting ended${mt.duration ? ` · ${escapeHtml(mt.duration)}` : ""}${mt.people ? ` · ${mt.people} ${mt.people === 1 ? "person" : "people"}` : ""} · ${formatTime(m.createdAt)}</span>
+  </div>`;
+}
+
+async function openTranscript(id) {
+  let data;
+  try {
+    data = await api.meetTranscript(id);
+  } catch (err) {
+    return store.toast(err.message);
+  }
+  const wrap = document.createElement("div");
+  wrap.className = "bean-dialog-backdrop show transcript-sheet";
+  const text = data.lines.map((l) => `[${new Date(l.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}] ${l.name}: ${l.text}`).join("\n");
+  wrap.innerHTML = `
+    <div class="bean-dialog transcript-dialog" role="dialog" aria-modal="true" aria-label="Meeting transcript">
+      <div class="td-head"><h3>${escapeHtml(data.meeting.title)}</h3><button type="button" class="icon-btn" data-x aria-label="Close">${icons.close}</button></div>
+      <div class="td-lines">${data.lines.length ? data.lines.map((l) => `<p><strong>${escapeHtml(l.name)}</strong> <time>${new Date(l.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time><br>${escapeHtml(l.text)}</p>`).join("") : "<p>No transcript was recorded.</p>"}</div>
+      <div class="bd-actions"><button type="button" class="bd-btn ghost" data-copy>Copy</button><button type="button" class="bd-btn primary" data-dl>Download .txt</button></div>
+    </div>`;
+  document.body.appendChild(wrap);
+  const close = () => wrap.remove();
+  wrap.querySelector("[data-x]").onclick = close;
+  wrap.onclick = (e) => e.target === wrap && close();
+  wrap.querySelector("[data-copy]").onclick = () => navigator.clipboard?.writeText(text).then(() => store.toast("Transcript copied"), () => {});
+  wrap.querySelector("[data-dl]").onclick = () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([`${data.meeting.title}\n\n${data.notes ? `${data.notes}\n\n---\n\n` : ""}${text}`], { type: "text/plain" }));
+    a.download = `${data.meeting.title.replace(/[^\w -]+/g, "").trim() || "meeting"}-transcript.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+}
+
 function messageHtml(m, ctx) {
   const { state, conv, prev, next, lastOwnId } = ctx;
   const own = m.senderId === state.me.id;
@@ -134,6 +193,7 @@ function messageHtml(m, ctx) {
   if (m.kind === "system") {
     return `<div class="system-row" data-mid="${escapeHtml(m.id)}"><span>${escapeHtml(m.text)}</span></div>`;
   }
+  if (m.kind === "call" && m.meeting) return meetingHtml(m, ctx);
   if (m.kind === "call") {
     const missed = /missed|declined/i.test(m.text);
     return `<div class="system-row call-row ${missed ? "missed" : ""}" data-mid="${escapeHtml(m.id)}">
@@ -396,6 +456,11 @@ export function mountMessageList(container) {
 
     const retry = target.closest("[data-retry]");
     if (retry) return store.retry(retry.dataset.retry);
+
+    const join = target.closest("[data-meet]");
+    if (join) return store.openMeeting(join.dataset.meet);
+    const tr = target.closest("[data-transcript]");
+    if (tr) return openTranscript(tr.dataset.transcript);
 
     const row = target.closest("[data-mid]");
     if (!row) return;

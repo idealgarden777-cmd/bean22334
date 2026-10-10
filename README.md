@@ -36,6 +36,17 @@ Database: no new SQL. Uses `bean_rate_limits`/`bean_rate_hit` and `bean_neyo_job
 - **Voice & video calls** (1:1, WebRTC): ringing, accept/decline, mute, camera, call log in chat
 - Search chats, deep links (`/chat#<conversationId>`), load older messages, dark mode, mobile layout
 
+## Bean Meet (v3.5)
+
+- Start a meeting from any group chat header, or from the Meet button in the sidebar (instant meeting with a link).
+- Link: `https://bean.signaturesi.com/meet/abc-defg-hij`. Needs a Bean login; people outside the chat wait in a lobby until someone inside admits them (they see the Bean ID first). Host can lock, remove, end for everyone.
+- Up to 8 people (mesh WebRTC, signalling by polling `/api/meet`). Several people can share their screen at the same time.
+- Captions & transcript: each browser turns its own speech into text (Chrome, Edge, Safari); everyone sees "Transcript on". When the meeting ends Neyo writes notes into the chat (instant meetings: into each person's Neyo chat).
+- 1:1 voice and video calls also have screen sharing.
+- Links in chats: Bean meeting links open inside Bean; any other link asks first and warns about Bean look-alike sites.
+- Database: run `supabase/bean_update_v35.sql` once (project ajglvfoqiyrrisuoxecu). `GET /api/me?health=1` shows `meetings: "ok"` after.
+- Optional: set `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` for people on very strict networks.
+
 ## How login works
 
 1. User signs in on Bean's own login screen (`/api/auth`) — same tables and rules as accounts.signaturesi.com: `bean_users`, `bean_credentials` (argon2id), `bean_sessions`, password ≥ 10 characters.

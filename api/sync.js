@@ -104,6 +104,30 @@ export default withUser(
       })()
     );
 
+    // a meeting just started in one of my chats (rings like a call; skipped until bean_update_v35.sql is run)
+    jobs.push(
+      (async () => {
+        const { data: mine } = await supabase.from("bean_conversation_members").select("conversation_id").eq("user_id", me.id);
+        const ids = (mine || []).map((m) => m.conversation_id);
+        if (!ids.length) return;
+        const { data: meeting, error } = await supabase
+          .from("bean_meetings")
+          .select("id, code, title, conversation_id, host_id, created_at")
+          .in("conversation_id", ids.slice(0, 500))
+          .eq("status", "live")
+          .neq("host_id", me.id)
+          .gte("created_at", new Date(now - RING_WINDOW_MS).toISOString())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error || !meeting) return;
+        const { data: inside } = await supabase.from("bean_meeting_peers").select("id").eq("meeting_id", meeting.id).eq("user_id", me.id).limit(1);
+        if (inside?.length) return;
+        const users = await loadUsers([meeting.host_id]);
+        out.incomingMeeting = { id: meeting.id, code: meeting.code, title: meeting.title || "Bean meeting", conversationId: meeting.conversation_id, host: users.get(meeting.host_id) || null, createdAt: meeting.created_at };
+      })().catch(() => {})
+    );
+
     await Promise.all(jobs);
     return send(res, 200, out);
   },

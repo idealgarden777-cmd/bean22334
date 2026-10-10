@@ -3,6 +3,7 @@
  * ========================================================= */
 import { api } from "./api.js";
 import { CallSession } from "./call.js";
+import { MeetSession } from "./meet.js";
 import {
   playMessageSound, startRinging, stopRinging, showNotification, setTitleBadge,
   notificationPermission, askNotificationPermission,
@@ -53,6 +54,8 @@ export const store = {
     uploads: [], // { id, conversationId, name, progress }
     call: null,
     incomingCall: null,
+    incomingMeeting: null,
+    meet: null, // { phase: loading|prejoin|joining|waiting|live|ended, code, preview, reason, v }
     toast: null, // string | { text, action, onAction }
     notifPermission: notificationPermission(),
   },
@@ -129,6 +132,8 @@ export const store = {
 
     const fromHash = location.hash.slice(1);
     if (fromHash && this.conversation(fromHash)) this.selectConversation(fromHash);
+    const meetPath = /^\/meet\/([a-z]{3}-[a-z]{4}-[a-z]{3})\/?$/i.exec(location.pathname);
+    if (meetPath) this.openMeeting(meetPath[1].toLowerCase());
 
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) this.syncNow();
@@ -196,6 +201,7 @@ export const store = {
       }
       if (res.conversations) this.applyConversations(res.conversations);
       this.handleIncomingCall(res.incomingCall);
+      this.handleIncomingMeeting(res.incomingMeeting);
       if (this.failures >= 2) this.toast("Back online ✓");
       this.failures = 0;
     } catch (err) {
@@ -692,6 +698,9 @@ export const store = {
       connectedAt: session.connectedAt,
       muted: session.muted,
       cameraOff: session.cameraOff,
+      sharing: session.sharing,
+      peerSharing: session.peerSharing,
+      screenStream: session.screenStream,
       localStream: session.localStream,
       remoteStream: session.remoteStream,
     };
@@ -719,6 +728,7 @@ export const store = {
     const conv = this.conversation();
     if (!conv || conv.type !== "dm") return this.toast("Calls work in one-to-one chats");
     if (this.session) return;
+    if (this.meetSession) return this.toast("Leave the meeting first");
     if (!navigator.mediaDevices?.getUserMedia) return this.toast("This browser can't make calls");
     try {
       const { call, iceServers } = await api.callAction("start", { conversationId: conv.id, kind });
@@ -789,6 +799,116 @@ export const store = {
   },
   toggleCamera() {
     this.session?.toggleCamera();
+  },
+  async toggleCallScreen() {
+    try {
+      await this.session?.toggleScreen();
+    } catch (err) {
+      this.toast(err.message);
+    }
+  },
+
+  /* ---------------- meetings (Bean Meet) ---------------- */
+
+  meetSession: null,
+  dismissedMeetings: new Set(),
+
+  setMeet(patch) {
+    this.set({ meet: patch ? { ...(this.state.meet || {}), ...patch, v: (this.state.meet?.v || 0) + 1 } : null });
+  },
+
+  async startMeeting(conversationId = null) {
+    if (this.session || this.meetSession) return this.toast("You're already in a call");
+    try {
+      const { meeting } = await api.meetAction("create", { conversationId });
+      await this.openMeeting(meeting.code);
+    } catch (err) {
+      this.toast(err.message);
+    }
+  },
+
+  async openMeeting(code) {
+    if (this.meetSession) return;
+    if (this.session) return this.toast("Finish your call first");
+    code = String(code || "").trim().toLowerCase();
+    this.setMeet({ phase: "loading", code, preview: null, reason: null });
+    if (location.pathname !== `/meet/${code}`) history.pushState(null, "", `/meet/${code}`);
+    try {
+      const preview = await api.meetLookup(code);
+      if (preview.meeting.status !== "live") return this.setMeet({ phase: "ended", reason: "over", preview });
+      this.setMeet({ phase: "prejoin", preview });
+    } catch (err) {
+      this.setMeet({ phase: "ended", reason: "missing", error: err.message });
+    }
+  },
+
+  async joinMeeting({ stream, muted, cameraOff }) {
+    const m = this.state.meet;
+    if (!m?.preview || this.meetSession) return;
+    this.setMeet({ phase: "joining" });
+    try {
+      const res = await api.meetAction("join", { code: m.code, muted, cameraOff });
+      const session = new MeetSession({ meeting: res.meeting, peer: res.peer, iceServers: res.iceServers, localStream: stream });
+      if (muted && !session.muted) session.toggleMute();
+      if (cameraOff && !session.cameraOff) session.toggleCamera();
+      this.meetSession = session;
+      session.onToast = (t) => this.toast(t);
+      session.onAdmitted = () => this.meetSession === session && this.setMeet({ phase: "live" });
+      session.onUpdate = (s) => {
+        if (this.meetSession !== session || s.ended) return; // late events after the end
+        this.setMeet({ phase: s.joined ? "live" : "waiting" });
+      };
+      session.onEnd = (reason) => {
+        this.meetSession = null;
+        this.setMeet({ phase: "ended", reason });
+        this.syncNow();
+      };
+      this.setMeet({ phase: session.joined ? "live" : "waiting" });
+      session.start();
+    } catch (err) {
+      stream?.getTracks().forEach((t) => t.stop());
+      this.toast(err.message);
+      this.setMeet({ phase: "prejoin" });
+    }
+  },
+
+  closeMeeting() {
+    this.meetSession?.leave();
+    this.meetSession = null;
+    this.setMeet(null);
+    if (location.pathname.startsWith("/meet/")) history.replaceState(null, "", `/chat${location.hash}`);
+  },
+
+  handleIncomingMeeting(incoming) {
+    const current = this.state.incomingMeeting;
+    if (incoming && !this.meetSession && !this.session && !this.state.meet && !this.dismissedMeetings.has(incoming.id)) {
+      if (current?.id !== incoming.id) {
+        this.set({ incomingMeeting: incoming });
+        startRinging(false);
+        setTimeout(() => this.state.incomingMeeting?.id === incoming.id && stopRinging(), 8000);
+        showNotification(incoming.host?.displayName || "Bean", `Started a meeting: ${incoming.title}`);
+      }
+    } else if (!incoming && current) {
+      stopRinging();
+      this.set({ incomingMeeting: null });
+    }
+  },
+
+  joinIncomingMeeting() {
+    const m = this.state.incomingMeeting;
+    if (!m) return;
+    stopRinging();
+    this.dismissedMeetings.add(m.id);
+    this.set({ incomingMeeting: null });
+    this.openMeeting(m.code);
+  },
+
+  dismissIncomingMeeting() {
+    const m = this.state.incomingMeeting;
+    if (!m) return;
+    stopRinging();
+    this.dismissedMeetings.add(m.id);
+    this.set({ incomingMeeting: null });
   },
 
   /* ---------------- account ---------------- */

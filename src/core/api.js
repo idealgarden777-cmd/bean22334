@@ -84,6 +84,10 @@ const live = {
   revokeSession: (sessionId) => request("/api/me", { method: "POST", body: { action: "revoke_session", sessionId } }),
   logoutAll: () => request("/api/me", { method: "POST", body: { action: "logout_all" } }),
 
+  meetLookup: (code) => request(`/api/meet?${qs({ code })}`),
+  meetPoll: (params) => request(`/api/meet?${qs(params)}`),
+  meetTranscript: (id) => request(`/api/meet?${qs({ transcript: id })}`),
+  meetAction: (action, payload = {}) => request("/api/meet", { method: "POST", body: { action, ...payload } }),
   callConfig: () => request("/api/calls?config=1"),
   callPoll: (id, after) => request(`/api/calls?${qs({ id, after })}`),
   callAction: (action, payload = {}) => request("/api/calls", { method: "POST", body: { action, ...payload } }),

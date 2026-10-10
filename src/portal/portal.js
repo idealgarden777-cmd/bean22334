@@ -21,7 +21,7 @@ let mode = "login"; // login | register
 
 function nextUrl() {
   const next = new URLSearchParams(location.search).get("next") || "";
-  return next.startsWith("/chat") ? next : APP_URL;
+  return next.startsWith("/chat") || /^\/meet\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(next) ? next : APP_URL;
 }
 
 function render(root) {

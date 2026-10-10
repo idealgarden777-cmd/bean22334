@@ -114,8 +114,9 @@ export async function hydrateMessages(rows) {
       senderId: r.sender_id,
       kind: deleted ? "text" : legacyVoice ? "audio" : r.kind,
       text: deleted ? "" : r.body || (r.enc ? "🔒 This message was sent with an older encrypted version of Bean" : ""),
+      meeting: !deleted && r.attachment?.meeting ? r.attachment.meeting : null,
       attachment:
-        !deleted && r.attachment
+        !deleted && r.attachment && !r.attachment.meeting
           ? {
               url: urlByPath.get(r.attachment.path) || null,
               name: r.attachment.name,

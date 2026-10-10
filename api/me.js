@@ -6,7 +6,7 @@ import {
 import { setGhost } from "./_lib/ghost.js";
 
 const TIMERS = [0, 86400, 604800, 2592000]; // off, 24h, 7d, 30d (seconds)
-const VERSION = "3.4.0";
+const VERSION = "3.5.0";
 const build = () => ({
   version: VERSION,
   commit: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || null,
@@ -142,7 +142,9 @@ export default async function handler(req, res) {
     if (req.method === "GET" && req.query?.health) {
       const t0 = Date.now();
       const { error } = await supabase.from("bean_users").select("id", { head: true, count: "exact" }).limit(1);
+      const meet = await supabase.from("bean_meetings").select("id", { head: true, count: "exact" }).limit(1);
       return send(res, error ? 503 : 200, {
+        meetings: meet.error ? "run bean_update_v35.sql" : "ok",
         ok: !error,
         database: error ? "down" : "ok",
         dbMs: Date.now() - t0,

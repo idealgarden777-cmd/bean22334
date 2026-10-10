@@ -299,7 +299,7 @@ function kick() {
 function target(L, now) {
   if (L.look && L.look.until > now) return L.look;
   L.look = null;
-  const input = document.querySelector(".composer textarea");
+  const input = document.querySelector(".composer-pill-container textarea");
   const typing = input && (document.activeElement === input || input.value.trim());
   let goal = null;
   if (L.hero && typing) {

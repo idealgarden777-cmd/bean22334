@@ -1,5 +1,6 @@
 import { patchList } from "../core/dom.js";
 import { store } from "../core/store.js";
+import { promptDialog } from "./dialog.js";
 import { icons } from "./icons.js";
 import { avatar, escapeHtml, formatListTime } from "../core/utils.js";
 import { notificationsSupported } from "../core/notify.js";
@@ -121,11 +122,69 @@ function neyoRow(s) {
   </button>`;
 }
 
+/* Bean Meet menu: start now, or join with a code / Bean link */
+function closeMeetMenu() {
+  document.querySelector(".meet-start-menu")?.remove();
+  document.removeEventListener("click", closeMeetMenu);
+}
+
+export function parseMeetInput(raw) {
+  const text = String(raw || "").trim().toLowerCase();
+  if (!text) return { error: "" };
+  const bare = /^[a-z]{3}-?[a-z]{4}-?[a-z]{3}$/.exec(text);
+  if (bare) {
+    const c = text.replace(/-/g, "");
+    return { code: `${c.slice(0, 3)}-${c.slice(3, 7)}-${c.slice(7)}` };
+  }
+  let url;
+  try {
+    url = new URL(/^https?:\/\//.test(text) ? text : `https://${text}`);
+  } catch {
+    return { error: "That isn't a meeting code or Bean link" };
+  }
+  const ours = url.host === location.host || url.host === "bean.signaturesi.com";
+  if (!ours) return { error: `That link goes to ${url.hostname}, not Bean. Bean meetings only open on bean.signaturesi.com.` };
+  const m = /^\/meet\/([a-z]{3}-[a-z]{4}-[a-z]{3})\/?$/.exec(url.pathname);
+  return m ? { code: m[1] } : { error: "That Bean link isn't a meeting" };
+}
+
+function openMeetMenu(anchor) {
+  closeMeetMenu();
+  const menu = document.createElement("div");
+  menu.className = "profile-menu meet-start-menu";
+  menu.setAttribute("role", "menu");
+  menu.innerHTML = `
+    <div class="pm-items">
+      <button type="button" role="menuitem" data-mm="start">${icons.meet}<span>Start an instant meeting</span></button>
+      <button type="button" role="menuitem" data-mm="join">${icons.link}<span>Join with a code or link</span></button>
+    </div>`;
+  document.body.appendChild(menu);
+  const r = anchor.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - 268))}px`;
+  menu.style.width = "260px";
+  menu.style.top = `${r.bottom + 8}px`;
+  menu.querySelector("[data-mm]")?.focus({ preventScroll: true });
+  menu.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const b = e.target.closest("[data-mm]");
+    if (!b) return;
+    closeMeetMenu();
+    if (b.dataset.mm === "start") return store.startMeeting(null);
+    const value = await promptDialog({ title: "Join a meeting", text: "Paste the code (like abc-defg-hij) or the Bean meeting link.", confirm: "Continue", input: { placeholder: "abc-defg-hij", maxLength: 120 } });
+    if (value === null) return;
+    const { code, error } = parseMeetInput(value);
+    if (code) store.openMeeting(code);
+    else if (error) store.toast(error);
+  });
+  setTimeout(() => document.addEventListener("click", closeMeetMenu), 0);
+}
+
 export function mountSidebar(container) {
   container.innerHTML = `
     <div class="sidebar-header">
       <div class="brand">${logoMark}<span class="brand-name">Bean</span></div>
       ${store.isDemo() ? `<span class="demo-badge" data-tip="Local demo, no backend">Demo</span>` : ""}
+      <button type="button" class="icon-btn header-meet" data-action="meet" data-tip="Bean Meet" aria-label="Bean Meet" aria-haspopup="menu">${icons.meet}</button>
       <button type="button" class="icon-btn header-new" data-action="new" data-tip="New chat" aria-label="New chat">${icons.compose}</button>
     </div>
 
@@ -159,6 +218,11 @@ export function mountSidebar(container) {
   const tabCount = container.querySelector(".tab-count");
 
   container.querySelector("[data-action=new]").onclick = () => store.openModal("new");
+  const meetBtn = container.querySelector("[data-action=meet]");
+  meetBtn.onclick = (e) => {
+    e.stopPropagation();
+    document.querySelector(".meet-start-menu") ? closeMeetMenu() : openMeetMenu(meetBtn);
+  };
   container.querySelector("[data-action=settings]").onclick = () => store.openSettings("profile");
   tabs.forEach((t) => (t.onclick = () => store.setView(t.dataset.view)));
   const profileBtn = container.querySelector("[data-action=profile-menu]");

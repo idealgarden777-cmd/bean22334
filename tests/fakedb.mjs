@@ -14,6 +14,7 @@ const UNIQUE = {
   bean_neyo_jobs: [["message_id"]],
   bean_ghost_log: [["message_id"]],
   bean_rate_limits: [["key"]],
+  bean_meetings: [["id"], ["code"]],
 };
 const DEFAULTS = {
   bean_messages: () => ({ id: crypto.randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), deleted_at: null, edited_at: null, expires_at: null, enc: null, ghost: false }),
@@ -24,6 +25,10 @@ const DEFAULTS = {
   bean_ghost_tasks: () => ({ id: crypto.randomUUID(), status: "active", created_at: new Date().toISOString() }),
   bean_calls: () => ({ id: crypto.randomUUID(), status: "ringing", created_at: new Date().toISOString() }),
   bean_call_signals: () => ({ id: Math.floor(Math.random() * 1e9) }),
+  bean_meetings: () => ({ id: crypto.randomUUID(), status: "live", transcribing: false, locked: false, message_id: null, notes: null, created_at: new Date().toISOString(), ended_at: null }),
+  bean_meeting_peers: () => ({ id: crypto.randomUUID(), hand: false, muted: false, camera_off: false, sharing: false, created_at: new Date().toISOString(), joined_at: null, left_at: null, last_seen_at: new Date().toISOString() }),
+  bean_meeting_signals: () => ({ created_at: new Date().toISOString() }),
+  bean_meeting_captions: () => ({ created_at: new Date().toISOString() }),
 };
 let sigId = 1;
 
@@ -66,7 +71,7 @@ function builder(t) {
       const uniqueHit = (r) => (UNIQUE[t] || []).some((keys) => rows.some((x) => x !== r && keys.every((k) => x[k] !== undefined && x[k] === r[k])));
       if (op === "insert") {
         const list = (Array.isArray(payload) ? payload : [payload]).map((p) => ({ ...(DEFAULTS[t]?.() || {}), ...p }));
-        if (t === "bean_call_signals") list.forEach((r) => (r.id = sigId++));
+        if (["bean_call_signals", "bean_meeting_signals", "bean_meeting_captions"].includes(t)) list.forEach((r) => (r.id = sigId++));
         for (const r of list) if (uniqueHit(r) || list.some((x) => x !== r && (UNIQUE[t] || []).some((keys) => keys.every((k) => x[k] === r[k])))) return { data: null, error: { code: "23505", message: "duplicate" } };
         rows.push(...list);
         return { data: Array.isArray(payload) ? list : list[0], error: null };

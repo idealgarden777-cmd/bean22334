@@ -1,0 +1,345 @@
+/* =========================================================
+   Bean Meet — meetings, screen sharing, captions
+   Always dark like a video room; same Neyo shapes (pills, 16-24px radii, Sora titles).
+   ========================================================= */
+
+body.in-meeting { overflow: hidden; }
+.toast-slot .toast { z-index: 950; }
+
+.meet-screen {
+  --m-bg: #0d0d0e;
+  --m-tile: #1b1b1d;
+  --m-line: rgba(255, 255, 255, 0.08);
+  --m-soft: rgba(255, 255, 255, 0.08);
+  --m-soft-2: rgba(255, 255, 255, 0.14);
+  --m-text: #f5f5f5;
+  --m-dim: rgba(255, 255, 255, 0.62);
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; flex-direction: column;
+  background: var(--m-bg); color: var(--m-text);
+  font-family: var(--font-text);
+  animation: fade 160ms ease;
+}
+.meet-screen .spinner { border-color: rgba(255, 255, 255, 0.2); border-top-color: #fff; }
+.meet-center { align-items: center; justify-content: center; padding: 24px; }
+
+.meet-card {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: min(420px, 100%); padding: 32px 28px; text-align: center;
+  border-radius: 24px; background: #161618; box-shadow: inset 0 0 0 1px var(--m-line);
+}
+.meet-card h2 { margin: 8px 0 0; font: 600 22px/1.25 var(--font-display); }
+.meet-card p { margin: 0; color: var(--m-dim); font-size: 14px; line-height: 1.5; }
+.meet-end-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--m-soft); }
+.meet-end-icon svg { width: 24px; height: 24px; }
+.meet-end-actions { display: flex; gap: 10px; margin-top: 14px; }
+.meet-screen .btn-primary { background: #fff; color: #111; }
+.meet-screen .btn-secondary {
+  height: 44px; padding: 0 20px; border-radius: 999px; font-weight: 600;
+  background: var(--m-soft); color: #fff;
+}
+.meet-screen .btn-secondary:hover { background: var(--m-soft-2); }
+.meet-link-btn { margin-top: 6px; padding: 8px 12px; border-radius: 999px; color: var(--m-dim); font-size: 14px; font-weight: 500; }
+.meet-link-btn:hover { background: var(--m-soft); color: #fff; }
+.meet-pulse { position: relative; margin-bottom: 4px; }
+.meet-pulse::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35); animation: meet-ping 1.6s ease-out infinite; }
+@keyframes meet-ping { from { transform: scale(0.9); opacity: 1; } to { transform: scale(1.35); opacity: 0; } }
+
+/* ---------- join check ---------- */
+
+.meet-prejoin { overflow-y: auto; }
+.meet-pre-wrap {
+  display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr); gap: 32px; align-items: center;
+  width: min(1080px, 100%); margin: auto; padding: 32px 24px;
+}
+.meet-pre-video {
+  position: relative; aspect-ratio: 16 / 10; overflow: hidden;
+  border-radius: 24px; background: var(--m-tile); box-shadow: inset 0 0 0 1px var(--m-line);
+}
+.meet-pre-video video { width: 100%; height: 100%; object-fit: cover; }
+.meet-pre-off { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--m-dim); font-size: 14px; }
+.meet-pre-video.cam-off video { visibility: hidden; }
+.meet-pre-video.cam-off .meet-pre-off { display: flex; }
+.meet-pre-tools { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 12px; }
+.meet-pre-note { position: absolute; left: 16px; top: 16px; right: 16px; margin: 0; padding: 8px 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.55); font-size: 13px; backdrop-filter: blur(8px); }
+.meet-pre-card { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.meet-pre-card h1 { margin: 2px 0 0; font: 600 30px/1.2 var(--font-display); letter-spacing: -0.02em; }
+.meet-verified {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 9px;
+  border-radius: 999px; background: rgba(34, 197, 94, 0.14); color: #86efac; font-size: 12px; font-weight: 600;
+}
+.meet-verified svg { width: 15px; height: 15px; }
+.meet-code { margin: 0; color: var(--m-dim); font: 500 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.meet-host { display: flex; align-items: center; gap: 10px; padding: 10px 14px 10px 10px; border-radius: 16px; background: var(--m-soft); }
+.meet-host span { display: flex; flex-direction: column; line-height: 1.3; }
+.meet-host small { color: var(--m-dim); font-size: 12px; }
+.meet-inside { margin: 0; color: var(--m-dim); font-size: 14px; }
+.meet-warn { margin: 0; color: #fca5a5; font-size: 14px; }
+.meet-join { min-width: 180px; height: 48px; margin-top: 4px; font-size: 15px; }
+.meet-fine { margin: 0; color: var(--m-dim); font-size: 12px; line-height: 1.5; max-width: 380px; }
+.meet-fine.safety { margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--m-line); }
+
+/* ---------- round controls ---------- */
+
+.meet-btn {
+  position: relative; display: grid; place-items: center;
+  width: 48px; height: 48px; flex: 0 0 48px; border-radius: 50%;
+  background: var(--m-soft-2); color: #fff;
+  transition: background-color var(--fast), transform var(--fast);
+}
+.meet-btn:hover { background: rgba(255, 255, 255, 0.22); }
+.meet-btn:active { transform: scale(0.95); }
+.meet-btn svg { width: 20px; height: 20px; }
+.meet-btn.off { background: #ea4335; }
+.meet-btn.off:hover { background: #d33426; }
+.meet-btn.on { background: #e8f0fe; color: #111; }
+.meet-btn.leave { width: 64px; flex-basis: 64px; border-radius: 999px; background: #ea4335; }
+.meet-btn.leave:hover { background: #d33426; }
+.meet-btn.flat { background: transparent; }
+.meet-btn.flat:hover, .meet-btn.flat.on { background: var(--m-soft-2); color: #fff; }
+.meet-badge, .meet-count {
+  position: absolute; top: 4px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; font: 600 11px/18px var(--font-text); font-style: normal;
+}
+.meet-badge { background: #8ab4f8; color: #111; }
+.meet-count { background: transparent; color: var(--m-dim); top: auto; bottom: 2px; right: 0; }
+
+/* ---------- meeting ---------- */
+
+.meet-live { padding: 0; }
+.meet-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 56px; padding: 0 20px; flex: 0 0 auto; }
+.meet-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.meet-title strong { font: 600 15px/1.2 var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meet-clock { color: var(--m-dim); font-size: 13px; font-variant-numeric: tabular-nums; }
+.meet-top-flags { display: flex; gap: 8px; }
+.meet-flag { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; background: var(--m-soft); font-size: 12px; font-weight: 600; }
+.meet-flag svg { width: 14px; height: 14px; }
+.meet-flag.rec i { width: 8px; height: 8px; border-radius: 50%; background: #ea4335; animation: meet-blink 1.4s ease-in-out infinite; }
+@keyframes meet-blink { 50% { opacity: 0.35; } }
+
+.meet-body { position: relative; display: flex; flex: 1; min-height: 0; gap: 12px; padding: 0 12px; }
+.meet-stage { display: flex; flex: 1; min-width: 0; gap: 12px; }
+.meet-main {
+  --cols: 1; --rows: 1;
+  display: grid; flex: 1; min-width: 0; gap: 10px;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+  align-content: center;
+}
+.meet-strip { display: flex; flex-direction: column; gap: 10px; width: 240px; flex: 0 0 240px; overflow-y: auto; }
+.meet-strip[hidden] { display: none; }
+.meet-strip .meet-tile { aspect-ratio: 16 / 10; flex: 0 0 auto; }
+
+.meet-tile {
+  position: relative; overflow: hidden; min-height: 0;
+  border-radius: 16px; background: var(--m-tile);
+  box-shadow: inset 0 0 0 1px var(--m-line);
+  transition: box-shadow 160ms ease;
+}
+.meet-tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.meet-tile.is-screen video { object-fit: contain; }
+.mirror { transform: scaleX(-1); }
+.meet-tile-off { position: absolute; inset: 0; display: none; place-items: center; background: var(--m-tile); }
+.meet-tile.cam-off .meet-tile-off { display: grid; }
+.meet-tile.cam-off video { opacity: 0; } /* keeps playing their voice */
+.meet-tile.speaking { box-shadow: inset 0 0 0 3px #8ab4f8; }
+.meet-tile.weak::after { content: "Connecting…"; position: absolute; top: 10px; right: 10px; padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); font-size: 11px; }
+.meet-tile-label {
+  position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px);
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px;
+  border-radius: 999px; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px);
+  font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden;
+}
+.meet-tile-name { overflow: hidden; text-overflow: ellipsis; }
+.meet-tile-mic:empty { display: none; }
+.meet-tile-mic svg { width: 14px; height: 14px; color: #fca5a5; }
+.meet-tile-hand { position: absolute; top: 10px; left: 10px; display: none; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fbbf24; color: #111; animation: pop 220ms var(--ease); }
+.meet-tile-hand svg { width: 18px; height: 18px; }
+.meet-tile.hand-up .meet-tile-hand { display: grid; }
+.meet-tile-pin {
+  position: absolute; top: 10px; right: 10px; display: grid; place-items: center;
+  width: 32px; height: 32px; border-radius: 50%; background: rgba(0, 0, 0, 0.5); color: #fff;
+  opacity: 0; transition: opacity var(--fast);
+}
+.meet-tile-pin svg { width: 16px; height: 16px; }
+.meet-tile:hover .meet-tile-pin, .meet-tile.pinned .meet-tile-pin { opacity: 1; }
+.meet-tile.pinned .meet-tile-pin { background: #fff; color: #111; }
+
+/* your own shared screen: no hall of mirrors, just a calm note */
+.meet-self-share {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  background: rgba(13, 13, 14, 0.82); backdrop-filter: blur(6px); text-align: center; font-weight: 500;
+}
+.meet-self-share svg { width: 28px; height: 28px; }
+.meet-self-share .meet-pill { background: #e8f0fe; color: #111; }
+.meet-strip .meet-self-share span { display: none; }
+
+/* side panel */
+.meet-panel {
+  display: flex; flex-direction: column; gap: 6px; width: 340px; flex: 0 0 340px; min-height: 0;
+  padding: 14px; border-radius: 20px; background: #fff; color: #171717; overflow-y: auto;
+  animation: pop 180ms var(--ease);
+}
+.meet-panel[hidden] { display: none; }
+.meet-panel-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 8px; }
+.meet-panel-head strong { font: 600 16px/1.2 var(--font-display); }
+.meet-panel .icon-btn { color: #171717; }
+.meet-panel-label { margin: 12px 4px 4px; color: #737373; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.meet-panel-note { margin: 0 4px 8px; color: #737373; font-size: 13px; line-height: 1.45; }
+.meet-panel-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 8px 4px 14px; }
+.meet-panel-empty p { margin: 0; color: #525252; font-size: 14px; }
+.meet-panel-empty .meet-fine { color: #737373; }
+.meet-invite { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-radius: 14px; background: #f4f4f4; font-weight: 500; }
+.meet-invite:hover { background: #ececec; }
+.meet-person { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: 12px; }
+.meet-person:hover { background: #f6f6f6; }
+.meet-person > span:not(.avatar):not(.meet-person-icon) { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.3; }
+.meet-person strong { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meet-person small { color: #737373; font-size: 12px; }
+.meet-person-icon { display: grid; place-items: center; color: #737373; }
+.meet-person-icon svg { width: 16px; height: 16px; }
+.meet-pill { height: 32px; padding: 0 14px; border-radius: 999px; background: #171717; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.meet-pill.ghost { background: transparent; color: #171717; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14); }
+.meet-lines { display: flex; flex-direction: column; gap: 12px; padding: 4px; overflow-y: auto; }
+.meet-lines p { margin: 0; font-size: 14px; line-height: 1.5; color: #262626; }
+.meet-lines strong { font-weight: 600; }
+.meet-lines time { color: #9b9b9b; font-size: 12px; }
+
+/* knock knock: someone wants in */
+.meet-knocks { position: absolute; top: 64px; right: 20px; z-index: 3; display: flex; flex-direction: column; gap: 8px; width: min(380px, calc(100vw - 40px)); }
+.meet-knock {
+  display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px;
+  border-radius: 18px; background: #fff; color: #171717; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  animation: drop 220ms var(--ease);
+}
+.meet-knock > span:not(.avatar) { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.3; }
+.meet-knock strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meet-knock small { color: #737373; font-size: 12px; }
+@keyframes drop { from { opacity: 0; transform: translateY(-10px); } }
+
+/* captions */
+.meet-captions {
+  position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 2;
+  width: min(760px, calc(100% - 32px)); padding: 12px 16px;
+  border-radius: 16px; background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(10px);
+  font-size: 18px; line-height: 1.45; text-align: left;
+}
+.meet-captions[hidden] { display: none; }
+.meet-captions p { margin: 0; }
+.meet-captions p + p { margin-top: 4px; }
+.meet-captions strong { margin-right: 6px; color: #8ab4f8; font-weight: 600; }
+.meet-captions .own { color: rgba(255, 255, 255, 0.75); }
+
+/* bottom bar */
+.meet-bar {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+  height: 80px; padding: 0 20px; flex: 0 0 auto;
+}
+.meet-bar-left { color: var(--m-dim); font: 500 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meet-bar-mid { display: flex; align-items: center; gap: 10px; }
+.meet-bar-right { display: flex; justify-content: flex-end; gap: 6px; }
+.meet-more-wrap { position: relative; }
+.meet-menu {
+  position: absolute; bottom: 58px; left: 50%; transform: translateX(-50%); z-index: 5;
+  display: flex; flex-direction: column; min-width: 290px; padding: 6px;
+  border-radius: 18px; background: #fff; color: #171717; box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+  animation: pop 160ms var(--ease);
+}
+.meet-menu > button, .meet-menu-row {
+  display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px;
+  border-radius: 12px; font-size: 14px; font-weight: 500; text-align: left;
+}
+.meet-menu > button:hover, .meet-menu-row:hover { background: #f4f4f4; }
+.meet-menu svg { width: 18px; height: 18px; flex: 0 0 18px; }
+.meet-menu-row span { flex: 1; }
+.meet-menu select { height: 30px; padding: 0 8px; border: 1px solid rgba(0, 0, 0, 0.14); border-radius: 8px; background: #fff; font: inherit; font-size: 13px; }
+.meet-menu .danger { color: #d93025; }
+
+.meet-menu .m-only { display: none; }
+@media (max-width: 860px) { .meet-menu .m-only { display: flex; } }
+
+/* ---------- chat cards ---------- */
+
+.meet-card-row { display: flex; justify-content: center; padding: 6px 0; }
+.meet-live-card {
+  display: flex; align-items: center; gap: 12px; width: min(420px, 100%);
+  padding: 12px 12px 12px 14px; border-radius: 20px;
+  background: var(--surface); box-shadow: var(--hairline, inset 0 0 0 1px var(--border)), var(--shadow-sm);
+}
+.mlc-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: #e8f0fe; color: #1a56db; }
+.mlc-text { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.35; }
+.mlc-text strong { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mlc-text small { color: var(--text-secondary); font-size: 12px; }
+.mlc-join { height: 36px; padding: 0 18px; border-radius: 999px; background: var(--accent); color: var(--accent-text); font-weight: 600; font-size: 14px; }
+.mlc-join:hover { opacity: 0.9; }
+
+.meet-notes-card {
+  display: flex; flex-direction: column; gap: 10px; width: min(520px, 100%);
+  padding: 14px 16px; border-radius: 20px;
+  background: var(--surface); box-shadow: var(--hairline, inset 0 0 0 1px var(--border)), var(--shadow-sm);
+}
+.mnc-head { display: flex; align-items: center; gap: 10px; }
+.mnc-head span:not(.nr-avatar) { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.mnc-head small { color: var(--text-secondary); font-size: 12px; }
+.mnc-body { white-space: pre-wrap; font-size: 14px; line-height: 1.55; color: var(--text); max-height: 320px; overflow-y: auto; }
+.mnc-body.muted { color: var(--text-secondary); }
+.mnc-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px; background: var(--hover); font-size: 13px; font-weight: 600; }
+.mnc-btn:hover { background: var(--active); }
+.meet-notes-card time { align-self: flex-end; color: var(--text-muted); font-size: 11px; }
+
+.transcript-dialog { width: min(620px, 100%); max-height: min(80vh, 760px); display: flex; flex-direction: column; }
+.td-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.td-head h3 { margin: 0; }
+.td-lines { flex: 1; overflow-y: auto; margin: 10px 0; display: flex; flex-direction: column; gap: 12px; }
+.td-lines p { margin: 0; font-size: 14px; line-height: 1.5; }
+.td-lines time { color: var(--text-muted); font-size: 12px; }
+
+a.meet-link { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+
+/* incoming meeting banner */
+.meet-incoming .meet-join-pill { width: auto; flex: 0 0 auto; padding: 0 18px; border-radius: 999px; font-weight: 600; }
+
+/* sidebar */
+.header-meet { margin-left: auto; }
+.header-meet + .header-new { margin-left: 0; }
+
+/* ---------- 1:1 call screen sharing ---------- */
+.call-screen .remote-screen { display: none; }
+.call-screen.is-audio.peer-sharing .remote-screen {
+  display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000;
+}
+.call-screen.is-audio.peer-sharing .call-center { display: none; }
+.call-screen.peer-sharing .remote-video { object-fit: contain; background: #000; }
+.call-share-pill {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 3;
+  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px;
+  border-radius: 999px; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 13px; font-weight: 500;
+}
+.call-share-pill.self { background: #e8f0fe; color: #111; }
+.call-share-pill svg { width: 16px; height: 16px; }
+
+/* ---------- small screens ---------- */
+@media (max-width: 860px) {
+  .meet-pre-wrap { grid-template-columns: 1fr; gap: 20px; padding: 16px; }
+  .meet-pre-card h1 { font-size: 24px; }
+  .meet-panel { position: absolute; inset: 0 8px 0 8px; width: auto; z-index: 4; }
+  .meet-strip { width: 120px; flex-basis: 120px; }
+  .meet-bar { display: flex; justify-content: center; height: 72px; padding: 0 8px; gap: 6px; }
+  .meet-bar-left, .meet-bar-right { display: none; }
+  .meet-menu { left: auto; right: -60px; transform: none; min-width: 260px; }
+  .meet-bar-mid { justify-content: center; gap: 6px; }
+  .meet-btn { width: 42px; height: 42px; flex-basis: 42px; }
+  .meet-btn.leave { width: 52px; flex-basis: 52px; }
+  .meet-btn[data-a="hand"] { display: none; }
+  .meet-captions { bottom: 80px; font-size: 15px; }
+  .meet-top { padding: 0 14px; }
+}
+@media (max-width: 520px) {
+  .meet-stage.has-focus { flex-direction: column; }
+  .meet-stage.has-focus .meet-strip { flex-direction: row; width: auto; flex: 0 0 96px; overflow-x: auto; }
+  .meet-stage.has-focus .meet-strip .meet-tile { width: 140px; }
+  .meet-bar-right .meet-btn[data-a="transcript"] { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .meet-pulse::after, .meet-flag.rec i { animation: none; }
+}

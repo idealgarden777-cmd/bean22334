@@ -18,6 +18,8 @@ export class CallSession {
     this.remoteStream = new MediaStream();
     this.muted = false;
     this.cameraOff = false;
+    this.sharing = false; // I am sharing my screen
+    this.peerSharing = false; // they are sharing theirs
   }
 
   get video() {
@@ -37,9 +39,18 @@ export class CallSession {
 
     const pc = (this.pc = new RTCPeerConnection({ iceServers: this.iceServers }));
     this.localStream.getTracks().forEach((t) => pc.addTrack(t, this.localStream));
+    if (this.call.role === "caller") {
+      // a video lane in every call, so either side can share a screen without renegotiating
+      if (!this.video) this.videoTx = pc.addTransceiver("video", { direction: "sendrecv" });
+      this.bindChannel(pc.createDataChannel("bean"));
+    } else {
+      pc.ondatachannel = (e) => this.bindChannel(e.channel);
+    }
 
     pc.ontrack = (e) => {
-      e.streams[0]?.getTracks().forEach((t) => {
+      const tracks = e.streams[0]?.getTracks() || [e.track];
+      if (!tracks.includes(e.track)) tracks.push(e.track);
+      tracks.forEach((t) => {
         if (!this.remoteStream.getTracks().includes(t)) this.remoteStream.addTrack(t);
       });
       this.emit();
@@ -97,6 +108,15 @@ export class CallSession {
     if (!pc) return;
     if (type === "offer" && this.call.role === "callee") {
       await pc.setRemoteDescription(payload);
+      // answer the caller's spare video lane as two-way, so I can share my screen too
+      for (const t of pc.getTransceivers()) {
+        if (t.receiver.track?.kind === "video" && !t.sender.track && !this.video) {
+          try {
+            t.direction = "sendrecv";
+            this.videoTx = t;
+          } catch {}
+        }
+      }
       this.remoteSet = true;
       await this.flushIce();
       const answer = await pc.createAnswer();
@@ -129,6 +149,70 @@ export class CallSession {
     this.emit();
   }
 
+  /* ---------- screen sharing (1:1) ---------- */
+
+  bindChannel(ch) {
+    this.channel = ch;
+    ch.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (typeof msg.sharing === "boolean") {
+          this.peerSharing = msg.sharing;
+          this.emit();
+        }
+      } catch {}
+    };
+    ch.onopen = () => this.sharing && this.tell({ sharing: true });
+  }
+
+  tell(msg) {
+    try {
+      if (this.channel?.readyState === "open") this.channel.send(JSON.stringify(msg));
+    } catch {}
+  }
+
+  videoSender() {
+    if (this.video) return this.pc?.getSenders().find((s) => s.track?.kind === "video" || s === this.cameraSender) || null;
+    return this.videoTx?.sender || null;
+  }
+
+  async toggleScreen() {
+    if (this.sharing) return this.stopScreen();
+    if (!navigator.mediaDevices?.getDisplayMedia) throw new Error("This browser can't share the screen");
+    const sender = this.videoSender();
+    if (!sender) throw new Error("Screen sharing needs the other person on the new Bean. Ask them to refresh.");
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 } }, audio: false });
+    } catch {
+      return; // picker closed
+    }
+    const track = stream.getVideoTracks()[0];
+    if (!track || this.ended) return stream.getTracks().forEach((t) => t.stop());
+    track.contentHint = "detail";
+    this.cameraSender = sender;
+    this.cameraTrack = sender.track;
+    await sender.replaceTrack(track);
+    this.screenStream = stream;
+    this.sharing = true;
+    track.onended = () => this.stopScreen();
+    this.tell({ sharing: true });
+    this.emit();
+  }
+
+  async stopScreen() {
+    if (!this.sharing) return;
+    this.sharing = false;
+    const sender = this.cameraSender;
+    try {
+      await sender?.replaceTrack(this.cameraTrack || null);
+    } catch {}
+    this.screenStream?.getTracks().forEach((t) => t.stop());
+    this.screenStream = null;
+    this.tell({ sharing: false });
+    this.emit();
+  }
+
   async hangup(reason = "hangup") {
     if (this.ended) return;
     try {
@@ -142,6 +226,7 @@ export class CallSession {
     this.ended = true;
     clearTimeout(this.pollTimer);
     this.localStream?.getTracks().forEach((t) => t.stop());
+    this.screenStream?.getTracks().forEach((t) => t.stop());
     try {
       this.pc?.close();
     } catch {}
